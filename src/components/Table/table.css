@@ -1,0 +1,60 @@
+
+.table-page {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+  justify-items: center;
+}
+
+.table-card {
+  background-color: #f9f9f9;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  width: 150px;
+  height: 150px;
+  display: grid;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s, color 0.3s, border 0.3s;
+}
+
+.table-card:hover {
+  transform: scale(1.05); 
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
+}
+
+.table-card h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.table-card.booked {
+  background-color: #4e4e4e; 
+  color: white;
+  border: 2px solid #414141;
+  font-weight: bold;
+}
+
+.table-card.available {
+  background-color: #a3a3a3; 
+  color: white;
+  border: 2px solid #a1a1a1;
+  font-weight: bold;
+}
+
+
+.table-card:active {
+  transform: scale(0.98); 
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); 
+}

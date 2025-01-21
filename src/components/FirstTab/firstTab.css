@@ -1,0 +1,18 @@
+.mainTab{
+    height: 100vh;  
+}
+.main{
+    background: #979797;
+}
+.mainButton{
+    background-color: rgb(241, 229, 214);
+    border: none;
+    border-radius: 2px;
+    padding: 50px 100px;
+    width: 500px;
+}
+.mainButton:focus{
+    background-color:azure;
+    border: none;
+    border-radius: 2px; 
+}

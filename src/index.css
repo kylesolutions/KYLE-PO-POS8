@@ -1,0 +1,34 @@
+body{
+  background-color: white;
+}
+@font-face {
+  font-family: 'Dubai Regular';
+  font-style: normal;
+  font-weight: normal;
+  src: local('Dubai Regular'), url('dubai-cufonfonts-webfont/Dubai-Regular.woff') format('woff');
+  }
+  
+
+  @font-face {
+  font-family: 'Dubai Light';
+  font-style: normal;
+  font-weight: normal;
+  src: local('Dubai Light'), url('dubai-cufonfonts-webfont/Dubai-Light.woff') format('woff');
+  }
+  
+
+  @font-face {
+  font-family: 'Dubai Medium';
+  font-style: normal;
+  font-weight: normal;
+  src: local('Dubai Medium'), url('dubai-cufonfonts-webfont/Dubai-Medium.woff') format('woff');
+  }
+  
+
+  @font-face {
+  font-family: 'Dubai Bold';
+  font-style: normal;
+  font-weight: normal;
+  src: local('Dubai Bold'), url('dubai-cufonfonts-webfont/Dubai-Bold.woff') format('woff');
+  }
+

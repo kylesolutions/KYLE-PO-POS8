@@ -1,0 +1,94 @@
+.addons-list{
+    list-style: none;
+}
+
+
+/* addons */
+
+.addon-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1050;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 300px;
+  }
+  .addon-popup1 {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1050;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 500px;
+  }
+  .addon-popup .card-body {
+    padding: 20px;
+  }
+  .addon-popup img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  .addonName{
+    font-size: small
+  }
+  .addon-options input{
+    margin-right: 10px;
+  }
+  .addon-options1 input{
+    margin-right: 10px;
+  }
+
+
+  /* ingredients */
+
+.ingredient-container {
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .ingredient-title {
+    margin-bottom: 16px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 8px;
+  }
+  
+  .ingredient-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+  
+  .ingredient-table th,
+  .ingredient-table td {
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #ddd;
+  }
+  
+  .ingredient-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+  
+  .ingredient-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  .ingredient-table tr:hover {
+    background-color: #f1f1f1;
+  }
