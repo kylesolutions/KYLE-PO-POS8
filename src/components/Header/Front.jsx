@@ -33,7 +33,7 @@ function Front() {
                 const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kyle_item_details', {
                     method: 'GET',
                     headers: {
-                        Authorization: 'token 0bde704e8493354: 14b351a32a317de',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
                         'Content-Type': 'application/json',
                     },
                 });
@@ -226,7 +226,7 @@ function Front() {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: "token 0bde704e8493354: 14b351a32a317de",
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
                     },
                     body: JSON.stringify(payload),
                 }
@@ -254,7 +254,7 @@ function Front() {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: 'token 0bde704e8493354:14b351a32a317de',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
                     },
                 });
 
@@ -287,7 +287,7 @@ function Front() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: 'token 0bde704e8493354:14b351a32a317de',
+                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
                 },
                 body: JSON.stringify({ customer_name: newCustomerName.trim() }),
             });

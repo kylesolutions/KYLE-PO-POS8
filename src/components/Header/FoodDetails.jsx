@@ -23,7 +23,7 @@ const FoodDetails = ({ item, onClose }) => {
                     {
                         method: "GET",
                         headers: {
-                            Authorization: "token 0bde704e8493354: 14b351a32a317de",
+                            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
                             "Content-Type": "application/json",
                         },
                     }
