@@ -8,6 +8,7 @@ import CashPage from '../Pages/CashPage'
 import CardPage from '../Pages/CardPage'
 import FirstTab from '../components/FirstTab/FirstTab'
 import SavedOrderPage from '../Pages/SavedOrderPage'
+import BearerLoginPage from '../Pages/BearerLoginPage'
 
 
 function UserRouter() {
@@ -22,6 +23,7 @@ function UserRouter() {
         <Route path='cash' element={<CashPage/>}/>
         <Route path='card' element={<CardPage/>}/>
         <Route path='savedorders' element={<SavedOrderPage/>}/>
+        <Route path='bearerlogin' element={<BearerLoginPage/>}/>
     </Routes>
     </>
   )

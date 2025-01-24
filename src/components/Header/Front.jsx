@@ -218,6 +218,7 @@ function Front() {
             ],
             payments: [paymentDetails],
         };
+        console.log("Payload:", payload);
 
         try {
             const response = await fetch(
@@ -382,14 +383,12 @@ function Front() {
                                         />
                                         <div className="card-body p-2 mb-0 category-name">
                                             <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
-                                            
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
-
                     <div className="col-lg-4 row1">
                         <div className="row p-2">
                             <div className="col-12 p-5 bg-white shadow-sm rounded mb-3">
