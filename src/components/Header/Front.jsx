@@ -144,7 +144,9 @@ function Front() {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-
+   
+        console.log("Payment Details:", paymentDetails);
+   
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -155,9 +157,9 @@ function Front() {
                 totalPrice: item.basePrice * item.quantity,
             })),
             totalAmount: cartTotal(),
-            payments: [paymentDetails],
+            payments: [paymentDetails], 
         };
-
+   
         try {
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
@@ -194,13 +196,13 @@ function Front() {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
+    
         const validItems = cartItems.filter(item => item.quantity > 0);
-
         if (validItems.length !== cartItems.length) {
             alert("All items must have a quantity greater than zero.");
             return;
         }
-
+    
         const payload = {
             customer: customerName,
             items: validItems.map(item => ({
@@ -218,8 +220,8 @@ function Front() {
             ],
             payments: [paymentDetails],
         };
-        console.log("Payload:", payload);
-
+        console.log("Final Payload before sending to backend:", payload); 
+    
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
@@ -232,9 +234,9 @@ function Front() {
                     body: JSON.stringify(payload),
                 }
             );
-
+    
             const result = await response.json();
-
+    
             if (result.status === "success") {
                 alert("Cart saved to backend successfully!");
                 setCartItems([]);
@@ -247,6 +249,9 @@ function Front() {
             alert("A network error occurred. Please check your connection and try again.");
         }
     };
+    
+    
+
 
     useEffect(() => {
         const fetchCustomers = async () => {

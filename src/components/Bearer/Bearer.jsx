@@ -48,8 +48,8 @@ function Bearer() {
 
                     return (
                         <div key={index} className="mb-4">
-                            <h5>Customer: {customerName}</h5>
-                            <h5>Table: {tableNumber}</h5>
+                            {/* <h5>Customer: {customerName}</h5>
+                            <h5>Table: {tableNumber}</h5> */}
                             {items.map((item) => (
                                 <div key={item.id || item.name} className="card p-3 mb-3">
                                     <h6>Order ID: {item.id || "N/A"}</h6>

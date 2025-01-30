@@ -69,6 +69,7 @@ function Kitchen() {
                                 <th>Customer</th>
                                 <th>Table</th>
                                 <th>Item</th>
+                                <th>Image</th>
                                 <th>Quantity</th>
                                 <th>Category</th>
                                 <th>Status</th>
@@ -88,6 +89,13 @@ function Kitchen() {
                                                 </>
                                             )}
                                             <td>{item.name}</td>
+                                            <td><img src={item.image}  className="rounded"
+                                                                        style={{
+                                                                            width: "70px",
+                                                                            height: "50px",
+                                                                            objectFit: "cover",
+                                                                            border: "1px solid #ddd",
+                                                                        }}/></td>
                                             <td>{item.quantity}</td>
                                             <td>{item.category}</td>
                                             <td>
