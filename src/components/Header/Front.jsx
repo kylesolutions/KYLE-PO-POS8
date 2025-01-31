@@ -37,10 +37,11 @@ function Front() {
                         'Content-Type': 'application/json',
                     },
                 });
+    
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
                 console.log('API Response:', data);
-
+    
                 if (data && Array.isArray(data.message)) {
                     const baseUrl = 'http://109.199.100.136:6060/';
                     const formattedItems = data.message.map((item) => ({
@@ -48,15 +49,15 @@ function Front() {
                         name: item.item_name,
                         category: item.item_group,
                         image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
-                        price: item.valuation_rate || 0,
+                        price: item.price_list_rate || 0, 
                         addons: item.addons || [],
                         combos: item.combos || [],
                         ingredients: item.ingredients || []
-                        
                     }));
+    
                     setMenuItems(formattedItems);
                     setFilteredItems(formattedItems);
-
+    
                     const uniqueCategories = [
                         ...new Set(formattedItems.map((item) => item.category.toLowerCase())),
                     ];
@@ -68,9 +69,10 @@ function Front() {
                 console.error('Error fetching items:', error);
             }
         };
-
+    
         fetchItems();
     }, []);
+    
 
 
     const handlePhoneNumberChange = (e) => {
@@ -242,7 +244,7 @@ function Front() {
                 setCartItems([]);
                 localStorage.removeItem("savedOrders");
             } else {
-                alert(result.message || "Failed to save cart. Please try again.");
+                // alert(result.message || "Failed to save cart. Please try again.");
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
@@ -388,6 +390,7 @@ function Front() {
                                         />
                                         <div className="card-body p-2 mb-0 category-name">
                                             <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
+                                            <h4 className="card-title fs-6 text-center mb-0">{item.price}</h4>
                                         </div>
                                     </div>
                                 </div>

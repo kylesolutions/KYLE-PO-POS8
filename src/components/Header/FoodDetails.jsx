@@ -48,7 +48,7 @@ const FoodDetails = ({ item, onClose }) => {
                             image: selectedItem.image
                                 ? `${baseUrl}${selectedItem.image}`
                                 : "default-image.jpg",
-                            price: selectedItem.valuation_rate || 0,
+                            price: selectedItem.price_list_rate || 0,
                             addons: formattedAddonData,
                             combos: formattedComboData,
                             ingredients: formattedIngredientsData,

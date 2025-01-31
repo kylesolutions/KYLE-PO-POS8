@@ -8,7 +8,6 @@ function Bearer() {
     const [allPickedUp, setAllPickedUp] = useState(false);
     const navigate = useNavigate()
 
-    
     const groupedBearerOrders = bearerOrders.reduce((groups, item) => {
         const key = `${item.customerName || "Unknown Customer"}|${item.tableNumber || "Unknown Table"}`;
         if (!groups[key]) groups[key] = [];
@@ -44,12 +43,12 @@ function Bearer() {
                 <p className="text-center">No prepared items to display.</p>
             ) : (
                 Object.entries(groupedBearerOrders).map(([key, items], index) => {
-                    const [customerName, tableNumber] = key.split("|");
+                    const [customer, tableNumber] = key.split("|");
 
                     return (
                         <div key={index} className="mb-4">
-                            {/* <h5>Customer: {customerName}</h5>
-                            <h5>Table: {tableNumber}</h5> */}
+                            <h5>Customer: {customer}</h5>
+                            <h5>Table: {tableNumber}</h5>
                             {items.map((item) => (
                                 <div key={item.id || item.name} className="card p-3 mb-3">
                                     <h6>Order ID: {item.id || "N/A"}</h6>

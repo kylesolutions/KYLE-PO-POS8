@@ -1,70 +1,97 @@
-import React, { useState } from 'react'
+import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom"; 
 
 function BearerLogin() {
   const [username, setUsername] = useState("");
+  const [password, setPassword] = useState(""); 
   const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate(); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    setErrorMessage(""); 
-
+    setErrorMessage("");
+    setIsLoading(true);
+  
     try {
       const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.bearer_login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
         },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({
+          username: username, 
+          new_password: password,
+        }),
+        
       });
-
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const result = await response.json();
-
       if (result.status === "success") {
         alert("Login successful!");
         console.log("Logged-in user:", result.user);
-        console.log("POS Profile:", result.pos_profile);   
-        window.location.href = "/pos-dashboard";
+        navigate("/");
       } else {
         setErrorMessage(result.message || "Login failed.");
       }
     } catch (error) {
       setErrorMessage("Network error. Please try again later.");
       console.error("Error during login:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
-    return (
-        <div style={styles.container}>
+
+
+  return (
+    <div style={styles.container}>
       <div style={styles.loginBox}>
-        <h1 style={styles.title}>Bearer Login</h1>
+        <h1 style={styles.title}>Login</h1>
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.formGroup}>
             <label style={styles.label} htmlFor="username">
-              Username
+              Username or Email
             </label>
             <input
               type="text"
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              placeholder="Enter your username or email"
               style={styles.input}
               required
             />
           </div>
-          <button type="submit" style={styles.button}>
-            Login
+          <div style={styles.formGroup}>
+            <label style={styles.label} htmlFor="password">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              style={styles.input}
+              required
+            />
+          </div>
+          <button type="submit" style={styles.button} disabled={isLoading}>
+            {isLoading ? "Logging in..." : "Login"}
           </button>
           {errorMessage && (
-            <div style={styles.errorMessage}>{errorMessage}</div>
+            <div style={styles.errorMessage}>
+              {typeof errorMessage === "object" ? errorMessage.message : errorMessage}
+            </div>
           )}
         </form>
       </div>
     </div>
   );
-};
-
+}
 const styles = {
   container: {
     display: "flex",
@@ -125,4 +152,4 @@ const styles = {
   },
 };
 
-export default BearerLogin
+export default BearerLogin;

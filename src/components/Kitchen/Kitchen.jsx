@@ -15,13 +15,13 @@ function Kitchen() {
             ...order,
             cartItems: order.cartItems.filter(
                 (item) =>
-                    item.category !== "Drinks" && 
-                    item.status !== "PickedUp"   
+                    item.category !== "Drinks" &&
+                    item.status !== "PickedUp"
             ),
         });
         return groups;
     }, {});
-    
+
     const handleStatusChange = (id, newStatus) => {
         updateOrderStatus(id, newStatus);
     };
@@ -35,26 +35,26 @@ function Kitchen() {
                 ),
             }))
             .filter((order) => order.cartItems.length > 0);
-    
+
         if (preparedOrders.length === 0) {
             console.warn("No prepared items to inform the bearer about.");
             return;
         }
-    
+
         preparedOrders.forEach((order) => {
             order.cartItems.forEach((item) => informBearer(item));
         });
-    
+
         alert("Items have been marked as Prepared. The bearer has been informed!");
-    
+
         navigate("/bearer", {
             state: {
-                customerName, 
+                customerName,
                 tableNumber,
             },
         });
     };
-    
+
     return (
         <div className="container mt-4">
             <h3 className="text-center">Kitchen Note</h3>
@@ -89,13 +89,13 @@ function Kitchen() {
                                                 </>
                                             )}
                                             <td>{item.name}</td>
-                                            <td><img src={item.image}  className="rounded"
-                                                                        style={{
-                                                                            width: "70px",
-                                                                            height: "50px",
-                                                                            objectFit: "cover",
-                                                                            border: "1px solid #ddd",
-                                                                        }}/></td>
+                                            <td><img src={item.image} className="rounded"
+                                                style={{
+                                                    width: "70px",
+                                                    height: "50px",
+                                                    objectFit: "cover",
+                                                    border: "1px solid #ddd",
+                                                }} /></td>
                                             <td>{item.quantity}</td>
                                             <td>{item.category}</td>
                                             <td>
