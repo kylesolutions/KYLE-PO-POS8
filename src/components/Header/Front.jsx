@@ -251,9 +251,6 @@ function Front() {
             alert("A network error occurred. Please check your connection and try again.");
         }
     };
-    
-    
-
 
     useEffect(() => {
         const fetchCustomers = async () => {
@@ -265,10 +262,8 @@ function Front() {
                         Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
                     },
                 });
-
                 const data = await response.json();
                 console.log("Raw API Response:", data);
-
                 if (Array.isArray(data)) {
                     setCustomers(data);
                 } else if (data.message && Array.isArray(data.message)) {
@@ -281,7 +276,6 @@ function Front() {
                 console.error("Network error:", error);
             }
         };
-
         fetchCustomers();
     }, []);
 
@@ -306,9 +300,7 @@ function Front() {
                 alert(`Error: ${errorDetails.message || response.statusText}`);
                 return;
             }
-
             const data = await response.json();
-
             if (data.status === "success") {
                 alert("Customer creation done successfully");
                 const newCustomer = { customer_name: newCustomerName.trim() };
@@ -390,7 +382,7 @@ function Front() {
                                         />
                                         <div className="card-body p-2 mb-0 category-name">
                                             <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
-                                            <h4 className="card-title fs-6 text-center mb-0">{item.price}</h4>
+                                            {/* <h4 className="card-title fs-6 text-center mb-0">{item.price}</h4> */}
                                         </div>
                                     </div>
                                 </div>
@@ -607,7 +599,6 @@ function Front() {
                                                                         <i className="bi bi-trash"></i>
                                                                     </button>
                                                                 </td>
-
                                                             </tr>
                                                         );
                                                     })}

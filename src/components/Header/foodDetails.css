@@ -5,8 +5,6 @@
 .image-i {
   position: relative;
   display: inline-block;
-  
-
 }
 
 .info-icon {
@@ -21,6 +19,22 @@
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); 
 }
 
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  font-size: 22px;
+  cursor: pointer;
+  color: rgb(0, 0, 0);
+  padding: 5px;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.3s;
+}
 
 /* addons */
 

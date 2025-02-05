@@ -16,6 +16,7 @@ const FoodDetails = ({ item, onClose }) => {
     const [fetchedItem, setFetchedItem] = useState(null);
     const [showModal, setShowModal] = useState(false);
 
+
     useEffect(() => {
         const fetchItemDetails = async () => {
             try {
@@ -131,7 +132,6 @@ const FoodDetails = ({ item, onClose }) => {
             }
         });
     };
-
 
     const handleAddToCart = () => {
         const customizedItem = {
@@ -297,10 +297,10 @@ const FoodDetails = ({ item, onClose }) => {
                                         )}
                                     </div>
                                 )}
-                                
+
                                 {showModal && (
                                     <div className="modal-overlay">
-                                        <div className="modal-content">
+                                        <div className="modal-content p-3">
                                             <span className="close-btn" role="button" onClick={() => setShowModal(false)}>&times;</span>
                                             {fetchedItem?.ingredients?.length > 0 ? (
                                                 <div className="ingredient-container">
@@ -325,19 +325,20 @@ const FoodDetails = ({ item, onClose }) => {
                                                     </table>
                                                 </div>
                                             ) : (
-                                                <p>No ingredients available</p>
+                                                <p className="no-ingredients">No ingredients available</p>
                                             )}
 
+                                          
                                             <div className="total-info">
                                                 <table className="total-table">
                                                     <tbody>
                                                         <tr>
                                                             <td><strong>Total Calories:</strong></td>
-                                                            <td>{fetchedItem?.calories}</td>
+                                                            <td>{fetchedItem?.calories || 0}</td>
                                                         </tr>
                                                         <tr>
                                                             <td><strong>Total Protein:</strong></td>
-                                                            <td>{fetchedItem?.protein}</td>
+                                                            <td>{fetchedItem?.protein || 0}</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>

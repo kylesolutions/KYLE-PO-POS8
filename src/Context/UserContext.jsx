@@ -85,19 +85,16 @@ export const UserProvider = ({ children }) => {
         const filteredCartItems = order.cartItems.filter(
             item => item.category !== "Drinks"
         );
-
         if (filteredCartItems.length === 0) {
             alert(
                 "No items to send to the kitchen as all items belong to the 'Drinks' category."
             );
             return;
         }
-
         const kitchenOrder = {
             ...order,
             cartItems: filteredCartItems,
         };
-
         setSavedOrders(prevOrders => {
             const updatedOrders = [...prevOrders, kitchenOrder];
             localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
@@ -106,14 +103,11 @@ export const UserProvider = ({ children }) => {
 
         alert("Order successfully sent to the kitchen!");
     };
-
-    
     const informBearer = (item) => {
         if (!item || (!item.id && !item.name)) {
             console.error("Invalid item passed to informBearer.");
             return;
         }
-
         setBearerOrders(prevOrders => [...prevOrders, { ...item, status: "Prepared" }]);
         setPreparedItems(prev =>
             prev.filter(preparedItem => preparedItem.id !== item.id)
