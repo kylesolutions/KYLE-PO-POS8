@@ -10,8 +10,8 @@ function BearerLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage("");
     setIsLoading(true);
+    setErrorMessage(""); 
   
     try {
       const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.bearer_login", {
@@ -20,32 +20,26 @@ function BearerLogin() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: username, 
-          new_password: password,
+          username,
+          password, 
         }),
-        
       });
   
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Login failed");
       }
-      const result = await response.json();
-      if (result.status === "success") {
-        alert("Login successful!");
-        console.log("Logged-in user:", result.user);
-        navigate("/");
-      } else {
-        setErrorMessage(result.message || "Login failed.");
-      }
-    } catch (error) {
-      setErrorMessage("Network error. Please try again later.");
-      console.error("Error during login:", error);
+      const data = await response.json();
+      console.log("Login successful:", data);
+      localStorage.setItem("session", data.session);
+      alert("Login Successful!");
+      navigate("/"); 
+    } catch (err) {
+      setErrorMessage(err.message); 
     } finally {
       setIsLoading(false);
     }
   };
-
-
   return (
     <div style={styles.container}>
       <div style={styles.loginBox}>

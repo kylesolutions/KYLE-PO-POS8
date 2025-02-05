@@ -14,6 +14,7 @@ const FoodDetails = ({ item, onClose }) => {
     const [selectedCombos, setSelectedCombos] = useState([]);
     const [showCombos, setShowCombos] = useState(false);
     const [fetchedItem, setFetchedItem] = useState(null);
+    const [showModal, setShowModal] = useState(false);
 
     useEffect(() => {
         const fetchItemDetails = async () => {
@@ -163,13 +164,19 @@ const FoodDetails = ({ item, onClose }) => {
                             <button type="button" className="btn-close" onClick={onClose}></button>
                         </div>
                         <div className="modal-body">
-                            <img
-                                src={fetchedItem?.image}
-                                alt={fetchedItem?.name}
-                                width={100}
-                                height={100}
-                                className="mb-3 rounded d-flex mx-auto"
-                            />
+                            <div className='image-i-wrapper d-flex justify-content-center'>
+                                <div className="image-i">
+                                    <img
+                                        src={fetchedItem?.image}
+                                        alt={fetchedItem?.name}
+                                        width={100}
+                                        height={100}
+                                        className="mb-3 rounded d-flex mx-auto"
+                                    />
+                                    <i className="fa-solid fa-info info-icon" onClick={() => setShowModal(true)}></i>
+                                </div>
+                            </div>
+
                             <p className="mb-0 text-center">
                                 <strong>Category:</strong> {fetchedItem?.category}
                             </p>
@@ -290,47 +297,54 @@ const FoodDetails = ({ item, onClose }) => {
                                         )}
                                     </div>
                                 )}
-                                {fetchedItem?.ingredients?.length > 0 ? (
-                                    <div className="ingredient-container">
-                                        <h3 className="ingredient-title">Ingredients</h3>
-                                        <table className="ingredient-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Ingredient Name</th>
-                                                    <th>Calories</th>
-                                                    <th>Protein</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {fetchedItem.ingredients.map((ingredient, index) => (
-                                                    <tr key={index}>
-                                                        <td>{ingredient.ingredients_name || "N/A"}</td>
-                                                        <td>{ingredient.calories || 0}</td>
-                                                        <td>{ingredient.protein || 0}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                
+                                {showModal && (
+                                    <div className="modal-overlay">
+                                        <div className="modal-content">
+                                            <span className="close-btn" role="button" onClick={() => setShowModal(false)}>&times;</span>
+                                            {fetchedItem?.ingredients?.length > 0 ? (
+                                                <div className="ingredient-container">
+                                                    <h3 className="ingredient-title">Ingredients</h3>
+                                                    <table className="ingredient-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Ingredient Name</th>
+                                                                <th>Calories</th>
+                                                                <th>Protein</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {fetchedItem.ingredients.map((ingredient, index) => (
+                                                                <tr key={index}>
+                                                                    <td>{ingredient.ingredients_name || "N/A"}</td>
+                                                                    <td>{ingredient.calories || 0}</td>
+                                                                    <td>{ingredient.protein || 0}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <p>No ingredients available</p>
+                                            )}
+
+                                            <div className="total-info">
+                                                <table className="total-table">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td><strong>Total Calories:</strong></td>
+                                                            <td>{fetchedItem?.calories}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><strong>Total Protein:</strong></td>
+                                                            <td>{fetchedItem?.protein}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <p>No ingredients available</p>
                                 )}
-
-
-                                <div className="total-info">
-                                    <table className="total-table">
-                                        <tbody>
-                                            <tr>
-                                                <td><strong>Total Calories:</strong></td>
-                                                <td>{fetchedItem?.calories}</td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Total Protein:</strong></td>
-                                                <td>{fetchedItem?.protein}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
 
                             </div>
                         </div>
