@@ -553,7 +553,6 @@ function Front() {
                                                     {cartItems.map((item, index) => {
                                                         const price = item.totalPrice || 0;
                                                         const quantity = item.quantity || 1;
-
                                                         return (
                                                             <tr key={index}>
                                                                 <td>{tableNumber}</td>
