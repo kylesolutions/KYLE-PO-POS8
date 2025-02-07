@@ -22,3 +22,12 @@
 .card-body{
     font-family: 'Dubai Medium';
 }
+.grand-tot-div{
+    background: rgb(238, 238, 238);
+    border-radius: 5px;
+    border-style: groove;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    position: relative;
+}

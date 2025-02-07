@@ -13,7 +13,7 @@ function Front() {
     const [selectedItem, setSelectedItem] = useState(null);
     const [categories, setCategories] = useState([]);
     const [showButtons, setShowButtons] = useState(false);
-    const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems,totalPrice } = useContext(UserContext);
+    const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems, totalPrice } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
     const { tableNumber, existingOrder, tables } = state || {};
@@ -37,11 +37,11 @@ function Front() {
                         'Content-Type': 'application/json',
                     },
                 });
-    
+
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
                 console.log('API Response:', data);
-    
+
                 if (data && Array.isArray(data.message)) {
                     const baseUrl = 'http://109.199.100.136:6060/';
                     const formattedItems = data.message.map((item) => ({
@@ -49,15 +49,15 @@ function Front() {
                         name: item.item_name,
                         category: item.item_group,
                         image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
-                        price: item.price_list_rate || 0, 
+                        price: item.price_list_rate || 0,
                         addons: item.addons || [],
                         combos: item.combos || [],
                         ingredients: item.ingredients || []
                     }));
-    
+
                     setMenuItems(formattedItems);
                     setFilteredItems(formattedItems);
-    
+
                     const uniqueCategories = [
                         ...new Set(formattedItems.map((item) => item.category.toLowerCase())),
                     ];
@@ -69,10 +69,10 @@ function Front() {
                 console.error('Error fetching items:', error);
             }
         };
-    
+
         fetchItems();
     }, []);
-    
+
 
 
     const handlePhoneNumberChange = (e) => {
@@ -146,9 +146,9 @@ function Front() {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-   
+
         console.log("Payment Details:", paymentDetails);
-   
+
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -159,9 +159,9 @@ function Front() {
                 totalPrice: item.basePrice * item.quantity,
             })),
             totalAmount: cartTotal(),
-            payments: [paymentDetails], 
+            payments: [paymentDetails],
         };
-   
+
         try {
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
@@ -198,13 +198,13 @@ function Front() {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
-    
+
         const validItems = cartItems.filter(item => item.quantity > 0);
         if (validItems.length !== cartItems.length) {
             alert("All items must have a quantity greater than zero.");
             return;
         }
-    
+
         const payload = {
             customer: customerName,
             items: validItems.map(item => ({
@@ -222,8 +222,8 @@ function Front() {
             ],
             payments: [paymentDetails],
         };
-        console.log("Final Payload before sending to backend:", payload); 
-    
+        console.log("Final Payload before sending to backend:", payload);
+
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
@@ -236,9 +236,9 @@ function Front() {
                     body: JSON.stringify(payload),
                 }
             );
-    
+
             const result = await response.json();
-    
+
             if (result.status === "success") {
                 alert("Cart saved to backend successfully!");
                 setCartItems([]);
@@ -389,145 +389,148 @@ function Front() {
                             ))}
                         </div>
                     </div>
-                    <div className="col-lg-4 row1">
-                        <div className="row p-2">
-                            <div className="col-12 p-5 bg-white shadow-sm rounded mb-3">
-                                <h1 className="text-center display-4 mb-2">{tableNumber}</h1>
-                                <h2 className="text-center text-dark">BILLING</h2>
-                                <div className="text-center mt-4">
-                                    <div>
-                                        <div className="d-flex justify-content-center align-items-center mb-4">
-                                            <label
-                                                htmlFor="customer-select"
-                                                style={{
-                                                    marginRight: "10px",
-                                                    fontWeight: "bold",
-                                                    fontSize: "1rem",
-                                                    color: "#555",
-                                                }}
-                                            >
-                                                Customer:
-                                            </label>
-                                            <select
-                                                id="customer-select"
-                                                value={customerName}
-                                                onChange={(e) => setCustomerName(e.target.value)}
-                                                style={{
-                                                    width: "300px",
-                                                    padding: "10px",
-                                                    border: "1px solid #ccc",
-                                                    borderRadius: "5px",
-                                                    fontSize: "1rem",
-                                                }}
-                                            >
-                                                <option value="One Time Customer">One Time Customer</option>
-                                                {customers.map((customer, index) => (
-                                                    <option key={index} value={customer.customer_name}>
-                                                        {customer.customer_name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                    <div className="col-lg-4 row1 px-4">
+                        <div className="row p-2 mt-2 border shadow h-100 rounded">
+                            <div className="col-12 p-2 p-md-5 mb-3">
+                                <div className="text-center mt-4 row">
+                                    <div className='d-flex justify-content-between align-items-start'>
+                                        <div className='col-2'><h1 className="display-4 mb-2">{tableNumber}</h1></div>
+                                        <div className='col-10'>
+                                            <div className='row'>
+                                                <div className='col-9 col-md-10'>
+                                                    <select
+                                                        id="customer-select"
+                                                        value={customerName}
+                                                        onChange={(e) => setCustomerName(e.target.value)}
+                                                        style={{
+                                                            width: "100%",
+                                                            padding: "10px",
+                                                            border: "1px solid #ccc",
+                                                            borderRadius: "5px",
+                                                            fontSize: "1rem",
+                                                        }}
+                                                    >
+                                                        <option value="One Time Customer">One Time Customer</option>
+                                                        {customers.map((customer, index) => (
+                                                            <option key={index} value={customer.customer_name}>
+                                                                {customer.customer_name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className='col-3 col-md-2 text-end'>
+                                                    <button
+                                                        className="btn"
+                                                        onClick={() => setShowModal(true)}
+                                                        style={{ fontSize: "1.5rem", fontWeight: "bold", backgroundColor: "ButtonShadow" }}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
 
-                                            <button
-                                                className="btn ms-3"
-                                                onClick={() => setShowModal(true)}
-                                                style={{ fontSize: "1.5rem", fontWeight: "bold", backgroundColor: "ButtonShadow" }}
-                                            >
-                                                +
-                                            </button>
-                                        </div>
 
-                                        {showModal && (
-                                            <div
-                                                className="modal fade show d-block"
-                                                tabIndex="-1"
-                                                role="dialog"
-                                                aria-labelledby="customerModalLabel"
-                                                aria-hidden="true"
-                                                style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-                                            >
-                                                <div className="modal-dialog" role="document">
-                                                    <div className="modal-content">
-                                                        <div className="modal-header">
-                                                            <h5 className="modal-title" id="customerModalLabel">
-                                                                Create New Customer
-                                                            </h5>
-                                                            <button
-                                                                type="button"
-                                                                className="btn-close"
-                                                                onClick={() => setShowModal(false)}
-                                                            ></button>
-                                                        </div>
-                                                        <div className="modal-body">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Enter New Customer Name"
-                                                                value={newCustomerName}
-                                                                onChange={(e) => setNewCustomerName(e.target.value)}
-                                                                style={{
-                                                                    width: "100%",
-                                                                    padding: "10px",
-                                                                    marginBottom: "10px",
-                                                                    border: "1px solid #ccc",
-                                                                    borderRadius: "5px",
-                                                                    fontSize: "1rem",
-                                                                }}
-                                                            />
-                                                            <button
-                                                                onClick={handleCreateCustomer}
-                                                                className="btn w-100"
-                                                                style={{
-                                                                    padding: "10px 20px",
-                                                                    fontSize: "1rem",
-                                                                    fontWeight: "bold",
-                                                                    backgroundColor: 'black',
-                                                                    color: 'white'
-                                                                }}
-                                                            >
-                                                                Create Customer
-                                                            </button>
+                                            {showModal && (
+                                                <div
+                                                    className="modal fade show d-block"
+                                                    tabIndex="-1"
+                                                    role="dialog"
+                                                    aria-labelledby="customerModalLabel"
+                                                    aria-hidden="true"
+                                                    style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+                                                >
+                                                    <div className="modal-dialog" role="document">
+                                                        <div className="modal-content">
+                                                            <div className="modal-header">
+                                                                <h5 className="modal-title" id="customerModalLabel">
+                                                                    Create New Customer
+                                                                </h5>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn-close"
+                                                                    onClick={() => setShowModal(false)}
+                                                                ></button>
+                                                            </div>
+                                                            <div className="modal-body">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Enter New Customer Name"
+                                                                    value={newCustomerName}
+                                                                    onChange={(e) => setNewCustomerName(e.target.value)}
+                                                                    style={{
+                                                                        width: "100%",
+                                                                        padding: "10px",
+                                                                        marginBottom: "10px",
+                                                                        border: "1px solid #ccc",
+                                                                        borderRadius: "5px",
+                                                                        fontSize: "1rem",
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    onClick={handleCreateCustomer}
+                                                                    className="btn w-100"
+                                                                    style={{
+                                                                        padding: "10px 20px",
+                                                                        fontSize: "1rem",
+                                                                        fontWeight: "bold",
+                                                                        backgroundColor: 'black',
+                                                                        color: 'white'
+                                                                    }}
+                                                                >
+                                                                    Create Customer
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
+                                            )}
+                                            <div className="mt-4 row">
+                                                {!isPhoneNumberSet ? (
+                                                    <>
+                                                        <div className='col-8'>
+                                                            <input
+                                                                type="text"
+                                                                className="form-control me-2"
+                                                                placeholder="Enter phone number"
+                                                                value={phoneNumber}
+                                                                onChange={handlePhoneNumberChange}
+                                                                style={{ fontSize: "1rem", padding: "10px",width: "100%"}}
+                                                            />
+                                                        </div>
+                                                        <div className='col-4 text-end'>
+                                                            <button
+                                                                className="btn btn-primary"
+                                                                onClick={handleSetPhoneNumber}
+                                                                style={{
+                                                                    padding: "10px 20px",
+                                                                    backgroundColor: "black",
+                                                                    color: "white",
+                                                                    border: "none",
+                                                                    borderRadius: "5px",
+                                                                    fontWeight: "bold",
+                                                                    cursor: "pointer",
+                                                                    width:"100%"
+                                                                }}
+                                                            >
+                                                                Save
+                                                            </button>
+                                                        </div>
+                                                    </>
+            
+                                                ) : (
+                                                    <div>
+                                                        <p className="text-muted">Ph: {phoneNumber}</p>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
+
+                                        </div>
+
 
                                     </div>
                                 </div>
 
-                                <div className="text-center mt-4">
-                                    {!isPhoneNumberSet ? (
-                                        <div className="d-flex justify-content-center align-items-center">
-                                            <input
-                                                type="text"
-                                                className="form-control w-75 me-2"
-                                                placeholder="Enter phone number"
-                                                value={phoneNumber}
-                                                onChange={handlePhoneNumberChange}
-                                                style={{ fontSize: "1rem", padding: "10px" }}
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handleSetPhoneNumber}
-                                                style={{
-                                                    padding: "10px 20px",
-                                                    backgroundColor: "black",
-                                                    color: "white",
-                                                    border: "none",
-                                                    borderRadius: "5px",
-                                                    fontWeight: "bold",
-                                                    cursor: "pointer",
-                                                }}
-                                            >
-                                                Save
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <p className="text-muted">Ph: {phoneNumber}</p>
-                                        </div>
-                                    )}
-                                </div>
+
 
                                 {cartItems.length === 0 ? (
                                     <div className="text-center">
@@ -537,11 +540,11 @@ function Front() {
                                     <div>
                                         <h5 className="text-center mb-4 text-dark">Your Order</h5>
                                         <div className="table-responsive">
-                                            <table className="table table-striped">
+                                            <table className="table">
                                                 <thead className="text-center ">
                                                     <tr>
                                                         <th>T.No.</th>
-                                                        <th>Item Image</th>
+                                                        {/* <th>Item Image</th> */}
                                                         <th>Item Name</th>
                                                         <th>Quantity</th>
                                                         <th>Price</th>
@@ -556,7 +559,7 @@ function Front() {
                                                         return (
                                                             <tr key={index}>
                                                                 <td>{tableNumber}</td>
-                                                                <td>
+                                                                {/* <td>
                                                                     <img
                                                                         src={item.image}
                                                                         alt={item.name}
@@ -568,7 +571,7 @@ function Front() {
                                                                             border: "1px solid #ddd",
                                                                         }}
                                                                     />
-                                                                </td>
+                                                                </td> */}
                                                                 <td>{item.name}</td>
                                                                 <td>
                                                                     <div className="d-flex justify-content-center align-items-center">
@@ -591,7 +594,7 @@ function Front() {
                                                                 <td>${(price * quantity).toFixed(2)}</td>
                                                                 <td>
                                                                     <button
-                                                                        className="btn btn-danger btn-sm"
+                                                                        className="btn btn-sm"
                                                                         onClick={() => removeFromCart(item)}
                                                                         title="Remove Item"
                                                                     >
@@ -605,46 +608,67 @@ function Front() {
                                             </table>
                                         </div>
 
-                                        <div className="mt-4 text-center">
-                                            <h6 className="text-dark">Total: ${cartTotal()}</h6>
-                                            <button
-                                                type="button"
-                                                className="btn mt-2"
-                                                onClick={saveOrder}
-                                                style={{
-                                                    padding: "10px 20px",
-                                                    backgroundColor: "black",
-                                                    color: "white",
-                                                    border: "none",
-                                                    borderRadius: "5px",
-                                                    fontWeight: "bold",
-                                                    cursor: "pointer",
-                                                }}
-                                            >
-                                                Save
-                                            </button>
+                                        <div className="mt-4">
+                                            {/* <h6 className="text-dark">Total: ${cartTotal()}</h6> */}
+                                            <div className="row">
+                                                <div class="col-12">
+                                                    <div class="row">
+                                                        <div class="col-lg-6">
+                                                            <div className="row">
+                                                                <div className="col-md-6 mt-2 p-2">
+                                                                    <div className='grand-tot-div'>
+                                                                        Total Quantity
+                                                                    </div>
+                                                                </div>
 
+                                                                <div className="col-md-6 mt-2 p-2">
+                                                                    <div className='grand-tot-div'>
+                                                                        <h5 className='position-absolute' style={{ "top": "-15px", "left": "34px" }}>Grand Total</h5> ${cartTotal()}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-lg-6">
+                                                            <button
+                                                                type="button"
+                                                                className="btn mt-2"
+                                                                onClick={saveOrder}
+                                                                style={{
+                                                                    padding: "10px 20px",
+                                                                    backgroundColor: "black",
+                                                                    color: "white",
+                                                                    border: "none",
+                                                                    borderRadius: "5px",
+                                                                    fontWeight: "bold",
+                                                                    cursor: "pointer",
+                                                                }}
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <span> </span>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-success mt-2"
+                                                                onClick={() => {
+                                                                    handleCheckoutClick();
+                                                                }}
+                                                                style={{ padding: "10px 20px", fontSize: "1rem", fontWeight: "bold" }}
+                                                            >
+                                                                CheckOut Mode
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-
-                                            <span> </span>
-                                            <button
-                                                type="button"
-                                                className="btn btn-success mt-2"
-                                                onClick={() => {
-                                                    handleCheckoutClick();
-                                                }}
-                                                style={{ padding: "10px 20px", fontSize: "1rem", fontWeight: "bold" }}
-                                            >
-                                                CheckOut Mode
-                                            </button>
-                                            <span> </span>
-                                            {/* <button
+                                                    <span> </span>
+                                                    {/* <button
                                                 className="btn btn-info mt-2"
                                                 onClick={() => navigate('/savedorders', { state: { savedOrders } })}
-                                            >
+                                                >
                                                 View Saved Orders
-                                            </button> */}
+                                                </button> */}
+                                                </div></div>
                                         </div>
+
 
                                         {showButtons && (
                                             <div className="mt-3">

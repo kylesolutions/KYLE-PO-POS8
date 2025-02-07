@@ -30,13 +30,9 @@ function BearerLogin() {
         const errorData = await response.json();
         throw new Error(errorData.message || "Login failed");
       }
-  
       const data = await response.json();
       console.log("Login successful:", data);
-  
-      
       // localStorage.setItem("session", data.session);
-      
       alert("Login Successful!");
       navigate("/");
   

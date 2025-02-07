@@ -100,9 +100,9 @@ export const UserProvider = ({ children }) => {
             localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
             return updatedOrders;
         });
-
         alert("Order successfully sent to the kitchen!");
     };
+    
     const informBearer = (item) => {
         if (!item || (!item.id && !item.name)) {
             console.error("Invalid item passed to informBearer.");

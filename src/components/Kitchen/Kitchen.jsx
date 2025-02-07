@@ -5,8 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 function Kitchen() {
     const { savedOrders, updateOrderStatus, informBearer, preparedItems } = useContext(UserContext);
     const navigate = useNavigate();
-    const location = useLocation();
-    const { tableNumber, customerName } = location.state || {};
+    
 
     const groupedOrders = savedOrders.reduce((groups, order) => {
         const customer = order.customerName || "Unknown Customer";
@@ -35,25 +34,28 @@ function Kitchen() {
                 ),
             }))
             .filter((order) => order.cartItems.length > 0);
-
+    
         if (preparedOrders.length === 0) {
             console.warn("No prepared items to inform the bearer about.");
             return;
         }
-
+        
+        const customerTableData = preparedOrders.map((order) => ({
+            customerName: order.customerName || "Unknown Customer",
+            tableNumber: order.tableNumber || "Unknown Table",
+        }));
+    
         preparedOrders.forEach((order) => {
             order.cartItems.forEach((item) => informBearer(item));
         });
-
+    
         alert("Items have been marked as Prepared. The bearer has been informed!");
-
+    
         navigate("/bearer", {
-            state: {
-                customerName,
-                tableNumber,
-            },
+            state: { customerTableData }, 
         });
     };
+    
 
     return (
         <div className="container mt-4">
