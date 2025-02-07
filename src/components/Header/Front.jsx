@@ -16,10 +16,17 @@ function Front() {
     const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems, totalPrice } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
-    const { tableNumber, existingOrder, tables } = state || {};
-    const [savedOrders, setSavedOrders] = useState([]);
-    const [phoneNumber, setPhoneNumber] = useState("");
+    const { tableNumber, existingOrder} = state || {};
+    useEffect(() => {
+        if (location.state) {
+            setPhoneNumber(location.state.phoneNumber || existingOrder?.phoneNumber || "");
+            setCustomerName(location.state.customerName || existingOrder?.customerName || "One Time Customer");
+            setIsPhoneNumberSet(!!(location.state.phoneNumber || existingOrder?.phoneNumber));
+        }
+    }, [location.state, existingOrder]);  
     const [isPhoneNumberSet, setIsPhoneNumberSet] = useState(false);
+    const [savedOrders, setSavedOrders] = useState([]);
+    const [phoneNumber, setPhoneNumber] = useState(""); 
     const [customers, setCustomers] = useState([]);
     const [customerName, setCustomerName] = useState("One Time Customer");
     const [newCustomerName, setNewCustomerName] = useState("");
@@ -101,6 +108,7 @@ function Front() {
         updateCartItem(updatedItem);
         setSelectedItem(null);
     };
+
     const cartTotal = () => {
         return cartItems.reduce((sum, item) => {
             const price = item.totalPrice || 0;
@@ -344,7 +352,6 @@ function Front() {
             localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
             return updatedOrders;
         });
-
         alert(`Order for Table ${tableNumber} saved successfully!`);
     };
 
@@ -494,7 +501,7 @@ function Front() {
                                                                 placeholder="Enter phone number"
                                                                 value={phoneNumber}
                                                                 onChange={handlePhoneNumberChange}
-                                                                style={{ fontSize: "1rem", padding: "10px",width: "100%"}}
+                                                                style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                             />
                                                         </div>
                                                         <div className='col-4 text-end'>
@@ -509,17 +516,17 @@ function Front() {
                                                                     borderRadius: "5px",
                                                                     fontWeight: "bold",
                                                                     cursor: "pointer",
-                                                                    width:"100%"
+                                                                    width: "100%"
                                                                 }}
                                                             >
                                                                 Save
                                                             </button>
                                                         </div>
                                                     </>
-            
+
                                                 ) : (
                                                     <div>
-                                                        <p className="text-muted">Ph: {phoneNumber}</p>
+                                                        <p className="text-muted text-end">Ph: {phoneNumber}</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -529,7 +536,6 @@ function Front() {
 
                                     </div>
                                 </div>
-
 
 
                                 {cartItems.length === 0 ? (
@@ -609,53 +615,61 @@ function Front() {
                                         </div>
 
                                         <div className="mt-4">
-                                            {/* <h6 className="text-dark">Total: ${cartTotal()}</h6> */}
                                             <div className="row">
                                                 <div class="col-12">
-                                                    <div class="row">
+                                                    <div class="row mt-5">
                                                         <div class="col-lg-6">
-                                                            <div className="row">
-                                                                <div className="col-md-6 mt-2 p-2">
-                                                                    <div className='grand-tot-div'>
-                                                                        Total Quantity
+                                                            <div className="row ">
+                                                                <div className="col-md-6">
+                                                                    <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
+                                                                    <div className='grand-tot-div justify-content-end'>
+                                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="col-md-6 mt-2 p-2">
+                                                                <div className="col-md-6">
+                                                                    <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
                                                                     <div className='grand-tot-div'>
-                                                                        <h5 className='position-absolute' style={{ "top": "-15px", "left": "34px" }}>Grand Total</h5> ${cartTotal()}
+                                                                        <span>$</span><span>{cartTotal()}</span>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div class="col-lg-6">
-                                                            <button
-                                                                type="button"
-                                                                className="btn mt-2"
-                                                                onClick={saveOrder}
-                                                                style={{
-                                                                    padding: "10px 20px",
-                                                                    backgroundColor: "black",
-                                                                    color: "white",
-                                                                    border: "none",
-                                                                    borderRadius: "5px",
-                                                                    fontWeight: "bold",
-                                                                    cursor: "pointer",
-                                                                }}
-                                                            >
-                                                                Save
-                                                            </button>
-                                                            <span> </span>
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-success mt-2"
-                                                                onClick={() => {
-                                                                    handleCheckoutClick();
-                                                                }}
-                                                                style={{ padding: "10px 20px", fontSize: "1rem", fontWeight: "bold" }}
-                                                            >
-                                                                CheckOut Mode
-                                                            </button>
+                                                            <div class="row">
+                                                                <div class="col-4">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn mt-2"
+                                                                        onClick={saveOrder}
+                                                                        style={{
+                                                                            padding: "10px 20px",
+                                                                            backgroundColor: "black",
+                                                                            color: "white",
+                                                                            border: "none",
+                                                                            borderRadius: "5px",
+                                                                            fontWeight: "bold",
+                                                                            cursor: "pointer",
+                                                                        }}
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                </div>
+
+                                                                <div class="col-8">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-success mt-2"
+                                                                        onClick={() => {
+                                                                            handleCheckoutClick();
+                                                                        }}
+                                                                        style={{ padding: "10px 20px", fontSize: "14px", fontWeight: "bold" }}
+                                                                    >
+                                                                        CheckOut Mode
+                                                                    </button>
+                                                                </div>
+
+                                                            </div>
                                                         </div>
                                                     </div>
 

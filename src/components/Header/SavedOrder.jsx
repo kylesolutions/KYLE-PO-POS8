@@ -21,7 +21,7 @@ function SavedOrder({ orders, setSavedOrders }) {
     const handleSelectOrder = (order) => {
         setCartItems(order.cartItems); 
         alert(`You selected Table ${order.tableNumber}`);
-        navigate("/frontpage", { state: { tableNumber: order.tableNumber, existingOrder: order } });
+        navigate("/frontpage", { state: { tableNumber: order.tableNumber, phoneNumber: order.phoneNumber,customerName:order.customerName, existingOrder: order } });
     };
    
     return (

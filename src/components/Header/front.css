@@ -27,7 +27,7 @@
     border-radius: 5px;
     border-style: groove;
     align-items: center;
-    justify-content: center;
-    display: flex;
-    position: relative;
+    justify-content: space-between;
+    display: flex; 
+    padding: 5px;
 }
