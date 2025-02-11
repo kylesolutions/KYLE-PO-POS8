@@ -14,7 +14,8 @@ function UserRouter() {
   return (
     <>
     <Routes>
-        <Route path='/' element={<FirstTab/>}/>
+        <Route path='/' element={<BearerLoginPage/>}/>
+        <Route path='firsttab' element={<FirstTab/>}/>
         <Route path='table' element={<TablePage/>}/>
         <Route path='frontpage' element={<FrontPage/>}/>
         <Route path='kitchen' element={<KitchenRoomPage/>}/>
@@ -22,7 +23,7 @@ function UserRouter() {
         <Route path='cash' element={<CashPage/>}/>
         <Route path='card' element={<CardPage/>}/>
         <Route path='savedorders' element={<SavedOrderPage/>}/>
-        <Route path='bearerlogin' element={<BearerLoginPage/>}/>
+        
     </Routes>
     </>
   )

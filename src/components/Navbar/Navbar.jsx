@@ -1,15 +1,18 @@
 import React from 'react'
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom'
 
 function Navbar() {
     const navigate = useNavigate()
+    const user = useSelector((state) => state.user.user);
+    const posProfile = useSelector((state) => state.user.pos_profile);
     return (
         <>
             <div>
                 <nav className="navbar navbar-expand-lg navbar-light bg-white">
                     <div className="container-fluid">
-                        <a className="navbar-brand text-black" href="#">
-
+                        <a className="navbar-brand text-black">
+                            {user}
                         </a>
                         <button className="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
                             <span className="navbar-toggler-icon"></span>

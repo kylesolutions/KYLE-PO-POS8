@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import FoodDetails from './FoodDetails';
 import { v4 as uuidv4 } from 'uuid';
 import SavedOrder from './SavedOrder';
+import { useSelector } from 'react-redux';
 
 function Front() {
     const [menuItems, setMenuItems] = useState([]);
@@ -33,6 +34,8 @@ function Front() {
     const [showModal, setShowModal] = useState(false);
     const navigate = useNavigate()
     const [bookedTables, setBookedTables] = useState([]);
+    const user = useSelector((state) => state.user.user);
+    const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -62,12 +65,14 @@ function Front() {
                         ingredients: item.ingredients || []
                     }));
 
-                    setMenuItems(formattedItems);
-                    setFilteredItems(formattedItems);
+                    const filteredMenu = formattedItems.filter(item =>
+                        allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)
+                    );
 
-                    const uniqueCategories = [
-                        ...new Set(formattedItems.map((item) => item.category.toLowerCase())),
-                    ];
+                    setMenuItems(filteredMenu);
+                    setFilteredItems(filteredMenu);
+
+                    const uniqueCategories = [...new Set(filteredMenu.map((item) => item.category.toLowerCase()))];
                     setCategories(uniqueCategories);
                 } else {
                     throw new Error('Invalid data structure or missing message array');
@@ -78,9 +83,15 @@ function Front() {
         };
 
         fetchItems();
-    }, []);
+    }, [allowedItemGroups]);
 
-
+    const handleFilter = (category) => {
+        const filtered = menuItems.filter((item) =>
+            item.category.toLowerCase() === category.toLowerCase()
+        );
+        setFilteredItems(filtered);
+        setSelectedCategory(category);
+    };
 
     const handlePhoneNumberChange = (e) => {
         setPhoneNumber(e.target.value);
@@ -94,13 +105,7 @@ function Front() {
         setIsPhoneNumberSet(true);
     };
 
-    const handleFilter = (category) => {
-        const filtered = menuItems.filter((item) =>
-            item.category.toLowerCase() === category.toLowerCase()
-        );
-        setFilteredItems(filtered);
-        setSelectedCategory(category);
-    };
+   
 
     const handleItemClick = (item) => setSelectedItem(item);
 
@@ -358,44 +363,38 @@ function Front() {
     return (
         <>
             <div className="container-fluid">
-                <div className="row">
-                    <div className="col-lg-1">
-                        <div className="row p-2">
-                            {categories.map((category, index) => (
-                                <div key={index} className="col-lg-12 mb-2">
-                                    <button
-                                        className={`text-dark w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active-category' : ''
-                                            }`}
-                                        onClick={() => handleFilter(category)}
-                                    >
-                                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
+            <div className="row">
+                {/* Category Buttons */}
+                <div className="col-lg-1">
+                    <div className="row p-2">
+                        {categories.map((category, index) => (
+                            <div key={index} className="col-lg-12 mb-2">
+                                <button
+                                    className={`text-dark w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active-category' : ''}`}
+                                    onClick={() => handleFilter(category)}
+                                >
+                                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                                </button>
+                            </div>
+                        ))}
                     </div>
+                </div>
 
-                    <div className="col-lg-7 row2">
-                        <div className="row">
-                            {filteredItems.map((item, index) => (
-                                <div className="col-lg-3 col-md-4 col-6 align-items-center my-2" key={index}>
-                                    <div className="card" onClick={() => handleItemClick(item)}>
-                                        <img
-                                            className="card-img-top"
-                                            src={item.image}
-                                            alt={item.name}
-                                            width={100}
-                                            height={100}
-                                        />
-                                        <div className="card-body p-2 mb-0 category-name">
-                                            <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
-                                            {/* <h4 className="card-title fs-6 text-center mb-0">{item.price}</h4> */}
-                                        </div>
+                <div className="col-lg-7 row2">
+                    <div className="row">
+                        {filteredItems.map((item, index) => (
+                            <div className="col-lg-3 col-md-4 col-6 align-items-center my-2" key={index}>
+                                <div className="card" onClick={() =>  handleItemClick(item)}>
+                                    <img className="card-img-top" src={item.image} alt={item.name} width={100} height={100} />
+                                    <div className="card-body p-2 mb-0 category-name">
+                                        <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
+                                        <h4 className="card-title fs-6 text-center mb-0">${item.price}</h4>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        ))}
                     </div>
+                </div>
                     <div className="col-lg-4 row1 px-4">
                         <div className="row p-2 mt-2 border shadow h-100 rounded">
                             <div className="col-12 p-2 p-md-5 mb-3">
@@ -435,7 +434,6 @@ function Front() {
                                                     </button>
                                                 </div>
                                             </div>
-
 
                                             {showModal && (
                                                 <div
@@ -579,6 +577,7 @@ function Front() {
                                                                     />
                                                                 </td> */}
                                                                 <td>{item.name}</td>
+                                                                
                                                                 <td>
                                                                     <div className="d-flex justify-content-center align-items-center">
                                                                         <button
