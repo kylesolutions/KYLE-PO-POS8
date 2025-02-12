@@ -36,6 +36,7 @@ function Front() {
     const [bookedTables, setBookedTables] = useState([]);
     const user = useSelector((state) => state.user.user);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
+    const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
 
     useEffect(() => {
         const fetchItems = async () => {
