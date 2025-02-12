@@ -9,6 +9,10 @@ import CardPage from '../Pages/CardPage'
 import FirstTab from '../components/FirstTab/FirstTab'
 import SavedOrderPage from '../Pages/SavedOrderPage'
 import BearerLoginPage from '../Pages/BearerLoginPage'
+import LiveKitchenPage from '../Pages/LiveKitchenPage'
+import ContinentalKitchenPage from '../Pages/ContinentalKitchenPage'
+import MediterraneanKitchenPage from '../Pages/MediterraneanKitchenPage'
+import PreparedFoodKitchenPage from '../Pages/PreparedFoodKitchenPage'
 
 function UserRouter() {
   return (
@@ -23,6 +27,10 @@ function UserRouter() {
         <Route path='cash' element={<CashPage/>}/>
         <Route path='card' element={<CardPage/>}/>
         <Route path='savedorders' element={<SavedOrderPage/>}/>
+        <Route path='livekitchen' element={<LiveKitchenPage/>}/>
+        <Route path='continentalkitchen' element={<ContinentalKitchenPage/>}/>
+        <Route path='mediterraneankitchen' element={<MediterraneanKitchenPage/>}/>
+        <Route path='preparedfoodkitchen' element={<PreparedFoodKitchenPage/>}/>
         
     </Routes>
     </>
