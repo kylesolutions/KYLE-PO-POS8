@@ -161,9 +161,9 @@ function Front() {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-
+   
         console.log("Payment Details:", paymentDetails);
-
+   
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -174,9 +174,9 @@ function Front() {
                 totalPrice: item.basePrice * item.quantity,
             })),
             totalAmount: cartTotal(),
-            payments: [paymentDetails],
+            payments: [paymentDetails], 
         };
-
+   
         try {
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
@@ -213,17 +213,13 @@ function Front() {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
-
+    
         const validItems = cartItems.filter(item => item.quantity > 0);
         if (validItems.length !== cartItems.length) {
             alert("All items must have a quantity greater than zero.");
             return;
         }
-
-        const validPayments = paymentDetails && paymentDetails.mode_of_payment && paymentDetails.amount
-            ? [paymentDetails]
-            : [];
-
+    
         const payload = {
             customer: customerName,
             items: validItems.map(item => ({
@@ -239,11 +235,10 @@ function Front() {
                     payment_terms: "test",
                 },
             ],
-            payments: validPayments, // Ensures payments is always a valid array
+            payments: [paymentDetails],
         };
-
-        console.log("Final Payload before sending to backend:", payload);
-
+        console.log("Final Payload before sending to backend:", payload); 
+    
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
@@ -256,9 +251,9 @@ function Front() {
                     body: JSON.stringify(payload),
                 }
             );
-
+    
             const result = await response.json();
-
+    
             if (result.status === "success") {
                 alert("Cart saved to backend successfully!");
                 setCartItems([]);
@@ -272,7 +267,8 @@ function Front() {
         }
     };
 
-
+    
+ 
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
@@ -556,7 +552,6 @@ function Front() {
                                                 <thead className="text-center ">
                                                     <tr>
                                                         <th>T.No.</th>
-                                                        {/* <th>Item Image</th> */}
                                                         <th>Item Name</th>
                                                         <th>Quantity</th>
                                                         <th>Price</th>
@@ -574,10 +569,19 @@ function Front() {
                                                                     <td>{tableNumber}</td>
                                                                     <td>
                                                                         {item.name}
+
                                                                         {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                             <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                 {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
                                                                                     <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        )}
+                                                                      
+                                                                        {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                            <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                                {item.selectedCombos.map((combo, idx) => (
+                                                                                    <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
                                                                                 ))}
                                                                             </ul>
                                                                         )}
@@ -618,8 +622,6 @@ function Front() {
                                                         );
                                                     })}
                                                 </tbody>
-
-
                                             </table>
                                         </div>
 

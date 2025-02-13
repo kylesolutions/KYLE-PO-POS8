@@ -19,28 +19,27 @@ export const UserProvider = ({ children }) => {
         localStorage.setItem("savedOrders", JSON.stringify(savedOrders));
     }, [savedOrders]);
     
-    const addToCart = (item) => {
-        const existingItem = cartItems.find(cartItem => cartItem.id === item.id);
-        if (existingItem) {
-            setCartItems(prevItems =>
-                prevItems.map(cartItem =>
-                    cartItem.id === item.id
-                        ? {
-                              ...cartItem,
-                              quantity: cartItem.quantity + 1,
-                              addonCounts: {
-                                  ...cartItem.addonCounts,
-                                  ...item.addonCounts, 
-                              },
-                          }
-                        : cartItem
-                )
+    const addToCart = (newItem) => {
+        setCartItems((prevItems) => {
+            const existingItemIndex = prevItems.findIndex(
+                (cartItem) =>
+                    cartItem.id === newItem.id &&
+                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(newItem.addonCounts) &&
+                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(newItem.selectedCombos)
             );
-        } else {
-            setCartItems(prevItem => [...prevItem, { ...item, quantity: 1 }]);
-        }
-    };
     
+            if (existingItemIndex !== -1) {
+                return prevItems.map((cartItem, index) =>
+                    index === existingItemIndex
+                        ? { ...cartItem, quantity: cartItem.quantity + 1 }
+                        : cartItem
+                );
+            } else {
+                return [...prevItems, { ...newItem, quantity: 1 }];
+            }
+        });
+    };
+
     const removeFromCart = (item) => {
         setCartItems(prevItems => prevItems.filter(cartItem => cartItem !== item));
     };
