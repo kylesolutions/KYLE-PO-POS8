@@ -15,6 +15,7 @@ function Card() {
 
     return (
         <>
+        <i class="fi fi-rs-angle-small-left back-button"  onClick={()=> navigate('/frontpage')}></i>
             <div className="container mt-5">
                 <div className="row justify-content-center">
                     <div className="col-lg-6 col-md-8 col-sm-10">

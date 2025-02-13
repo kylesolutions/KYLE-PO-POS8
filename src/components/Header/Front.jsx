@@ -63,7 +63,8 @@ function Front() {
                         price: item.price_list_rate || 0,
                         addons: item.addons || [],
                         combos: item.combos || [],
-                        ingredients: item.ingredients || []
+                        ingredients: item.ingredients || [],
+                        kitchen:item.kitchen
                     }));
 
                     const filteredMenu = formattedItems.filter(item =>
@@ -160,9 +161,9 @@ function Front() {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-
+   
         console.log("Payment Details:", paymentDetails);
-
+   
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -173,9 +174,9 @@ function Front() {
                 totalPrice: item.basePrice * item.quantity,
             })),
             totalAmount: cartTotal(),
-            payments: [paymentDetails],
+            payments: [paymentDetails], 
         };
-
+   
         try {
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
@@ -212,13 +213,17 @@ function Front() {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
-
+    
         const validItems = cartItems.filter(item => item.quantity > 0);
         if (validItems.length !== cartItems.length) {
             alert("All items must have a quantity greater than zero.");
             return;
         }
-
+    
+        const validPayments = paymentDetails && paymentDetails.mode_of_payment && paymentDetails.amount
+            ? [paymentDetails]
+            : [];
+    
         const payload = {
             customer: customerName,
             items: validItems.map(item => ({
@@ -234,10 +239,11 @@ function Front() {
                     payment_terms: "test",
                 },
             ],
-            payments: [paymentDetails],
+            payments: validPayments, // Ensures payments is always a valid array
         };
+    
         console.log("Final Payload before sending to backend:", payload);
-
+    
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
@@ -250,22 +256,23 @@ function Front() {
                     body: JSON.stringify(payload),
                 }
             );
-
+    
             const result = await response.json();
-
+    
             if (result.status === "success") {
                 alert("Cart saved to backend successfully!");
                 setCartItems([]);
                 localStorage.removeItem("savedOrders");
             } else {
-                // alert(result.message || "Failed to save cart. Please try again.");
+                alert(result.message || "Failed to save cart. Please try again.");
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
             alert("A network error occurred. Please check your connection and try again.");
         }
     };
-
+    
+    
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
@@ -389,7 +396,7 @@ function Front() {
                                     <img className="card-img-top" src={item.image} alt={item.name} width={100} height={100} />
                                     <div className="card-body p-2 mb-0 category-name">
                                         <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
-                                        <h4 className="card-title fs-6 text-center mb-0">${item.price}</h4>
+                                        <h4 className="card-title fs-6 text-center mb-0">{item.kitchen}</h4>
                                     </div>
                                 </div>
                             </div>
@@ -553,64 +560,70 @@ function Front() {
                                                         <th>Item Name</th>
                                                         <th>Quantity</th>
                                                         <th>Price</th>
+                                                        <th>Addons</th>
                                                         <th>Action</th>
 
                                                     </tr>
                                                 </thead>
                                                 <tbody className="text-center">
-                                                    {cartItems.map((item, index) => {
-                                                        const price = item.totalPrice || 0;
-                                                        const quantity = item.quantity || 1;
-                                                        return (
-                                                            <tr key={index}>
-                                                                <td>{tableNumber}</td>
-                                                                {/* <td>
-                                                                    <img
-                                                                        src={item.image}
-                                                                        alt={item.name}
-                                                                        className="rounded"
-                                                                        style={{
-                                                                            width: "70px",
-                                                                            height: "50px",
-                                                                            objectFit: "cover",
-                                                                            border: "1px solid #ddd",
-                                                                        }}
-                                                                    />
-                                                                </td> */}
-                                                                <td>{item.name}</td>
-                                                                
-                                                                <td>
-                                                                    <div className="d-flex justify-content-center align-items-center">
-                                                                        <button
-                                                                            className="btn btn-secondary btn-sm me-2"
-                                                                            onClick={() => decreaseQuantity(item)}
-                                                                            disabled={quantity <= 1}
-                                                                        >
-                                                                            -
-                                                                        </button>
-                                                                        {quantity}
-                                                                        <button
-                                                                            className="btn btn-secondary btn-sm ms-2"
-                                                                            onClick={() => increaseQuantity(item)}
-                                                                        >
-                                                                            +
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                                <td>${(price * quantity).toFixed(2)}</td>
-                                                                <td>
-                                                                    <button
-                                                                        className="btn btn-sm"
-                                                                        onClick={() => removeFromCart(item)}
-                                                                        title="Remove Item"
-                                                                    >
-                                                                        <i className="bi bi-trash"></i>
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
+    {cartItems.map((item, index) => {
+        const price = item.totalPrice || 0;
+        const quantity = item.quantity || 1;
+
+        return (
+            <tr key={index}>
+                <td>{tableNumber}</td>
+
+                <td>{item.name}</td>
+
+                <td>
+                    <div className="d-flex justify-content-center align-items-center">
+                        <button
+                            className="btn btn-secondary btn-sm me-2"
+                            onClick={() => decreaseQuantity(item)}
+                            disabled={quantity <= 1}
+                        >
+                            -
+                        </button>
+                        {quantity}
+                        <button
+                            className="btn btn-secondary btn-sm ms-2"
+                            onClick={() => increaseQuantity(item)}
+                        >
+                            +
+                        </button>
+                    </div>
+                </td>
+
+                <td>${(price * quantity).toFixed(2)}</td>
+
+                {/* ✅ Display Addons Properly */}
+                <td>
+                    {item.addonCounts && Object.keys(item.addonCounts).length > 0 ? (
+                        <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                <li key={addonName}>{addonName}: ${addonPrice}</li>
+                            ))}
+                        </ul>
+                    ) : (
+                        "No Addons"
+                    )}
+                </td>
+
+                <td>
+                    <button
+                        className="btn btn-sm"
+                        onClick={() => removeFromCart(item)}
+                        title="Remove Item"
+                    >
+                        <i className="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        );
+    })}
+</tbody>
+
                                             </table>
                                         </div>
 
@@ -665,7 +678,7 @@ function Front() {
                                                                         }}
                                                                         style={{ padding: "10px 20px", fontSize: "14px", fontWeight: "bold" }}
                                                                     >
-                                                                        CheckOut Mode
+                                                                        Check Out Cart
                                                                     </button>
                                                                 </div>
 

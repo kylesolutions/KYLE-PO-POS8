@@ -47,6 +47,7 @@ const FoodDetails = ({ item, onClose }) => {
                         setFetchedItem({
                             name: selectedItem.item_name,
                             category: selectedItem.item_group,
+                            kitchen:selectedItem.kitchen,
                             image: selectedItem.image
                                 ? `${baseUrl}${selectedItem.image}`
                                 : "default-image.jpg",
@@ -141,7 +142,7 @@ const FoodDetails = ({ item, onClose }) => {
             category: item.category,
             basePrice: item.price,
             selectedSize,
-            addonCounts,
+            addonCounts, 
             selectedCombos: selectedCombos.map((combo) => ({
                 ...combo,
                 size: comboSizes[combo.name1] || "M",
@@ -149,10 +150,12 @@ const FoodDetails = ({ item, onClose }) => {
             })),
             selectedAddon,
             totalPrice,
+            kitchen: item.kitchen,
         };
         addToCart(customizedItem);
         onClose();
     };
+    
 
     return (
         <div className="food-detail bg-dark">

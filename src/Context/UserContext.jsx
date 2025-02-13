@@ -25,7 +25,14 @@ export const UserProvider = ({ children }) => {
             setCartItems(prevItems =>
                 prevItems.map(cartItem =>
                     cartItem.id === item.id
-                        ? { ...cartItem, quantity: cartItem.quantity + 1 }
+                        ? {
+                              ...cartItem,
+                              quantity: cartItem.quantity + 1,
+                              addonCounts: {
+                                  ...cartItem.addonCounts,
+                                  ...item.addonCounts, 
+                              },
+                          }
                         : cartItem
                 )
             );
@@ -33,7 +40,7 @@ export const UserProvider = ({ children }) => {
             setCartItems(prevItem => [...prevItem, { ...item, quantity: 1 }]);
         }
     };
- 
+    
     const removeFromCart = (item) => {
         setCartItems(prevItems => prevItems.filter(cartItem => cartItem !== item));
     };
@@ -45,18 +52,18 @@ export const UserProvider = ({ children }) => {
     const updateCartItem = (updatedItem) => {
         setCartItems(prevItems =>
             prevItems.map(item =>
-                item.name === updatedItem.name
+                item.id === updatedItem.id
                     ? {
                           ...item,
                           quantity: updatedItem.quantity,
                           totalPrice: updatedItem.totalPrice,
-                          addons: updatedItem.addon,
+                          addonCounts: updatedItem.addonCounts, 
                       }
                     : item
             )
         );
     };
-
+    
     const updateOrderStatus = (id, status) => {
         setSavedOrders(prevOrders =>
             prevOrders.map(order => ({
@@ -66,7 +73,6 @@ export const UserProvider = ({ children }) => {
                 ),
             }))
         );
-
         if (status === "Prepared") {
             setPreparedItems(prev => (!prev.includes(id) ? [...prev, id] : prev));
         } else {
