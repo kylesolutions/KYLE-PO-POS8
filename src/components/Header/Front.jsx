@@ -17,17 +17,17 @@ function Front() {
     const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems, totalPrice } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
-    const { tableNumber, existingOrder} = state || {};
+    const { tableNumber, existingOrder } = state || {};
     useEffect(() => {
         if (location.state) {
             setPhoneNumber(location.state.phoneNumber || existingOrder?.phoneNumber || "");
             setCustomerName(location.state.customerName || existingOrder?.customerName || "One Time Customer");
             setIsPhoneNumberSet(!!(location.state.phoneNumber || existingOrder?.phoneNumber));
         }
-    }, [location.state, existingOrder]);  
+    }, [location.state, existingOrder]);
     const [isPhoneNumberSet, setIsPhoneNumberSet] = useState(false);
     const [savedOrders, setSavedOrders] = useState([]);
-    const [phoneNumber, setPhoneNumber] = useState(""); 
+    const [phoneNumber, setPhoneNumber] = useState("");
     const [customers, setCustomers] = useState([]);
     const [customerName, setCustomerName] = useState("One Time Customer");
     const [newCustomerName, setNewCustomerName] = useState("");
@@ -64,7 +64,7 @@ function Front() {
                         addons: item.addons || [],
                         combos: item.combos || [],
                         ingredients: item.ingredients || [],
-                        kitchen:item.kitchen
+                        kitchen: item.kitchen
                     }));
 
                     const filteredMenu = formattedItems.filter(item =>
@@ -107,7 +107,7 @@ function Front() {
         setIsPhoneNumberSet(true);
     };
 
-   
+
 
     const handleItemClick = (item) => setSelectedItem(item);
 
@@ -161,9 +161,9 @@ function Front() {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-   
+
         console.log("Payment Details:", paymentDetails);
-   
+
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -174,9 +174,9 @@ function Front() {
                 totalPrice: item.basePrice * item.quantity,
             })),
             totalAmount: cartTotal(),
-            payments: [paymentDetails], 
+            payments: [paymentDetails],
         };
-   
+
         try {
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
@@ -213,17 +213,17 @@ function Front() {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
-    
+
         const validItems = cartItems.filter(item => item.quantity > 0);
         if (validItems.length !== cartItems.length) {
             alert("All items must have a quantity greater than zero.");
             return;
         }
-    
+
         const validPayments = paymentDetails && paymentDetails.mode_of_payment && paymentDetails.amount
             ? [paymentDetails]
             : [];
-    
+
         const payload = {
             customer: customerName,
             items: validItems.map(item => ({
@@ -241,9 +241,9 @@ function Front() {
             ],
             payments: validPayments, // Ensures payments is always a valid array
         };
-    
+
         console.log("Final Payload before sending to backend:", payload);
-    
+
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
@@ -256,9 +256,9 @@ function Front() {
                     body: JSON.stringify(payload),
                 }
             );
-    
+
             const result = await response.json();
-    
+
             if (result.status === "success") {
                 alert("Cart saved to backend successfully!");
                 setCartItems([]);
@@ -271,8 +271,8 @@ function Front() {
             alert("A network error occurred. Please check your connection and try again.");
         }
     };
-    
-    
+
+
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
@@ -371,38 +371,38 @@ function Front() {
     return (
         <>
             <div className="container-fluid">
-            <div className="row">
-                {/* Category Buttons */}
-                <div className="col-lg-1">
-                    <div className="row p-2">
-                        {categories.map((category, index) => (
-                            <div key={index} className="col-lg-12 mb-2">
-                                <button
-                                    className={`text-dark w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active-category' : ''}`}
-                                    onClick={() => handleFilter(category)}
-                                >
-                                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                                </button>
-                            </div>
-                        ))}
+                <div className="row">
+                    {/* Category Buttons */}
+                    <div className="col-lg-1">
+                        <div className="row p-2">
+                            {categories.map((category, index) => (
+                                <div key={index} className="col-lg-12 mb-2">
+                                    <button
+                                        className={`text-dark w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active-category' : ''}`}
+                                        onClick={() => handleFilter(category)}
+                                    >
+                                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
 
-                <div className="col-lg-7 row2">
-                    <div className="row">
-                        {filteredItems.map((item, index) => (
-                            <div className="col-lg-3 col-md-4 col-6 align-items-center my-2" key={index}>
-                                <div className="card" onClick={() =>  handleItemClick(item)}>
-                                    <img className="card-img-top" src={item.image} alt={item.name} width={100} height={100} />
-                                    <div className="card-body p-2 mb-0 category-name">
-                                        <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
-                                        <h4 className="card-title fs-6 text-center mb-0">{item.kitchen}</h4>
+                    <div className="col-lg-7 row2">
+                        <div className="row">
+                            {filteredItems.map((item, index) => (
+                                <div className="col-lg-3 col-md-4 col-6 align-items-center my-2" key={index}>
+                                    <div className="card" onClick={() => handleItemClick(item)}>
+                                        <img className="card-img-top" src={item.image} alt={item.name} width={100} height={100} />
+                                        <div className="card-body p-2 mb-0 category-name">
+                                            <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
+                                            <h4 className="card-title fs-6 text-center mb-0">{item.kitchen}</h4>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
                     <div className="col-lg-4 row1 px-4">
                         <div className="row p-2 mt-2 border shadow h-100 rounded">
                             <div className="col-12 p-2 p-md-5 mb-3">
@@ -560,69 +560,65 @@ function Front() {
                                                         <th>Item Name</th>
                                                         <th>Quantity</th>
                                                         <th>Price</th>
-                                                        <th>Addons</th>
                                                         <th>Action</th>
 
                                                     </tr>
                                                 </thead>
                                                 <tbody className="text-center">
-    {cartItems.map((item, index) => {
-        const price = item.totalPrice || 0;
-        const quantity = item.quantity || 1;
+                                                    {cartItems.map((item, index) => {
+                                                        const price = item.totalPrice || 0;
+                                                        const quantity = item.quantity || 1;
+                                                        return (
+                                                            <>
+                                                                <tr key={index}>
+                                                                    <td>{tableNumber}</td>
+                                                                    <td>
+                                                                        {item.name}
+                                                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                            <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                                {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                                                    <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        )}
+                                                                    </td>
 
-        return (
-            <tr key={index}>
-                <td>{tableNumber}</td>
+                                                                    <td>
+                                                                        <div className="d-flex justify-content-center align-items-center">
+                                                                            <button
+                                                                                className="btn btn-secondary btn-sm me-2"
+                                                                                onClick={() => decreaseQuantity(item)}
+                                                                                disabled={quantity <= 1}
+                                                                            >
+                                                                                -
+                                                                            </button>
+                                                                            {quantity}
+                                                                            <button
+                                                                                className="btn btn-secondary btn-sm ms-2"
+                                                                                onClick={() => increaseQuantity(item)}
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
 
-                <td>{item.name}</td>
+                                                                    <td>${(price * quantity).toFixed(2)}</td>
 
-                <td>
-                    <div className="d-flex justify-content-center align-items-center">
-                        <button
-                            className="btn btn-secondary btn-sm me-2"
-                            onClick={() => decreaseQuantity(item)}
-                            disabled={quantity <= 1}
-                        >
-                            -
-                        </button>
-                        {quantity}
-                        <button
-                            className="btn btn-secondary btn-sm ms-2"
-                            onClick={() => increaseQuantity(item)}
-                        >
-                            +
-                        </button>
-                    </div>
-                </td>
+                                                                    <td>
+                                                                        <button
+                                                                            className="btn btn-sm"
+                                                                            onClick={() => removeFromCart(item)}
+                                                                            title="Remove Item"
+                                                                        >
+                                                                            <i className="bi bi-trash"></i>
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            </>
+                                                        );
+                                                    })}
+                                                </tbody>
 
-                <td>${(price * quantity).toFixed(2)}</td>
-
-                {/* ✅ Display Addons Properly */}
-                <td>
-                    {item.addonCounts && Object.keys(item.addonCounts).length > 0 ? (
-                        <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
-                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                <li key={addonName}>{addonName}: ${addonPrice}</li>
-                            ))}
-                        </ul>
-                    ) : (
-                        "No Addons"
-                    )}
-                </td>
-
-                <td>
-                    <button
-                        className="btn btn-sm"
-                        onClick={() => removeFromCart(item)}
-                        title="Remove Item"
-                    >
-                        <i className="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        );
-    })}
-</tbody>
 
                                             </table>
                                         </div>
