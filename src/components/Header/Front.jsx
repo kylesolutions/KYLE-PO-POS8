@@ -251,15 +251,13 @@ function Front() {
                     body: JSON.stringify(payload),
                 }
             );
-    
             const result = await response.json();
-    
             if (result.status === "success") {
                 alert("Cart saved to backend successfully!");
                 setCartItems([]);
                 localStorage.removeItem("savedOrders");
             } else {
-                alert(result.message || "Failed to save cart. Please try again.");
+                // alert("Failed to save cart. Please try again.");
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
@@ -267,8 +265,6 @@ function Front() {
         }
     };
 
-    
- 
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
