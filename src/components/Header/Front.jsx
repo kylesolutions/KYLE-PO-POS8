@@ -388,7 +388,7 @@ function Front() {
                                         <img className="card-img-top" src={item.image} alt={item.name} width={100} height={100} />
                                         <div className="card-body p-2 mb-0 category-name">
                                             <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
-                                            <h4 className="card-title fs-6 text-center mb-0">{item.kitchen}</h4>
+                                            {/* <h4 className="card-title fs-6 text-center mb-0">{item.kitchen}</h4> */}
                                         </div>
                                     </div>
                                 </div>
@@ -523,8 +523,8 @@ function Front() {
                                                     </>
 
                                                 ) : (
-                                                    <div>
-                                                        <p className="text-muted mb-2">Ph: {phoneNumber}</p>
+                                                    <div  className='col-10 col-lg-5  mb-2 d-flex align-items-center'>
+                                                        <p className="text-muted mb-0">Ph: {phoneNumber}</p>
                                                     </div>
                                                 )}
                                             
@@ -542,9 +542,9 @@ function Front() {
                                     </div>
                                 ) : (
                                     <div>
-                                        <h5 className="text-center mb-4 text-dark">Your Order</h5>
+                                        <h5 className="text-center mb-2 mt-4 text-dark">Your Order</h5>
                                         <div className="table-responsive">
-                                            <table className="table">
+                                            <table className="table table-bordered">
                                                 <thead className="text-center ">
                                                     <tr>
                                                         <th>T.No.</th>
@@ -625,16 +625,16 @@ function Front() {
                                             <div className="row">
                                                 <div class="col-12">
                                                     <div class="row mt-5">
-                                                        <div class="col-lg-6">
-                                                            <div className="row ">
-                                                                <div className="col-md-6">
+                                                        <div class="col-lg-12">
+                                                            <div className="row">
+                                                                <div className="col-md-6 mb-2">
                                                                     <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
                                                                     <div className='grand-tot-div justify-content-end'>
                                                                         <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="col-md-6">
+                                                                <div className="col-md-6 mb-2">
                                                                     <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
                                                                     <div className='grand-tot-div'>
                                                                         <span>$</span><span>{cartTotal()}</span>
@@ -642,12 +642,12 @@ function Front() {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-lg-6">
+                                                        <div class="col-lg-12">
                                                             <div class="row">
-                                                                <div class="col-4">
+                                                                <div class="col-6">
                                                                     <button
                                                                         type="button"
-                                                                        className="btn mt-2"
+                                                                        className="btn mt-2 w-100"
                                                                         onClick={saveOrder}
                                                                         style={{
                                                                             padding: "10px 20px",
@@ -663,10 +663,10 @@ function Front() {
                                                                     </button>
                                                                 </div>
 
-                                                                <div class="col-8">
+                                                                <div class="col-6">
                                                                     <button
                                                                         type="button"
-                                                                        className="btn btn-success mt-2"
+                                                                        className="btn btn-success mt-2 w-100"
                                                                         onClick={() => {
                                                                             handleCheckoutClick();
                                                                         }}

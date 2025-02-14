@@ -14,10 +14,10 @@ function Navbar() {
                         <a className="navbar-brand text-black">
                             {user}
                         </a>
-                        <button className="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+                        <button className="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                             <span className="navbar-toggler-icon"></span>
                         </button>
-                        <div className="collapse navbar-collapse " id="navbarNavAltMarkup">
+                        <div className="collapse navbar-collapse " id="navbarSupportedContent">
                             <div className="navbar-nav mx-auto text-center">
                                 <a className="nav-link active text-black cursor-pointer" aria-current="page" onClick={() => navigate('/frontpage')}>
                                     <i className="bi bi-house-fill fs-2"></i>
@@ -28,13 +28,10 @@ function Navbar() {
                                 <a className="nav-link active text-black cursor-pointer" aria-current="page" onClick={() => navigate('/table')}>
                                     <i className="bi bi-border-all fs-2"></i>
                                 </a>
-                                <a className="nav-link active text-black d-flex cursor-pointer" aria-current="page" onClick={() => navigate('/kitchen')}>
-                                    <i className="material-symbols-outlined fs-1">
-                                        skillet
-                                    </i>
+                                <a className="nav-link active text-black cursor-pointer" aria-current="page" onClick={() => navigate('/kitchen')}>
+                                <i class="bi bi-cup-hot fs-2"></i>
                                 </a>
                             </div>
-
                         </div>
                     </div>
                 </nav>
