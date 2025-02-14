@@ -28,7 +28,7 @@ function Navbar() {
                                 <a className="nav-link active text-black cursor-pointer" aria-current="page" onClick={() => navigate('/table')}>
                                     <i className="bi bi-border-all fs-2"></i>
                                 </a>
-                                <a className="nav-link active text-black d-flex align-items-center cursor-pointer" aria-current="page" onClick={() => navigate('/kitchen')}>
+                                <a className="nav-link active text-black d-flex cursor-pointer" aria-current="page" onClick={() => navigate('/kitchen')}>
                                     <i className="material-symbols-outlined fs-1">
                                         skillet
                                     </i>
