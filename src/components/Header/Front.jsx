@@ -397,13 +397,15 @@ function Front() {
                     </div>
                     <div className="col-lg-4 row1 px-4">
                         <div className="row p-2 mt-2 border shadow h-100 rounded">
-                            <div className="col-12 p-2 p-md-5 mb-3">
-                                <div className="text-center mt-4 row">
-                                    <div className='d-flex justify-content-between align-items-start'>
-                                        <div className='col-2'><h1 className="display-4 mb-2">{tableNumber}</h1></div>
-                                        <div className='col-10'>
-                                            <div className='row'>
-                                                <div className='col-9 col-md-10'>
+                            <div className="col-12 p-2 p-md-2 mb-3">
+                                <div className="text-center row">
+                                <div className='col-12 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
+                                    <div className='row'>
+                                        
+                                        
+                                        
+                                               
+                                                <div className='col-10 col-lg-5  mb-2'>
                                                     <select
                                                         id="customer-select"
                                                         value={customerName}
@@ -424,16 +426,17 @@ function Front() {
                                                         ))}
                                                     </select>
                                                 </div>
-                                                <div className='col-3 col-md-2 text-end'>
-                                                    <button
-                                                        className="btn"
+                                                <div className='col-2 col-lg-1  mb-2' style={{background:"black" , color:"white" ,borderRadius:"5px", padding:"5px 12px", display:"flex", alignItems:"center", justifyContent:"center"}}>
+                                                    <span
+                                                        
                                                         onClick={() => setShowModal(true)}
-                                                        style={{ fontSize: "1.5rem", fontWeight: "bold", backgroundColor: "ButtonShadow" }}
+                                                        style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
                                                     >
-                                                        +
-                                                    </button>
+                                                       <i class="bi bi-plus"></i>
+                                                    </span>
                                                 </div>
-                                            </div>
+                                                
+                                                
 
                                             {showModal && (
                                                 <div
@@ -489,47 +492,48 @@ function Front() {
                                                     </div>
                                                 </div>
                                             )}
-                                            <div className="mt-4 row">
+                                            
                                                 {!isPhoneNumberSet ? (
                                                     <>
-                                                        <div className='col-8'>
+                                                        <div className='col-10 col-lg-5  mb-2'>
                                                             <input
                                                                 type="text"
-                                                                className="form-control me-2"
+                                                                className="form-control"
                                                                 placeholder="Enter phone number"
                                                                 value={phoneNumber}
                                                                 onChange={handlePhoneNumberChange}
                                                                 style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                             />
                                                         </div>
-                                                        <div className='col-4 text-end'>
-                                                            <button
-                                                                className="btn btn-primary"
+                                                        <div className='col-2 col-lg-1 mb-2'  style={{background:"black" , color:"white" ,borderRadius:"5px", padding:"5px 12px", display:"flex", alignItems:"center", justifyContent:"center"}}>
+                                                            <span
+                                                                
                                                                 onClick={handleSetPhoneNumber}
                                                                 style={{
-                                                                    padding: "10px 20px",
+                                                                    
                                                                     backgroundColor: "black",
                                                                     color: "white",
                                                                     border: "none",
-                                                                    borderRadius: "5px",
+                                                                    
                                                                     fontWeight: "bold",
                                                                     cursor: "pointer",
-                                                                    width: "100%"
+                                                                    
+                                                                    
                                                                 }}
                                                             >
-                                                                Save
-                                                            </button>
+                                                               <i class="bi bi-send"></i> 
+                                                            </span>
                                                         </div>
                                                     </>
 
                                                 ) : (
                                                     <div>
-                                                        <p className="text-muted text-end">Ph: {phoneNumber}</p>
+                                                        <p className="text-muted mb-2">Ph: {phoneNumber}</p>
                                                     </div>
                                                 )}
-                                            </div>
+                                            
 
-                                        </div>
+                                        
 
 
                                     </div>
@@ -551,7 +555,7 @@ function Front() {
                                                         <th>Item Name</th>
                                                         <th>Quantity</th>
                                                         <th>Price</th>
-                                                        <th>Action</th>
+                                                        <th> </th>
 
                                                     </tr>
                                                 </thead>
