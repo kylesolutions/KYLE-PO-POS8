@@ -31,7 +31,6 @@ function UserRouter() {
         <Route path='continentalkitchen' element={<ContinentalKitchenPage/>}/>
         <Route path='mediterraneankitchen' element={<MediterraneanKitchenPage/>}/>
         <Route path='preparedfoodkitchen' element={<PreparedFoodKitchenPage/>}/>
-        
     </Routes>
     </>
   )
