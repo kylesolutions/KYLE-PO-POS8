@@ -132,27 +132,27 @@ function Front() {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
                 cartItem.id === item.id &&
-                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
+                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
                     ? { ...cartItem, quantity: cartItem.quantity + 1 }
                     : cartItem
             )
         );
     };
-    
+
     const decreaseQuantity = (item) => {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
                 cartItem.id === item.id &&
-                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
-                cartItem.quantity > 1
+                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
+                    cartItem.quantity > 1
                     ? { ...cartItem, quantity: cartItem.quantity - 1 }
                     : cartItem
             )
         );
     };
-    
+
 
     const handleNavigation = () => {
         if (tableNumber) {
@@ -167,9 +167,9 @@ function Front() {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-   
+
         console.log("Payment Details:", paymentDetails);
-   
+
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -180,9 +180,9 @@ function Front() {
                 totalPrice: item.basePrice * item.quantity,
             })),
             totalAmount: cartTotal(),
-            payments: [paymentDetails], 
+            payments: [paymentDetails],
         };
-   
+
         try {
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
@@ -219,13 +219,13 @@ function Front() {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
-    
+
         const validItems = cartItems.filter(item => item.quantity > 0);
         if (validItems.length !== cartItems.length) {
             alert("All items must have a quantity greater than zero.");
             return;
         }
-    
+
         const payload = {
             customer: customerName,
             items: validItems.map(item => ({
@@ -243,8 +243,8 @@ function Front() {
             ],
             payments: [paymentDetails],
         };
-        console.log("Final Payload before sending to backend:", payload); 
-    
+        console.log("Final Payload before sending to backend:", payload);
+
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
@@ -403,153 +403,139 @@ function Front() {
                     </div>
                     <div className="col-lg-4 row1 px-4">
                         <div className="row p-2 mt-2 border shadow h-100 rounded">
-                            <div className="col-12 p-2 p-md-2 mb-3">
+                            <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
-                                <div className='col-12 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
-                                    <div className='row'>                                              
-                                             <div className='col-10 col-lg-5  mb-2'>
-                                                    <select
-                                                        id="customer-select"
-                                                        value={customerName}
-                                                        onChange={(e) => setCustomerName(e.target.value)}
-                                                        style={{
-                                                            width: "100%",
-                                                            padding: "10px",
-                                                            border: "1px solid #ccc",
-                                                            borderRadius: "5px",
-                                                            fontSize: "1rem",
-                                                        }}
-                                                    >
-                                                        <option value="One Time Customer">One Time Customer</option>
-                                                        {customers.map((customer, index) => (
-                                                            <option key={index} value={customer.customer_name}>
-                                                                {customer.customer_name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <div className='col-2 col-lg-1  mb-2' style={{background:"black" , color:"white" ,borderRadius:"5px", padding:"5px 12px", display:"flex", alignItems:"center", justifyContent:"center"}}>
-                                                    <span
-                                                        
-                                                        onClick={() => setShowModal(true)}
-                                                        style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
-                                                    >
-                                                       <i class="bi bi-plus"></i>
-                                                    </span>
-                                                </div>
-                                                
-                                                
+                                   
+                                    <div className='row'>
+                                    <div className='col-12 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
+                                        <div className='col-10 col-lg-5  mb-2'>
+                                            <select
+                                                id="customer-select"
+                                                value={customerName}
+                                                onChange={(e) => setCustomerName(e.target.value)}
+                                                style={{
+                                                    width: "100%",
+                                                    padding: "10px",
+                                                    border: "1px solid #ccc",
+                                                    borderRadius: "5px",
+                                                    fontSize: "1rem",
+                                                }}
+                                            >
+                                                <option value="One Time Customer">One Time Customer</option>
+                                                {customers.map((customer, index) => (
+                                                    <option key={index} value={customer.customer_name}>
+                                                        {customer.customer_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className='col-2 col-lg-1  mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            <span
 
-                                            {showModal && (
-                                                <div
-                                                    className="modal fade show d-block"
-                                                    tabIndex="-1"
-                                                    role="dialog"
-                                                    aria-labelledby="customerModalLabel"
-                                                    aria-hidden="true"
-                                                    style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-                                                >
-                                                    <div className="modal-dialog" role="document">
-                                                        <div className="modal-content">
-                                                            <div className="modal-header">
-                                                                <h5 className="modal-title" id="customerModalLabel">
-                                                                    Create New Customer
-                                                                </h5>
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn-close"
-                                                                    onClick={() => setShowModal(false)}
-                                                                ></button>
-                                                            </div>
-                                                            <div className="modal-body">
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="Enter New Customer Name"
-                                                                    value={newCustomerName}
-                                                                    onChange={(e) => setNewCustomerName(e.target.value)}
-                                                                    style={{
-                                                                        width: "100%",
-                                                                        padding: "10px",
-                                                                        marginBottom: "10px",
-                                                                        border: "1px solid #ccc",
-                                                                        borderRadius: "5px",
-                                                                        fontSize: "1rem",
-                                                                    }}
-                                                                />
-                                                                <button
-                                                                    onClick={handleCreateCustomer}
-                                                                    className="btn w-100"
-                                                                    style={{
-                                                                        padding: "10px 20px",
-                                                                        fontSize: "1rem",
-                                                                        fontWeight: "bold",
-                                                                        backgroundColor: 'black',
-                                                                        color: 'white'
-                                                                    }}
-                                                                >
-                                                                    Create Customer
-                                                                </button>
-                                                            </div>
+                                                onClick={() => setShowModal(true)}
+                                                style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
+                                            >
+                                                <i class="bi bi-plus"></i>
+                                            </span>
+                                        </div>
+
+
+
+                                        {showModal && (
+                                            <div
+                                                className="modal fade show d-block"
+                                                tabIndex="-1"
+                                                role="dialog"
+                                                aria-labelledby="customerModalLabel"
+                                                aria-hidden="true"
+                                                style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+                                            >
+                                                <div className="modal-dialog" role="document">
+                                                    <div className="modal-content">
+                                                        <div className="modal-header">
+                                                            <h5 className="modal-title" id="customerModalLabel">
+                                                                Create New Customer
+                                                            </h5>
+                                                            <button
+                                                                type="button"
+                                                                className="btn-close"
+                                                                onClick={() => setShowModal(false)}
+                                                            ></button>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                                {!isPhoneNumberSet ? (
-                                                    <>
-                                                        <div className='col-10 col-lg-5  mb-2'>
+                                                        <div className="modal-body">
                                                             <input
                                                                 type="text"
-                                                                className="form-control"
-                                                                placeholder="Enter phone number"
-                                                                value={phoneNumber}
-                                                                onChange={handlePhoneNumberChange}
-                                                                style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
-                                                            />
-                                                        </div>
-                                                        <div className='col-2 col-lg-1 mb-2'  style={{background:"black" , color:"white" ,borderRadius:"5px", padding:"5px 12px", display:"flex", alignItems:"center", justifyContent:"center"}}>
-                                                            <span
-                                                                
-                                                                onClick={handleSetPhoneNumber}
+                                                                placeholder="Enter New Customer Name"
+                                                                value={newCustomerName}
+                                                                onChange={(e) => setNewCustomerName(e.target.value)}
                                                                 style={{
-                                                                    
-                                                                    backgroundColor: "black",
-                                                                    color: "white",
-                                                                    border: "none",
-                                                                    
+                                                                    width: "100%",
+                                                                    padding: "10px",
+                                                                    marginBottom: "10px",
+                                                                    border: "1px solid #ccc",
+                                                                    borderRadius: "5px",
+                                                                    fontSize: "1rem",
+                                                                }}
+                                                            />
+                                                            <button
+                                                                onClick={handleCreateCustomer}
+                                                                className="btn w-100"
+                                                                style={{
+                                                                    padding: "10px 20px",
+                                                                    fontSize: "1rem",
                                                                     fontWeight: "bold",
-                                                                    cursor: "pointer",
-                                                                    
-                                                                    
+                                                                    backgroundColor: 'black',
+                                                                    color: 'white'
                                                                 }}
                                                             >
-                                                               <i class="bi bi-send"></i> 
-                                                            </span>
+                                                                Create Customer
+                                                            </button>
                                                         </div>
-                                                    </>
-
-                                                ) : (
-                                                    <div  className='col-10 col-lg-5  mb-2 d-flex align-items-center'>
-                                                        <p className="text-muted mb-0">Ph: {phoneNumber}</p>
                                                     </div>
-                                                )}
-                                            
+                                                </div>
+                                            </div>
+                                        )}
 
-                                        
+                                        {!isPhoneNumberSet ? (
+                                            <>
+                                                <div className='col-10 col-lg-5  mb-2'>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        placeholder="Enter phone number"
+                                                        value={phoneNumber}
+                                                        onChange={handlePhoneNumberChange}
+                                                        style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
+                                                    />
+                                                </div>
+                                                <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <span
+
+                                                        onClick={handleSetPhoneNumber}
+                                                        style={{
+
+                                                            backgroundColor: "black",
+                                                            color: "white",
+                                                            border: "none",
+
+                                                            fontWeight: "bold",
+                                                            cursor: "pointer",
 
 
-                                    </div>
-                                </div>
+                                                        }}
+                                                    >
+                                                        <i class="bi bi-send"></i>
+                                                    </span>
+                                                </div>
+                                            </>
 
-
-                                {cartItems.length === 0 ? (
-                                    <div className="text-center">
-                                        <p className="text-muted mt-4">START ADDING PRODUCTS</p>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <h5 className="text-center mb-2 mt-4 text-dark">Your Order</h5>
-                                        <div className="table-responsive">
+                                        ) : (
+                                            <div className='col-10 col-lg-5  mb-2 d-flex align-items-center'>
+                                                <p className="text-muted mb-0">Ph: {phoneNumber}</p>
+                                            </div>
+                                        )}
+                                   </div>
+                                   <div className="table-responsive mt-3">
                                             <table className="table border">
                                                 <thead className="text-center ">
                                                     <tr>
@@ -579,7 +565,7 @@ function Front() {
                                                                                 ))}
                                                                             </ul>
                                                                         )}
-                                                                      
+
                                                                         {item.selectedCombos && item.selectedCombos.length > 0 && (
                                                                             <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                                                                                 {item.selectedCombos.map((combo, idx) => (
@@ -626,11 +612,11 @@ function Front() {
                                                 </tbody>
                                             </table>
                                         </div>
-
-                                        <div className="mt-4">
+                                </div>
+                                <div className="mt-1">
                                             <div className="row">
                                                 <div class="col-12">
-                                                    <div class="row mt-5">
+                                                    <div class="row">
                                                         <div class="col-12 col-lg-6">
                                                             <div className="row">
                                                                 <div className="col-md-6 mb-2 col-6">
@@ -701,11 +687,10 @@ function Front() {
                                                                 <div class="col-md-6 mb-2 col-6">
                                                                     <button
                                                                         type="button"
-                                                                        className="btn mt-3 w-100"
+                                                                        className="btn btn-success mt-3 w-100"
                                                                         onClick={saveOrder}
                                                                         style={{
                                                                             padding: "10px 12px",
-                                                                            backgroundColor: "black",
                                                                             color: "white",
                                                                             border: "none",
                                                                             borderRadius: "5px",
@@ -739,21 +724,12 @@ function Front() {
                                                                 </div>
 
                                                             </div>
-                                                        </div>
-
-                                                        
-                                                    </div>
-                                                    <span> </span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-
-                                        {showButtons && (
-                                            <div className="mt-3">
+                                                            {showButtons && (
+                                            <div className="mt-3 row">
+                                                <div className="col-4">
                                                 <button
                                                     type="button"
-                                                    className="btn btn-primary mx-2"
+                                                    className="btn btn-primary  w-100"
                                                     onClick={() => {
                                                         handlePaymentSelection("CASH");
                                                         handleSaveToBackend();
@@ -761,9 +737,11 @@ function Front() {
                                                 >
                                                     CASH
                                                 </button>
+                                                </div>
+                                                <div className="col-4">
                                                 <button
                                                     type="button"
-                                                    className="btn btn-secondary mx-2"
+                                                    className="btn btn-secondary  w-100"
                                                     onClick={() => {
                                                         handlePaymentSelection("CARD");
                                                         handleSaveToBackend();
@@ -771,9 +749,11 @@ function Front() {
                                                 >
                                                     CARD
                                                 </button>
+                                                </div>
+                                                <div className="col-4">
                                                 <button
                                                     type="button"
-                                                    className="btn btn-warning mx-2"
+                                                    className="btn btn-warning w-100"
                                                     onClick={() => {
                                                         handlePaymentSelection("UPI");
                                                         handleSaveToBackend();
@@ -781,10 +761,17 @@ function Front() {
                                                 >
                                                     UPI
                                                 </button>
+                                                </div>
                                             </div>
                                         )}
-                                    </div>
-                                )}
+                                                        </div>
+
+
+                                                    </div>
+                                                    <span> </span>
+                                                </div>
+                                            </div>
+                                        </div>          
                             </div>
                         </div>
                     </div>
