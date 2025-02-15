@@ -361,10 +361,15 @@ function Front() {
             const existingOrders = prev.filter((order) => order.tableNumber !== tableNumber);
             const updatedOrders = [...existingOrders, newOrder];
             localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
+            setCartItems([]);
             return updatedOrders;
         });
         alert(`Order for Table ${tableNumber} saved successfully!`);
     };
+
+    const cancelCart=()=>{
+        setCartItems([]);
+    }
 
     return (
         <>
@@ -687,10 +692,11 @@ function Front() {
                                                                 <div class="col-md-6 mb-2 col-6">
                                                                     <button
                                                                         type="button"
-                                                                        className="btn btn-success mt-3 w-100"
+                                                                        className="btn mt-3 w-100"
                                                                         onClick={saveOrder}
                                                                         style={{
                                                                             padding: "10px 12px",
+                                                                            background:"blue",
                                                                             color: "white",
                                                                             border: "none",
                                                                             borderRadius: "5px",
@@ -699,7 +705,7 @@ function Front() {
                                                                             fontSize: "12px"
                                                                         }}
                                                                     >
-                                                                        Save
+                                                                        Held
                                                                     </button>
                                                                 </div>
 
@@ -707,10 +713,10 @@ function Front() {
                                                                     <button
                                                                         type="button"
                                                                         className="btn mt-3 w-100"
-                                                                        onClick={saveOrder}
+                                                                        onClick={cancelCart}
                                                                         style={{
                                                                             padding: "10px 12px",
-                                                                            backgroundColor: "black",
+                                                                            backgroundColor: "red",
                                                                             color: "white",
                                                                             border: "none",
                                                                             borderRadius: "5px",
@@ -719,7 +725,7 @@ function Front() {
                                                                             fontSize: "12px"
                                                                         }}
                                                                     >
-                                                                        Save
+                                                                        Cancel
                                                                     </button>
                                                                 </div>
 
