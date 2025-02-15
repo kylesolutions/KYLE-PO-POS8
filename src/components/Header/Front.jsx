@@ -131,22 +131,28 @@ function Front() {
     const increaseQuantity = (item) => {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
-                cartItem.id === item.id
+                cartItem.id === item.id &&
+                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
                     ? { ...cartItem, quantity: cartItem.quantity + 1 }
                     : cartItem
             )
         );
     };
-
+    
     const decreaseQuantity = (item) => {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
-                cartItem.id === item.id && cartItem.quantity > 1
+                cartItem.id === item.id &&
+                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
+                cartItem.quantity > 1
                     ? { ...cartItem, quantity: cartItem.quantity - 1 }
                     : cartItem
             )
         );
     };
+    
 
     const handleNavigation = () => {
         if (tableNumber) {
@@ -544,7 +550,7 @@ function Front() {
                                     <div>
                                         <h5 className="text-center mb-2 mt-4 text-dark">Your Order</h5>
                                         <div className="table-responsive">
-                                            <table className="table table-bordered">
+                                            <table className="table">
                                                 <thead className="text-center ">
                                                     <tr>
                                                         <th>T.No.</th>
