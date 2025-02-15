@@ -37,6 +37,8 @@ function Front() {
     const user = useSelector((state) => state.user.user);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
     const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
+    const [taxes, setTaxes] = useState([]);
+    const [selectedTax, setSelectedTax] = useState(null);
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -367,15 +369,38 @@ function Front() {
         alert(`Order for Table ${tableNumber} saved successfully!`);
     };
 
-    const cancelCart=()=>{
+    const cancelCart = () => {
         setCartItems([]);
     }
+    const [vatRate, setVatRate] = useState(null);
+    useEffect(() => {
+        const fetchTaxes = async () => {
+            try {
+                const response = await fetch(
+                    "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details"
+                );
+                const data = await response.json();
 
+                
+                const vatTax = data.message?.find(
+                    (tax) => tax.name === "VAT - P"
+                );
+
+                
+                if (vatTax && vatTax.sales_tax.length > 0) {
+                    setVatRate(vatTax.sales_tax[0].rate);
+                }
+            } catch (error) {
+                console.error("Error fetching taxes:", error);
+            }
+        };
+
+        fetchTaxes();
+    }, []);
     return (
         <>
             <div className="container-fluid">
                 <div className="row">
-                    {/* Category Buttons */}
                     <div className="col-lg-1">
                         <div className="row p-2">
                             {categories.map((category, index) => (
@@ -404,15 +429,17 @@ function Front() {
                                     </div>
                                 </div>
                             ))}
+                            <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} />
                         </div>
                     </div>
+                    
                     <div className="col-lg-4 row1 px-4">
                         <div className="row p-2 mt-2 border shadow h-100 rounded">
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
-                                   
+
                                     <div className='row'>
-                                    <div className='col-12 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
+                                        <div className='col-12 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
                                         <div className='col-10 col-lg-5  mb-2'>
                                             <select
                                                 id="customer-select"
@@ -443,7 +470,6 @@ function Front() {
                                                 <i class="bi bi-plus"></i>
                                             </span>
                                         </div>
-
 
 
                                         {showModal && (
@@ -539,250 +565,249 @@ function Front() {
                                                 <p className="text-muted mb-0">Ph: {phoneNumber}</p>
                                             </div>
                                         )}
-                                   </div>
-                                   <div className="table-responsive mt-3">
-                                            <table className="table border">
-                                                <thead className="text-center ">
-                                                    <tr>
-                                                        <th>T.No.</th>
-                                                        <th>Item Name</th>
-                                                        <th>Quantity</th>
-                                                        <th>Price</th>
-                                                        <th> </th>
+                                    </div>
+                                    <div className="table-responsive mt-3">
+                                        <table className="table border text-start">
+                                            <thead className="text-start">
+                                                <tr>
+                                                    <th>T.No.</th>
+                                                    <th>Item Name</th>
+                                                    <th>Qty</th>
+                                                    <th>Price</th>
+                                                    <th> </th>
 
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="text-center">
-                                                    {cartItems.map((item, index) => {
-                                                        const price = item.totalPrice || 0;
-                                                        const quantity = item.quantity || 1;
-                                                        return (
-                                                            <>
-                                                                <tr key={index}>
-                                                                    <td>{tableNumber}</td>
-                                                                    <td>
-                                                                        {item.name}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="text-start">
+                                                {cartItems.map((item, index) => {
+                                                    const price = item.totalPrice || 0;
+                                                    const quantity = item.quantity || 1;
+                                                    return (
+                                                        <>
+                                                            <tr key={index}>
+                                                                <td className='text-start'>{tableNumber}</td>
+                                                                <td className='text-start'>
+                                                                    {item.name}
 
-                                                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                            <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                                {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                                                                    <li key={addonName}>+ {addonName} (${addonPrice})</li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        )}
+                                                                    {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                                                <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
 
-                                                                        {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                            <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                                                {item.selectedCombos.map((combo, idx) => (
-                                                                                    <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        )}
-                                                                    </td>
+                                                                    {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                            {item.selectedCombos.map((combo, idx) => (
+                                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
+                                                                </td>
 
-                                                                    <td>
-                                                                        <div className="d-flex justify-content-center align-items-center">
-                                                                            <button
-                                                                                className="btn btn-secondary btn-sm me-2"
-                                                                                onClick={() => decreaseQuantity(item)}
-                                                                                disabled={quantity <= 1}
-                                                                            >
-                                                                                -
-                                                                            </button>
-                                                                            {quantity}
-                                                                            <button
-                                                                                className="btn btn-secondary btn-sm ms-2"
-                                                                                onClick={() => increaseQuantity(item)}
-                                                                            >
-                                                                                +
-                                                                            </button>
-                                                                        </div>
-                                                                    </td>
+                                                                <td>
 
-                                                                    <td>${(price * quantity).toFixed(2)}</td>
+                                                                    <button
+                                                                        className="btn btn-secondary btn-sm me-2"
+                                                                        onClick={() => decreaseQuantity(item)}
+                                                                        disabled={quantity <= 1}
+                                                                    >
+                                                                        -
+                                                                    </button>
+                                                                    {quantity}
+                                                                    <button
+                                                                        className="btn btn-secondary btn-sm ms-2"
+                                                                        onClick={() => increaseQuantity(item)}
+                                                                    >
+                                                                        +
+                                                                    </button>
 
-                                                                    <td>
-                                                                        <button
-                                                                            className="btn btn-sm"
-                                                                            onClick={() => removeFromCart(item)}
-                                                                            title="Remove Item"
-                                                                        >
-                                                                            <i className="bi bi-trash"></i>
-                                                                        </button>
-                                                                    </td>
-                                                                </tr>
-                                                            </>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                                </td>
+
+                                                                <td className='text-start'>${(price * quantity).toFixed(2)}</td>
+
+                                                                <td>
+                                                                    <button
+                                                                        className="btn btn-sm"
+                                                                        onClick={() => removeFromCart(item)}
+                                                                        title="Remove Item"
+                                                                    >
+                                                                        <i className="bi bi-trash"></i>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        </>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                                <div className="mt-1">
-                                            <div className="row">
-                                                <div class="col-12">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-6">
-                                                            <div className="row">
-                                                                <div className="col-md-6 mb-2 col-6">
-
-                                                                    <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
-                                                                    <div className='grand-tot-div justify-content-end'>
-                                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="col-md-6 mb-2 col-6">
-                                                                    <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
-                                                                    <div className='grand-tot-div'>
-                                                                        <span>$</span><span>{cartTotal()}</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="col-md-6 mb-2 col-6">
-                                                                    <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
-                                                                    <div className='grand-tot-div justify-content-end'>
-                                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="col-md-6 mb-2 col-6">
-                                                                    <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
-                                                                    <div className='grand-tot-div justify-content-end'>
-                                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-12 col-lg-6">
-                                                            <div class="row">
-                                                                <div class="col-md-6 mb-2 col-6">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn mt-3 w-100"
-                                                                        onClick={saveOrder}
-                                                                        style={{
-                                                                            padding: "10px 12px",
-                                                                            backgroundColor: "black",
-                                                                            color: "white",
-                                                                            border: "none",
-                                                                            borderRadius: "5px",
-                                                                            fontWeight: "bold",
-                                                                            cursor: "pointer",
-                                                                            fontSize: "12px"
-                                                                        }}
-                                                                    >
-                                                                        Save
-                                                                    </button>
-                                                                </div>
-
-                                                                <div class="col-md-6 mb-2 col-6">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn btn-success mt-3 w-100"
-                                                                        onClick={() => {
-                                                                            handleCheckoutClick();
-                                                                        }}
-                                                                        style={{ padding: "10px 12px", fontSize: "12px", fontWeight: "bold" }}
-                                                                    >
-                                                                        Pay
-                                                                    </button>
-                                                                </div>
-
-                                                                <div class="col-md-6 mb-2 col-6">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn mt-3 w-100"
-                                                                        onClick={saveOrder}
-                                                                        style={{
-                                                                            padding: "10px 12px",
-                                                                            background:"blue",
-                                                                            color: "white",
-                                                                            border: "none",
-                                                                            borderRadius: "5px",
-                                                                            fontWeight: "bold",
-                                                                            cursor: "pointer",
-                                                                            fontSize: "12px"
-                                                                        }}
-                                                                    >
-                                                                        Held
-                                                                    </button>
-                                                                </div>
-
-                                                                <div class="col-md-6 mb-2 col-6">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn mt-3 w-100"
-                                                                        onClick={cancelCart}
-                                                                        style={{
-                                                                            padding: "10px 12px",
-                                                                            backgroundColor: "red",
-                                                                            color: "white",
-                                                                            border: "none",
-                                                                            borderRadius: "5px",
-                                                                            fontWeight: "bold",
-                                                                            cursor: "pointer",
-                                                                            fontSize: "12px"
-                                                                        }}
-                                                                    >
-                                                                        Cancel
-                                                                    </button>
-                                                                </div>
-
-                                                            </div>
-                                                            {showButtons && (
-                                            <div className="mt-3 row">
-                                                <div className="col-4">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-primary  w-100"
-                                                    onClick={() => {
-                                                        handlePaymentSelection("CASH");
-                                                        handleSaveToBackend();
-                                                    }}
-                                                >
-                                                    CASH
-                                                </button>
-                                                </div>
-                                                <div className="col-4">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-secondary  w-100"
-                                                    onClick={() => {
-                                                        handlePaymentSelection("CARD");
-                                                        handleSaveToBackend();
-                                                    }}
-                                                >
-                                                    CARD
-                                                </button>
-                                                </div>
-                                                <div className="col-4">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-warning w-100"
-                                                    onClick={() => {
-                                                        handlePaymentSelection("UPI");
-                                                        handleSaveToBackend();
-                                                    }}
-                                                >
-                                                    UPI
-                                                </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                                        </div>
-
-
-                                                    </div>
-                                                    <span> </span>
-                                                </div>
-                                            </div>
-                                        </div>          
+                                
                             </div>
                         </div>
-                    </div>
+                        
+                                    <div className="row p-2 mt-2 border shadow rounded">
+                                        <div class="col-12">
+                                            <div class="row">
+                                                <div class="col-12 col-lg-6">
+                                                    <div className="row">
+                                                        <div className="col-md-6 mb-2 col-6">
+
+                                                            <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
+                                                            <div className='grand-tot-div justify-content-end'>
+                                                                <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="col-md-6 mb-2 col-6">
+                                                            <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
+                                                            <div className='grand-tot-div'>
+                                                                <span>$</span><span>{cartTotal()}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="col-md-6 mb-2 col-6">
+                                                            <h5 className="mb-0" style={{ fontSize: "12px" }}>Tax</h5>
+                                                            <div className='grand-tot-div justify-content-end'>
+                                                                <span>{vatRate ? `VAT ${vatRate}%` : "Loading..."}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="col-md-6 mb-2 col-6">
+                                                            <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
+                                                            <div className='grand-tot-div justify-content-end'>
+                                                                <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-lg-6">
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-2 col-6">
+                                                            <button
+                                                                type="button"
+                                                                className="btn mt-3 w-100"
+                                                                onClick={saveOrder}
+                                                                style={{
+                                                                    padding: "10px 12px",
+                                                                    backgroundColor: "black",
+                                                                    color: "white",
+                                                                    border: "none",
+                                                                    borderRadius: "5px",
+                                                                    fontWeight: "bold",
+                                                                    cursor: "pointer",
+                                                                    fontSize: "12px"
+                                                                }}
+                                                            >
+                                                                Save
+                                                            </button>
+                                                        </div>
+
+                                                        <div class="col-md-6 mb-2 col-6">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-success mt-3 w-100"
+                                                                onClick={() => {
+                                                                    handleCheckoutClick();
+                                                                }}
+                                                                style={{ padding: "10px 12px", fontSize: "12px", fontWeight: "bold" }}
+                                                            >
+                                                                Pay
+                                                            </button>
+                                                        </div>
+
+                                                        <div class="col-md-6 mb-2 col-6">
+                                                            <button
+                                                                type="button"
+                                                                className="btn mt-3 w-100"
+                                                                onClick={saveOrder}
+                                                                style={{
+                                                                    padding: "10px 12px",
+                                                                    background: "blue",
+                                                                    color: "white",
+                                                                    border: "none",
+                                                                    borderRadius: "5px",
+                                                                    fontWeight: "bold",
+                                                                    cursor: "pointer",
+                                                                    fontSize: "12px"
+                                                                }}
+                                                            >
+                                                                Held
+                                                            </button>
+                                                        </div>
+
+                                                        <div class="col-md-6 mb-2 col-6">
+                                                            <button
+                                                                type="button"
+                                                                className="btn mt-3 w-100"
+                                                                onClick={cancelCart}
+                                                                style={{
+                                                                    padding: "10px 12px",
+                                                                    backgroundColor: "red",
+                                                                    color: "white",
+                                                                    border: "none",
+                                                                    borderRadius: "5px",
+                                                                    fontWeight: "bold",
+                                                                    cursor: "pointer",
+                                                                    fontSize: "12px"
+                                                                }}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+
+                                                    </div>
+                                                    {showButtons && (
+                                                        <div className="mt-3 row">
+                                                            <div className="col-4">
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-primary  w-100"
+                                                                    onClick={() => {
+                                                                        handlePaymentSelection("CASH");
+                                                                        handleSaveToBackend();
+                                                                    }}
+                                                                >
+                                                                    CASH
+                                                                </button>
+                                                            </div>
+                                                            <div className="col-4">
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-secondary  w-100"
+                                                                    onClick={() => {
+                                                                        handlePaymentSelection("CARD");
+                                                                        handleSaveToBackend();
+                                                                    }}
+                                                                >
+                                                                    CARD
+                                                                </button>
+                                                            </div>
+                                                            <div className="col-4">
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-warning w-100"
+                                                                    onClick={() => {
+                                                                        handlePaymentSelection("UPI");
+                                                                        handleSaveToBackend();
+                                                                    }}
+                                                                >
+                                                                    UPI
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <span> </span>
+                                        </div>
+                                    </div>
+                                </div>
+                    
                 </div>
-                <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} />
+                
                 {selectedItem && (
                     <FoodDetails
                         item={selectedItem}
