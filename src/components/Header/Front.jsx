@@ -550,7 +550,7 @@ function Front() {
                                     <div>
                                         <h5 className="text-center mb-2 mt-4 text-dark">Your Order</h5>
                                         <div className="table-responsive">
-                                            <table className="table">
+                                            <table className="table border">
                                                 <thead className="text-center ">
                                                     <tr>
                                                         <th>T.No.</th>
@@ -631,69 +631,121 @@ function Front() {
                                             <div className="row">
                                                 <div class="col-12">
                                                     <div class="row mt-5">
-                                                        <div class="col-lg-12">
+                                                        <div class="col-12 col-lg-6">
                                                             <div className="row">
-                                                                <div className="col-md-6 mb-2">
+                                                                <div className="col-md-6 mb-2 col-6">
+
                                                                     <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
                                                                     <div className='grand-tot-div justify-content-end'>
                                                                         <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="col-md-6 mb-2">
+                                                                <div className="col-md-6 mb-2 col-6">
                                                                     <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
                                                                     <div className='grand-tot-div'>
                                                                         <span>$</span><span>{cartTotal()}</span>
                                                                     </div>
                                                                 </div>
+
+                                                                <div className="col-md-6 mb-2 col-6">
+                                                                    <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
+                                                                    <div className='grand-tot-div justify-content-end'>
+                                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="col-md-6 mb-2 col-6">
+                                                                    <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
+                                                                    <div className='grand-tot-div justify-content-end'>
+                                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-lg-12">
+                                                        <div class="col-12 col-lg-6">
                                                             <div class="row">
-                                                                <div class="col-6">
+                                                                <div class="col-md-6 mb-2 col-6">
                                                                     <button
                                                                         type="button"
-                                                                        className="btn mt-2 w-100"
+                                                                        className="btn mt-3 w-100"
                                                                         onClick={saveOrder}
                                                                         style={{
-                                                                            padding: "10px 20px",
+                                                                            padding: "10px 12px",
                                                                             backgroundColor: "black",
                                                                             color: "white",
                                                                             border: "none",
                                                                             borderRadius: "5px",
                                                                             fontWeight: "bold",
                                                                             cursor: "pointer",
+                                                                            fontSize: "12px"
                                                                         }}
                                                                     >
                                                                         Save
                                                                     </button>
                                                                 </div>
 
-                                                                <div class="col-6">
+                                                                <div class="col-md-6 mb-2 col-6">
                                                                     <button
                                                                         type="button"
-                                                                        className="btn btn-success mt-2 w-100"
+                                                                        className="btn btn-success mt-3 w-100"
                                                                         onClick={() => {
                                                                             handleCheckoutClick();
                                                                         }}
-                                                                        style={{ padding: "10px 20px", fontSize: "14px", fontWeight: "bold" }}
+                                                                        style={{ padding: "10px 12px", fontSize: "12px", fontWeight: "bold" }}
                                                                     >
-                                                                        Check Out Cart
+                                                                        Pay
+                                                                    </button>
+                                                                </div>
+
+                                                                <div class="col-md-6 mb-2 col-6">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn mt-3 w-100"
+                                                                        onClick={saveOrder}
+                                                                        style={{
+                                                                            padding: "10px 12px",
+                                                                            backgroundColor: "black",
+                                                                            color: "white",
+                                                                            border: "none",
+                                                                            borderRadius: "5px",
+                                                                            fontWeight: "bold",
+                                                                            cursor: "pointer",
+                                                                            fontSize: "12px"
+                                                                        }}
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                </div>
+
+                                                                <div class="col-md-6 mb-2 col-6">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn mt-3 w-100"
+                                                                        onClick={saveOrder}
+                                                                        style={{
+                                                                            padding: "10px 12px",
+                                                                            backgroundColor: "black",
+                                                                            color: "white",
+                                                                            border: "none",
+                                                                            borderRadius: "5px",
+                                                                            fontWeight: "bold",
+                                                                            cursor: "pointer",
+                                                                            fontSize: "12px"
+                                                                        }}
+                                                                    >
+                                                                        Save
                                                                     </button>
                                                                 </div>
 
                                                             </div>
                                                         </div>
-                                                    </div>
 
+                                                        
+                                                    </div>
                                                     <span> </span>
-                                                    {/* <button
-                                                className="btn btn-info mt-2"
-                                                onClick={() => navigate('/savedorders', { state: { savedOrders } })}
-                                                >
-                                                View Saved Orders
-                                                </button> */}
-                                                </div></div>
+                                                </div>
+                                            </div>
                                         </div>
 
 
