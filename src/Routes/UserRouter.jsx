@@ -13,6 +13,7 @@ import LiveKitchenPage from '../Pages/LiveKitchenPage'
 import ContinentalKitchenPage from '../Pages/ContinentalKitchenPage'
 import MediterraneanKitchenPage from '../Pages/MediterraneanKitchenPage'
 import PreparedFoodKitchenPage from '../Pages/PreparedFoodKitchenPage'
+import SalesInvoicePage from '../Pages/SalesInvoicePage'
 
 function UserRouter() {
   return (
@@ -31,6 +32,7 @@ function UserRouter() {
         <Route path='continentalkitchen' element={<ContinentalKitchenPage/>}/>
         <Route path='mediterraneankitchen' element={<MediterraneanKitchenPage/>}/>
         <Route path='preparedfoodkitchen' element={<PreparedFoodKitchenPage/>}/>
+        <Route path='salesinvoice' element={<SalesInvoicePage/>}/>
     </Routes>
     </>
   )

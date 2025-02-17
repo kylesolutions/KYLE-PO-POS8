@@ -29,7 +29,10 @@ function Navbar() {
                                     <i className="bi bi-border-all fs-2"></i>
                                 </a>
                                 <a className="nav-link active text-black cursor-pointer" aria-current="page" onClick={() => navigate('/kitchen')}>
-                                <i class="bi bi-cup-hot fs-2"></i>
+                                <i className="bi bi-cup-hot fs-2"></i>
+                                </a>
+                                <a className="nav-link active text-black cursor-pointer" aria-current="page" onClick={() => navigate('/salesinvoice')}>
+                                <i className="bi bi-save fs-2"></i>
                                 </a>
                             </div>
                         </div>

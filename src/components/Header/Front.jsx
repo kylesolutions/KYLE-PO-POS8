@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import UserContext from '../../Context/UserContext';
 import './front.css'
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -39,6 +39,8 @@ function Front() {
     const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
     const [taxes, setTaxes] = useState([]);
     const [selectedTax, setSelectedTax] = useState(null);
+    const printRef = useRef();
+    const [showBillModal, setShowBillModal] = useState(false);
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -119,11 +121,8 @@ function Front() {
     };
 
     const cartTotal = () => {
-        return cartItems.reduce((sum, item) => {
-            const price = item.totalPrice || 0;
-            const quantity = item.quantity || 1;
-            return sum + price * quantity;
-        }, 0).toFixed(2);
+        const total = cartItems.reduce((sum, item) => sum + (item.quantity * item.totalPrice || 0), 0);
+        return isNaN(total) ? 0 : total; 
     };
 
     const handleCheckoutClick = () => {
@@ -397,6 +396,11 @@ function Front() {
 
         fetchTaxes();
     }, []);
+
+    const handlePrint = () => {
+        window.print(); 
+    };
+
     return (
         <>
             <div className="container-fluid">
@@ -434,10 +438,9 @@ function Front() {
                     </div>
                     
                     <div className="col-lg-4 row1 px-4">
-                        <div className="row p-2 mt-2 border shadow h-100 rounded">
+                        <div className="row p-2 mt-2 border shadow h-100 rounded" ref={printRef} id="printableArea">
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
-
                                     <div className='row'>
                                         <div className='col-12 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
                                         <div className='col-10 col-lg-5  mb-2'>
@@ -607,7 +610,6 @@ function Front() {
                                                                 </td>
 
                                                                 <td>
-
                                                                     <button
                                                                         className="btn btn-secondary btn-sm me-2"
                                                                         onClick={() => decreaseQuantity(item)}
@@ -622,7 +624,6 @@ function Front() {
                                                                     >
                                                                         +
                                                                     </button>
-
                                                                 </td>
 
                                                                 <td className='text-start'>${(price * quantity).toFixed(2)}</td>
@@ -647,7 +648,6 @@ function Front() {
                                 
                             </div>
                         </div>
-                        
                                     <div className="row p-2 mt-2 border shadow rounded">
                                         <div class="col-12">
                                             <div class="row">
@@ -662,7 +662,7 @@ function Front() {
                                                         </div>
 
                                                         <div className="col-md-6 mb-2 col-6">
-                                                            <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
+                                                            <h5 className="mb-0" style={{ "font-size": "12px" }}>Total</h5>
                                                             <div className='grand-tot-div'>
                                                                 <span>$</span><span>{cartTotal()}</span>
                                                             </div>
@@ -676,7 +676,7 @@ function Front() {
                                                         </div>
 
                                                         <div className="col-md-6 mb-2 col-6">
-                                                            <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
+                                                            <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
                                                             <div className='grand-tot-div justify-content-end'>
                                                                 <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                             </div>
@@ -708,21 +708,8 @@ function Front() {
                                                         <div class="col-md-6 mb-2 col-6">
                                                             <button
                                                                 type="button"
-                                                                className="btn btn-success mt-3 w-100"
-                                                                onClick={() => {
-                                                                    handleCheckoutClick();
-                                                                }}
-                                                                style={{ padding: "10px 12px", fontSize: "12px", fontWeight: "bold" }}
-                                                            >
-                                                                Pay
-                                                            </button>
-                                                        </div>
-
-                                                        <div class="col-md-6 mb-2 col-6">
-                                                            <button
-                                                                type="button"
                                                                 className="btn mt-3 w-100"
-                                                                onClick={saveOrder}
+                                                                onClick={() => setShowBillModal(true)}
                                                                 style={{
                                                                     padding: "10px 12px",
                                                                     background: "blue",
@@ -734,9 +721,73 @@ function Front() {
                                                                     fontSize: "12px"
                                                                 }}
                                                             >
-                                                                Held
+                                                                Print
                                                             </button>
                                                         </div>
+
+                                                        {showBillModal && (
+    <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+                <div className="modal-header">
+                    <h4 className="modal-title">Invoice / Bill</h4>
+                    <button className="btn-close" onClick={() => setShowBillModal(false)}></button>
+                </div>
+                <div className="modal-body">
+                    <div className="bill-section border p-3 shadow rounded">
+                        <div className="d-flex justify-content-between">
+                            <p><strong>Table No:</strong> {tableNumber}</p>
+                            <p><strong>Customer:</strong> {customerName}</p>
+                        </div>
+
+                        <table className="table border text-start mt-2">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Rate</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {cartItems.map((item, index) => (
+                                    <tr key={index}>
+                                        <td>{item.name}</td>
+                                        <td>{item.quantity || 1}</td>
+                                        <td>${item.totalPrice.toFixed(2)}</td>
+                                        <td>${(item.quantity * item.totalPrice).toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        <div className="row mt-3">
+                            <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
+                            <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
+
+                            <div className="col-6 text-start"><strong>Subtotal:</strong></div>
+                            <div className="col-6 text-end">${cartTotal().toFixed(2)}</div>
+
+                            <div className="col-6 text-start"><strong>VAT ({vatRate}%) :</strong></div>
+                            <div className="col-6 text-end">${((cartTotal() * vatRate) / 100).toFixed(2)}</div>
+
+                            <div className="col-6 text-start"><strong>Grand Total:</strong></div>
+                            <div className="col-6 text-end"><strong>${(cartTotal() + (cartTotal() * vatRate) / 100).toFixed(2)}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="modal-footer">
+                    <button className="btn btn-secondary" onClick={() => setShowBillModal(false)}>Close</button>
+                    <button className="btn btn-dark" onClick={() => window.print()}>
+                        <i className="bi bi-printer"></i> Print Bill
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+)}
+
 
                                                         <div class="col-md-6 mb-2 col-6">
                                                             <button
@@ -758,6 +809,19 @@ function Front() {
                                                             </button>
                                                         </div>
 
+                                                        <div class="col-md-6 mb-2 col-6">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-success mt-3 w-100"
+                                                                onClick={() => {
+                                                                    handleCheckoutClick();
+                                                                }}
+                                                                style={{ padding: "10px 12px", fontSize: "12px", fontWeight: "bold" }}
+                                                            >
+                                                                Pay
+                                                            </button>
+                                                        </div>
+                                                           
                                                     </div>
                                                     {showButtons && (
                                                         <div className="mt-3 row">
@@ -804,9 +868,8 @@ function Front() {
                                             <span> </span>
                                         </div>
                                     </div>
-                                </div>
-                    
-                </div>
+                                </div>                   
+                            </div>
                 
                 {selectedItem && (
                     <FoodDetails

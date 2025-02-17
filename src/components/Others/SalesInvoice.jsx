@@ -1,0 +1,70 @@
+import React, { useEffect, useState } from "react";
+
+function SalesInvoice() {
+    const [invoices, setInvoices] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchInvoices = async () => {
+            try {
+                const response = await fetch(
+                    `http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_invoice_details_id`
+                );
+                const data = await response.json();
+
+                if (data.message) {
+                    setInvoices(data.message);
+                }
+            } catch (error) {
+                console.error("Error fetching invoices:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInvoices();
+    }, []);
+
+    if (loading) return <p>Loading...</p>;
+    if (invoices.length === 0) return <p>No Invoices Found</p>;
+
+    return (
+        <div className="container mt-4">
+            <h3>Sales Invoices</h3>
+
+            {invoices.map((invoice, index) => (
+                <div key={index} className="card mb-3 p-3">
+                    <h4>Invoice: {invoice.name}</h4>
+                    <p><strong>Customer:</strong> {invoice.customer_name}</p>
+                    <p><strong>Company:</strong> {invoice.company}</p>
+                    <p><strong>Posting Date:</strong> {invoice.posting_date}</p>
+                    <p><strong>Due Date:</strong> {invoice.due_date}</p>
+                    <p><strong>Currency:</strong> {invoice.currency}</p>
+                    <p><strong>Grand Total:</strong> {invoice.grand_total} {invoice.currency}</p>
+
+                    <h5 className="mt-3">Items</h5>
+                    <table className="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Quantity</th>
+                                <th>Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {invoice.sales_items.map((item, idx) => (
+                                <tr key={idx}>
+                                    <td>{item.item_name}</td>
+                                    <td>{item.qty}</td>
+                                    <td>{item.rate}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+export default SalesInvoice;
