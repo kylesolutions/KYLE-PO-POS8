@@ -397,9 +397,7 @@ function Front() {
         fetchTaxes();
     }, []);
 
-    const handlePrint = () => {
-        window.print();
-    };
+    
 
     return (
         <>
@@ -438,7 +436,7 @@ function Front() {
                     </div>
 
                     <div className="col-lg-4 row1 px-4">
-                        <div className="row p-2 mt-2 border shadow h-100 rounded" ref={printRef} id="printableArea">
+                        <div className="row p-2 mt-2 border shadow h-100 rounded">
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
                                     <div className='row'>
@@ -577,6 +575,7 @@ function Front() {
                                                     <th>Item Name</th>
                                                     <th>Qty</th>
                                                     <th>Price</th>
+                                                    <th>Total Price</th>
                                                     <th> </th>
 
                                                 </tr>
@@ -585,6 +584,7 @@ function Front() {
                                                 {cartItems.map((item, index) => {
                                                     const price = item.totalPrice || 0;
                                                     const quantity = item.quantity || 1;
+                                                    
                                                     return (
                                                         <>
                                                             <tr key={index}>
@@ -625,7 +625,7 @@ function Front() {
                                                                         +
                                                                     </button>
                                                                 </td>
-
+                                                                <td className='text-start'>${item.base}</td>
                                                                 <td className='text-start'>${(price * quantity).toFixed(2)}</td>
 
                                                                 <td>
