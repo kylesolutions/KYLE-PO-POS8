@@ -6,6 +6,8 @@ import FoodDetails from './FoodDetails';
 import { v4 as uuidv4 } from 'uuid';
 import SavedOrder from './SavedOrder';
 import { useSelector } from 'react-redux';
+import Modal from "react-bootstrap/Modal";
+import Button from "react-bootstrap/Button";
 
 function Front() {
     const [menuItems, setMenuItems] = useState([]);
@@ -41,6 +43,15 @@ function Front() {
     const [selectedTax, setSelectedTax] = useState(null);
     const printRef = useRef();
     const [showBillModal, setShowBillModal] = useState(false);
+    const [showPaymentModal,setShowPaymentModal] = useState(false)
+    
+    const handleShow = () => setShowPaymentModal(true);
+    const handleClose = () => setShowPaymentModal(false);
+    const handlePayment = (method) => {
+        handlePaymentSelection(method);
+        handleSaveToBackend();
+        handleClose();
+    };
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -436,7 +447,7 @@ function Front() {
                     </div>
 
                     <div className="col-lg-4 row1 px-4">
-                        <div className="row p-2 mt-2 border shadow h-100 rounded">
+                        <div className="row p-2 mt-2 border shadow rounded" style={{"height":"80vh"}}>
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
                                     <div className='row'>
@@ -625,7 +636,7 @@ function Front() {
                                                                         +
                                                                     </button>
                                                                 </td>
-                                                                <td className='text-start'>${item.base}</td>
+                                                                <td className='text-start'>${item.basePrice}</td>
                                                                 <td className='text-start'>${(price * quantity).toFixed(2)}</td>
 
                                                                 <td>
@@ -815,6 +826,7 @@ function Front() {
                                                     className="btn btn-success mt-3 w-100"
                                                     onClick={() => {
                                                         handleCheckoutClick();
+                                                        handleShow();
                                                     }}
                                                     style={{ padding: "10px 12px", fontSize: "12px", fontWeight: "bold" }}
                                                 >
@@ -823,46 +835,35 @@ function Front() {
                                             </div>
 
                                         </div>
-                                        {showButtons && (
-                                            <div className="mt-3 row">
-                                                <div className="col-4">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-primary  w-100"
-                                                        onClick={() => {
-                                                            handlePaymentSelection("CASH");
-                                                            handleSaveToBackend();
-                                                        }}
-                                                    >
-                                                        CASH
-                                                    </button>
-                                                </div>
-                                                <div className="col-4">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-secondary  w-100"
-                                                        onClick={() => {
-                                                            handlePaymentSelection("CARD");
-                                                            handleSaveToBackend();
-                                                        }}
-                                                    >
-                                                        CARD
-                                                    </button>
-                                                </div>
-                                                <div className="col-4">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-warning w-100"
-                                                        onClick={() => {
-                                                            handlePaymentSelection("UPI");
-                                                            handleSaveToBackend();
-                                                        }}
-                                                    >
-                                                        UPI
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
+                                        <Modal show={showPaymentModal} onHide={handleClose} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Select Payment Method</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <div className="row">
+                        <div className="col-4">
+                            <Button variant="primary" className="w-100" onClick={() => handlePayment("CASH")}>
+                                CASH
+                            </Button>
+                        </div>
+                        <div className="col-4">
+                            <Button variant="secondary" className="w-100" onClick={() => handlePayment("CARD")}>
+                                CARD
+                            </Button>
+                        </div>
+                        <div className="col-4">
+                            <Button variant="warning" className="w-100" onClick={() => handlePayment("UPI")}>
+                                UPI
+                            </Button>
+                        </div>
+                    </div>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="danger" onClick={handleClose}>
+                        Cancel
+                    </Button>
+                </Modal.Footer>
+            </Modal>
                                     </div>
                                 </div>
                                 <span> </span>
