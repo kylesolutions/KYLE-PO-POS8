@@ -51,10 +51,9 @@ function Card() {
         setExpiryDate(value);
     };
 
-
     return (
         <>
-            <i className="fi fi-rs-angle-small-left back-button" onClick={() => navigate('/frontpage')}></i>
+        <i className="fi fi-rs-angle-small-left back-button" onClick={() => navigate('/frontpage')}></i>
             <div className="container mt-5">
                 <div className="row justify-content-center">
                     <div className="col-lg-6 col-md-8 col-sm-10">
@@ -93,7 +92,6 @@ function Card() {
                                         </h4>
                                     </div>
                                 )}
-
                                 <form onSubmit={handleCardSubmit}>
                                     <div className="mb-3">
                                         <label htmlFor="cardNumber" className="form-label">Card Number</label>
@@ -123,7 +121,6 @@ function Card() {
                                                 maxLength="5"
                                                 required
                                             />
-
                                             {errors.expiryDate && <div className="invalid-feedback">{errors.expiryDate}</div>}
                                         </div>
 

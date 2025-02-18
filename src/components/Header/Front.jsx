@@ -135,6 +135,8 @@ function Front() {
         const total = cartItems.reduce((sum, item) => sum + (item.quantity * item.totalPrice || 0), 0);
         return isNaN(total) ? 0 : total;
     };
+    
+    
 
     const handleCheckoutClick = () => {
         setShowButtons(true);
@@ -639,8 +641,7 @@ function Front() {
                                                                     </button>
                                                                 </td>
                                                                 <td className='text-start'>${item.basePrice}</td>
-                                                                <td className='text-start'>${(price * quantity).toFixed(2)}</td>
-
+                                                                <td className='text-start'>${(item.quantity * price).toFixed(2)}</td>
                                                                 <td>
                                                                     <button
                                                                         className="btn btn-sm"
@@ -691,7 +692,8 @@ function Front() {
                                             <div className="col-md-6 mb-2 col-6">
                                                 <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
                                                 <div className='grand-tot-div justify-content-end'>
-                                                    <span>${(cartTotal() + (cartTotal() * vatRate) / 100).toFixed(2)}</span>
+                                                <span>${(cartTotal() + (cartTotal() * vatRate) / 100).toFixed(2)}</span>
+
                                                 </div>
                                             </div>
                                         </div>
@@ -765,7 +767,23 @@ function Front() {
                                                                         <tbody>
                                                                             {cartItems.map((item, index) => (
                                                                                 <tr key={index}>
-                                                                                    <td>{item.name}</td>
+                                                                                    <td>{item.name}
+                                                                                    {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                                                <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
+
+                                                                    {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                            {item.selectedCombos.map((combo, idx) => (
+                                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
+                                                                                    </td>
                                                                                     <td>{item.quantity || 1}</td>
                                                                                     <td>${item.totalPrice.toFixed(2)}</td>
                                                                                     <td>${(item.quantity * item.totalPrice).toFixed(2)}</td>

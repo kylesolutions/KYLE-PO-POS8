@@ -15,6 +15,7 @@ const FoodDetails = ({ item, onClose }) => {
     const [showCombos, setShowCombos] = useState(false);
     const [fetchedItem, setFetchedItem] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [quantity, setQuantity] = useState(1); 
 
 
     useEffect(() => {
@@ -84,9 +85,9 @@ const FoodDetails = ({ item, onClose }) => {
             }, 0);
 
             const finalPrice = basePrice + addonsPrice + comboPrice;
-            setTotalPrice(finalPrice);
+            setTotalPrice(finalPrice * quantity);
         }
-    }, [selectedSize, addonCounts, selectedCombos, comboSizes, fetchedItem, setTotalPrice]);
+    }, [selectedSize, addonCounts, selectedCombos, comboSizes, fetchedItem, setTotalPrice,quantity]);
 
     const handleSizeChange = (size) => setSelectedSize(size);
 
@@ -149,12 +150,22 @@ const FoodDetails = ({ item, onClose }) => {
                 price: 50 * sizePriceMultipliers[comboSizes[combo.name1] || "M"],
             })),
             selectedAddon,
-            totalPrice,
+            totalPrice, 
             kitchen: item.kitchen,
+            quantity,
         };
         addToCart(customizedItem);
         onClose();
     };
+
+    const increaseQuantity = () => setQuantity(prevQuantity => prevQuantity + 1);
+
+    const decreaseQuantity = () => {
+        if (quantity > 1) {
+            setQuantity(prevQuantity => prevQuantity - 1);
+        }
+    };
+
     
 
     return (
@@ -186,7 +197,11 @@ const FoodDetails = ({ item, onClose }) => {
                             <p className="text-center">
                                 <strong>Total Price:</strong> ${totalPrice.toFixed(2)}
                             </p>
-
+                            <div>
+                <button onClick={decreaseQuantity}>-</button>
+                <span>{quantity}</span>
+                <button onClick={increaseQuantity}>+</button>
+            </div>
                             <div>
                                 {fetchedItem?.variants?.length > 0 && (
                                     <div className="radio-inputs" role="group" aria-label="Size selection">
@@ -300,7 +315,8 @@ const FoodDetails = ({ item, onClose }) => {
                                         )}
                                     </div>
                                 )}
-
+                                     {/* Quantity controls */}
+           
                                 {showModal && (
                                     <div className="modal-overlay">
                                         <div className="modal-content p-3">
@@ -330,7 +346,7 @@ const FoodDetails = ({ item, onClose }) => {
                                             ) : (
                                                 <p className="no-ingredients">No ingredients available</p>
                                             )}
-
+                                        
                                           
                                             <div className="total-info">
                                                 <table className="total-table">

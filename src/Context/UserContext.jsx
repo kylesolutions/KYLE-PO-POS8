@@ -27,18 +27,18 @@ export const UserProvider = ({ children }) => {
                     JSON.stringify(cartItem.addonCounts) === JSON.stringify(newItem.addonCounts) &&
                     JSON.stringify(cartItem.selectedCombos) === JSON.stringify(newItem.selectedCombos)
             );
-    
             if (existingItemIndex !== -1) {
                 return prevItems.map((cartItem, index) =>
                     index === existingItemIndex
-                        ? { ...cartItem, quantity: cartItem.quantity + 1 }
+                        ? { ...cartItem, quantity: cartItem.quantity + newItem.quantity }
                         : cartItem
                 );
             } else {
-                return [...prevItems, { ...newItem, quantity: 1 }];
+                return [...prevItems, newItem];
             }
         });
     };
+    
 
     const removeFromCart = (item) => {
         setCartItems(prevItems => prevItems.filter(cartItem => cartItem !== item));
