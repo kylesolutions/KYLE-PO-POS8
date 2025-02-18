@@ -24,7 +24,6 @@ function Cash() {
             setChange(0);
         }
     };
-
     return (
         <>
             <i className="fi fi-rs-angle-small-left back-button" onClick={() => navigate("/frontpage")}></i>
@@ -46,27 +45,34 @@ function Cash() {
 
                                         <h6>Items Ordered:</h6>
                                         <ul className="list-group mb-4">
-                                            {billDetails.items.map((item, index) => {
-                                                return (
-                                                    <li key={index} className="list-group-item">
-                                                        {item.name} - ${item.price} x {item.quantity} = $
-                                                        {item.totalPrice.toFixed(2)}
-                                                    </li>
-                                                );
-                                            })}
+                                            {billDetails.items.map((item, index) => (
+                                                <li key={index} className="list-group-item">
+                                                    <strong>{item.name}</strong> - ₹{item.price} x {item.quantity} = ₹{item.totalPrice.toFixed(2)}
+                                                    
+                                                    {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                                <li key={addonName}>+ {addonName} (₹{addonPrice})</li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                    {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                            {item.selectedCombos.map((combo, idx) => (
+                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ₹{combo.price}</li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </li>
+                                            ))}
                                         </ul>
 
                                         <h4 className="text-center mb-4">
-                                            <span className="badge bg-primary">
-                                                Total Amount: ${billDetails.totalAmount}
-                                            </span>
+                                            <span className="badge bg-primary">Total Amount: ₹{billDetails.totalAmount}</span>
                                         </h4>
 
-                                        
                                         <div className="mb-3">
-                                            <label className="form-label">
-                                                Enter Cash Given by Customer:
-                                            </label>
+                                            <label className="form-label">Enter Cash Given by Customer:</label>
                                             <input
                                                 type="number"
                                                 className="form-control"
@@ -76,12 +82,9 @@ function Cash() {
                                             />
                                         </div>
 
-                                        
                                         <div className="mb-3">
                                             <label className="form-label">Return Change:</label>
-                                            <h5 className="text-danger">
-                                                ₹ {change.toFixed(2)}
-                                            </h5>
+                                            <h5 className="text-danger">₹ {change.toFixed(2)}</h5>
                                         </div>
 
                                         <div className="text-center">

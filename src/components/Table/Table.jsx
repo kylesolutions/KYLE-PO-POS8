@@ -8,38 +8,37 @@ function Table() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { setCartItems } = useContext(UserContext);
-  const [bookedTables, setBookedTables] = useState(() => {
-    const saved = localStorage.getItem("bookedTables");
-    return saved ? JSON.parse(saved) : [];
+  const [activeOrders, setActiveOrders] = useState(() => {
+    const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
+    return savedOrders.map(order => order.tableNumber); // Track tables with active orders
   });
 
   const navigate = useNavigate();
 
+  // Handle Table Selection
   const handleTableClick = (tableNumber) => {
     const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
-    const existingOrder = savedOrders.find(
-      (order) => order.tableNumber === tableNumber
-    );
+    const existingOrder = savedOrders.find(order => order.tableNumber === tableNumber);
+
     if (existingOrder) {
       setCartItems(existingOrder.cartItems);
     } else {
       setCartItems([]);
     }
+
+    // Mark the table as active (darker color)
+    setActiveOrders(prevOrders => [...new Set([...prevOrders, tableNumber])]);
+
     alert(`You selected Table ${tableNumber}`);
     navigate("/frontpage", { state: { tableNumber, existingOrder } });
   };
 
+  // Handle Order Completion (Reset Color)
+  const handleOrderCompletion = (tableNumber) => {
+    setActiveOrders(prevOrders => prevOrders.filter(order => order !== tableNumber));
+  };
 
-  // const resetTableStatus = (tableNumber) => {
-  //   const updatedBookedTables = bookedTables.filter(
-  //     (bookedTable) => bookedTable !== tableNumber
-  //   );
-  //   setBookedTables(updatedBookedTables);
-  //   localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
-
-  //   alert(`Table ${tableNumber} is now available.`);
-  // };
-
+  // Fetch Tables from API
   useEffect(() => {
     const fetchTables = async () => {
       try {
@@ -48,11 +47,7 @@ function Table() {
         );
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
-        if (data.message) {
-          setTables(data.message);
-        } else {
-          setTables([]);
-        }
+        setTables(data.message || []);
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -65,31 +60,28 @@ function Table() {
   if (loading) return <div>Loading tables...</div>;
   if (error) return <div>Error: {error}</div>;
 
-
-
   return (
     <>
-    <i class="fi fi-rs-angle-small-left back-button"  onClick={()=> navigate('/firsttab')}></i>
-    <div className="table-page container">        
-      <h1>Restaurant Table Layout</h1>
-      <div className="table-grid row">
-        {tables.length > 0 ? (
-          tables.map((table, index) => (
-            <div
-              key={index}
-              className={`table-card ${bookedTables.includes(table.table_number) ? "booked" : "available"
-                }`}
-              onClick={() => handleTableClick(table.table_number)}
-            >
-              <h2>T{table.table_number}</h2>
-            </div>
-          ))
-        ) : (
-          <div>No tables available.</div>
-        )}
+      <i className="fi fi-rs-angle-small-left back-button" onClick={() => navigate('/firsttab')}></i>
+      <div className="table-page container">
+        <h1>Restaurant Table Layout</h1>
+        <div className="table-grid row">
+          {tables.length > 0 ? (
+            tables.map((table, index) => (
+              <div
+                key={index}
+                className={`table-card ${activeOrders.includes(table.table_number) ? "booked" : "available"}`}
+                onClick={() => handleTableClick(table.table_number)}
+              >
+                <h2>T{table.table_number}</h2>
+              </div>
+            ))
+          ) : (
+            <div>No tables available.</div>
+          )}
+        </div>
       </div>
-    </div>
-</>
+    </>
   );
 }
 

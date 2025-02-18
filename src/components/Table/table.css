@@ -1,4 +1,3 @@
-
 .table-page {
   font-family: Arial, sans-serif;
   text-align: center;
@@ -14,47 +13,51 @@
 }
 
 .table-card {
-  background-color: #f9f9f9;
-  border: 2px solid #ccc;
-  border-radius: 10px;
-  padding: 20px;
-  text-align: center;
   width: 150px;
   height: 150px;
-  display: grid;
+  display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s, color 0.3s, border 0.3s;
-}
-
-.table-card:hover {
-  transform: scale(1.05); 
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
-}
-
-.table-card h2 {
-  margin: 0;
+  text-align: center;
   font-size: 18px;
-  color: #ffffff;
-}
-
-.table-card.booked {
-  background-color: #4e4e4e; 
-  color: white;
-  border: 2px solid #414141;
   font-weight: bold;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 
+    transform 0.2s ease, 
+    box-shadow 0.2s ease, 
+    background-color 0.3s ease, 
+    color 0.3s ease, 
+    border 0.3s ease;
 }
 
+/* 🔹 Available Table (Lighter) */
 .table-card.available {
-  background-color: #a3a3a3; 
-  color: white;
-  border: 2px solid #a1a1a1;
-  font-weight: bold;
+  background-color: #d9f0d9;  /* Light Green */
+  color: #333;
+  border: 2px solid #8fd88f;
 }
 
+.table-card.available:hover {
+  background-color: #c0e6c0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
 
+/* 🔸 Booked Table (Darker) */
+.table-card.booked {
+  background-color: #4e4e4e;  /* Dark Gray */
+  color: white;
+  border: 2px solid #3a3a3a;
+}
+
+.table-card.booked:hover {
+  background-color: #5f5f5f;
+  border: 2px solid #2e2e2e;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* 🖱️ Click Effect */
 .table-card:active {
-  transform: scale(0.98); 
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); 
+  transform: scale(0.96);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }

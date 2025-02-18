@@ -43,8 +43,8 @@ function Front() {
     const [selectedTax, setSelectedTax] = useState(null);
     const printRef = useRef();
     const [showBillModal, setShowBillModal] = useState(false);
-    const [showPaymentModal,setShowPaymentModal] = useState(false)
-    
+    const [showPaymentModal, setShowPaymentModal] = useState(false)
+
     const handleShow = () => setShowPaymentModal(true);
     const handleClose = () => setShowPaymentModal(false);
     const handlePayment = (method) => {
@@ -190,6 +190,8 @@ function Front() {
                 price: item.basePrice,
                 quantity: item.quantity,
                 totalPrice: item.basePrice * item.quantity,
+                addonCounts: item.addonCounts || {}, 
+                selectedCombos: item.selectedCombos || [],
             })),
             totalAmount: cartTotal(),
             payments: [paymentDetails],
@@ -197,7 +199,7 @@ function Front() {
 
         try {
             if (method === "CASH") {
-                navigate("/cash", { state: { billDetails } });
+                navigate("/cash", { state: { billDetails} });
                 await handleSaveToBackend(paymentDetails);
                 handlePaymentCompletion(tableNumber);
             } else if (method === "CARD") {
@@ -408,7 +410,7 @@ function Front() {
         fetchTaxes();
     }, []);
 
-    
+
 
     return (
         <>
@@ -447,7 +449,7 @@ function Front() {
                     </div>
 
                     <div className="col-lg-4 row1 px-4">
-                        <div className="row p-2 mt-2 border shadow rounded" style={{"height":"80vh"}}>
+                        <div className="row p-2 mt-2 border shadow rounded" style={{ "height": "80vh" }}>
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
                                     <div className='row'>
@@ -595,7 +597,7 @@ function Front() {
                                                 {cartItems.map((item, index) => {
                                                     const price = item.totalPrice || 0;
                                                     const quantity = item.quantity || 1;
-                                                    
+
                                                     return (
                                                         <>
                                                             <tr key={index}>
@@ -836,34 +838,34 @@ function Front() {
 
                                         </div>
                                         <Modal show={showPaymentModal} onHide={handleClose} centered>
-                <Modal.Header closeButton>
-                    <Modal.Title>Select Payment Method</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <div className="row">
-                        <div className="col-4">
-                            <Button variant="primary" className="w-100" onClick={() => handlePayment("CASH")}>
-                                CASH
-                            </Button>
-                        </div>
-                        <div className="col-4">
-                            <Button variant="secondary" className="w-100" onClick={() => handlePayment("CARD")}>
-                                CARD
-                            </Button>
-                        </div>
-                        <div className="col-4">
-                            <Button variant="warning" className="w-100" onClick={() => handlePayment("UPI")}>
-                                UPI
-                            </Button>
-                        </div>
-                    </div>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="danger" onClick={handleClose}>
-                        Cancel
-                    </Button>
-                </Modal.Footer>
-            </Modal>
+                                            <Modal.Header closeButton>
+                                                <Modal.Title>Select Payment Method</Modal.Title>
+                                            </Modal.Header>
+                                            <Modal.Body>
+                                                <div className="row">
+                                                    <div className="col-4">
+                                                        <Button variant="primary" className="w-100" onClick={() => handlePayment("CASH")}>
+                                                            CASH
+                                                        </Button>
+                                                    </div>
+                                                    <div className="col-4">
+                                                        <Button variant="secondary" className="w-100" onClick={() => handlePayment("CARD")} >
+                                                            CARD
+                                                        </Button>
+                                                    </div>
+                                                    <div className="col-4">
+                                                        <Button variant="warning" className="w-100" onClick={() => handlePayment("UPI")}>
+                                                            UPI
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </Modal.Body>
+                                            <Modal.Footer>
+                                                <Button variant="danger" onClick={handleClose}>
+                                                    Cancel
+                                                </Button>
+                                            </Modal.Footer>
+                                        </Modal>
                                     </div>
                                 </div>
                                 <span> </span>
