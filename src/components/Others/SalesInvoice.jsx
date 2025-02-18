@@ -55,6 +55,21 @@ function SalesInvoice() {
                             {invoice.sales_items.map((item, idx) => (
                                 <tr key={idx}>
                                     <td>{item.item_name}</td>
+                                    {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                                                <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
+
+                                                                    {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                            {item.selectedCombos.map((combo, idx) => (
+                                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
                                     <td>{item.qty}</td>
                                     <td>{item.rate}</td>
                                 </tr>

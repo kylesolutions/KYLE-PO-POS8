@@ -778,6 +778,7 @@ function Front() {
                                                                                 <th>Qty</th>
                                                                                 <th>Rate</th>
                                                                                 <th>Total</th>
+                                                                                
                                                                             </tr>
                                                                         </thead>
                                                                         <tbody>
@@ -801,8 +802,9 @@ function Front() {
                                                                     )}
                                                                                     </td>
                                                                                     <td>{item.quantity || 1}</td>
+                                                                                    <td>{item.basePrice}</td>
                                                                                     <td>${item.totalPrice.toFixed(2)}</td>
-                                                                                    <td>${(item.quantity * item.totalPrice).toFixed(2)}</td>
+                                                                                    
                                                                                 </tr>
                                                                             ))}
                                                                         </tbody>
