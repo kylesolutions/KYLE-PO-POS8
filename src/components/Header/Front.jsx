@@ -130,9 +130,8 @@ function Front() {
         updateCartItem(updatedItem);
         setSelectedItem(null);
     };
-
     const cartTotal = () => {
-        const total = cartItems.reduce((sum, item) => sum + (item.quantity * item.totalPrice || 0), 0);
+        const total = cartItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
         return isNaN(total) ? 0 : total;
     };
     
@@ -146,26 +145,42 @@ function Front() {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
                 cartItem.id === item.id &&
-                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
-                    ? { ...cartItem, quantity: cartItem.quantity + 1 }
+                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
+                    ? { 
+                        ...cartItem, 
+                        quantity: cartItem.quantity + 1,
+                        totalPrice: (cartItem.basePrice + getAddonsTotal(cartItem) + getCombosTotal(cartItem)) * (cartItem.quantity + 1)
+                    }
                     : cartItem
             )
         );
     };
-
+    
     const decreaseQuantity = (item) => {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
                 cartItem.id === item.id &&
-                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
-                    cartItem.quantity > 1
-                    ? { ...cartItem, quantity: cartItem.quantity - 1 }
+                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
+                cartItem.quantity > 1
+                    ? { 
+                        ...cartItem, 
+                        quantity: cartItem.quantity - 1,
+                        totalPrice: (cartItem.basePrice + getAddonsTotal(cartItem) + getCombosTotal(cartItem)) * (cartItem.quantity - 1)
+                    }
                     : cartItem
             )
         );
     };
+    const getAddonsTotal = (item) => {
+        return Object.values(item.addonCounts || {}).reduce((sum, price) => sum + price, 0);
+    };
+    
+    const getCombosTotal = (item) => {
+        return (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.price || 0), 0);
+    };
+    
 
 
     const handleNavigation = () => {
@@ -641,7 +656,8 @@ function Front() {
                                                                     </button>
                                                                 </td>
                                                                 <td className='text-start'>${item.basePrice}</td>
-                                                                <td className='text-start'>${(item.quantity * price).toFixed(2)}</td>
+                                                                <td className='text-start'>${(item.totalPrice).toFixed(2)}</td>
+
                                                                 <td>
                                                                     <button
                                                                         className="btn btn-sm"

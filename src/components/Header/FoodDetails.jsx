@@ -73,21 +73,22 @@ const FoodDetails = ({ item, onClose }) => {
     useEffect(() => {
         if (fetchedItem) {
             const basePrice = fetchedItem.price;
-
+    
             const addonsPrice = Object.entries(addonCounts).reduce((sum, [addonName, price]) => sum + price, 0);
-
+    
             const comboPrice = selectedCombos.reduce((sum, combo) => {
                 const comboDetail = fetchedItem.combos.find(c => c.name1 === combo.name1);
-                // const comboSize = comboSizes[combo.name1] || 'M';
-                // const multiplier = sizePriceMultipliers[comboSize];
                 const comboBasePrice = comboDetail ? comboDetail.combo_price : 0;
                 return sum + comboBasePrice;
             }, 0);
-
+    
+            // Calculate total price and multiply by quantity
             const finalPrice = basePrice + addonsPrice + comboPrice;
             setTotalPrice(finalPrice * quantity);
         }
-    }, [selectedSize, addonCounts, selectedCombos, comboSizes, fetchedItem, setTotalPrice,quantity]);
+    }, [selectedSize, addonCounts, selectedCombos, comboSizes, fetchedItem, quantity]);
+    
+    
 
     const handleSizeChange = (size) => setSelectedSize(size);
 
@@ -143,20 +144,21 @@ const FoodDetails = ({ item, onClose }) => {
             category: item.category,
             basePrice: item.price,
             selectedSize,
-            addonCounts, 
+            addonCounts,
             selectedCombos: selectedCombos.map((combo) => ({
                 ...combo,
                 size: comboSizes[combo.name1] || "M",
                 price: 50 * sizePriceMultipliers[comboSizes[combo.name1] || "M"],
             })),
             selectedAddon,
-            totalPrice, 
             kitchen: item.kitchen,
             quantity,
+            totalPrice,
         };
         addToCart(customizedItem);
         onClose();
     };
+    
 
     const increaseQuantity = () => setQuantity(prevQuantity => prevQuantity + 1);
 
@@ -165,7 +167,6 @@ const FoodDetails = ({ item, onClose }) => {
             setQuantity(prevQuantity => prevQuantity - 1);
         }
     };
-
     
 
     return (
@@ -195,8 +196,7 @@ const FoodDetails = ({ item, onClose }) => {
                                 <strong>Category:</strong> {fetchedItem?.category}
                             </p>
                             <p className="text-center">
-                                <strong>Total Price:</strong> ${totalPrice.toFixed(2)}
-                            </p>
+                                     <strong>Total Price:</strong> ${totalPrice .toFixed(2)}</p>
                             <div>
                 <button onClick={decreaseQuantity}>-</button>
                 <span>{quantity}</span>
