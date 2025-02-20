@@ -470,7 +470,7 @@ function Front() {
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
                                     <div className='row'>
-                                        <div className='col-12 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
+                                        <div className='col-lg-1 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
                                         <div className='col-10 col-lg-5  mb-2'>
                                             <select
                                                 id="customer-select"
@@ -560,7 +560,7 @@ function Front() {
 
                                         {!isPhoneNumberSet ? (
                                             <>
-                                                <div className='col-10 col-lg-5  mb-2'>
+                                                <div className='col-10 col-lg-4  mb-2'>
                                                     <input
                                                         type="text"
                                                         className="form-control"
