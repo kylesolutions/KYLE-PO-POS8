@@ -15,7 +15,7 @@ const FoodDetails = ({ item, onClose }) => {
     const [showCombos, setShowCombos] = useState(false);
     const [fetchedItem, setFetchedItem] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [quantity, setQuantity] = useState(1); 
+    const [quantity, setQuantity] = useState(1);
 
 
     useEffect(() => {
@@ -48,7 +48,7 @@ const FoodDetails = ({ item, onClose }) => {
                         setFetchedItem({
                             name: selectedItem.item_name,
                             category: selectedItem.item_group,
-                            kitchen:selectedItem.kitchen,
+                            kitchen: selectedItem.kitchen,
                             image: selectedItem.image
                                 ? `${baseUrl}${selectedItem.image}`
                                 : "default-image.jpg",
@@ -73,22 +73,22 @@ const FoodDetails = ({ item, onClose }) => {
     useEffect(() => {
         if (fetchedItem) {
             const basePrice = fetchedItem.price;
-    
+
             const addonsPrice = Object.entries(addonCounts).reduce((sum, [addonName, price]) => sum + price, 0);
-    
+
             const comboPrice = selectedCombos.reduce((sum, combo) => {
                 const comboDetail = fetchedItem.combos.find(c => c.name1 === combo.name1);
                 const comboBasePrice = comboDetail ? comboDetail.combo_price : 0;
                 return sum + comboBasePrice;
             }, 0);
-    
+
             // Calculate total price and multiply by quantity
             const finalPrice = basePrice + addonsPrice + comboPrice;
             setTotalPrice(finalPrice * quantity);
         }
     }, [selectedSize, addonCounts, selectedCombos, comboSizes, fetchedItem, quantity]);
-    
-    
+
+
 
     const handleSizeChange = (size) => setSelectedSize(size);
 
@@ -158,7 +158,6 @@ const FoodDetails = ({ item, onClose }) => {
         addToCart(customizedItem);
         onClose();
     };
-    
 
     const increaseQuantity = () => setQuantity(prevQuantity => prevQuantity + 1);
 
@@ -167,7 +166,6 @@ const FoodDetails = ({ item, onClose }) => {
             setQuantity(prevQuantity => prevQuantity - 1);
         }
     };
-    
 
     return (
         <div className="food-detail bg-dark">
@@ -196,12 +194,13 @@ const FoodDetails = ({ item, onClose }) => {
                                 <strong>Category:</strong> {fetchedItem?.category}
                             </p>
                             <p className="text-center">
-                                     <strong>Total Price:</strong> ${totalPrice .toFixed(2)}</p>
-                            <div>
-                <button onClick={decreaseQuantity}>-</button>
-                <span>{quantity}</span>
-                <button onClick={increaseQuantity}>+</button>
-            </div>
+                                <strong>Total Price:</strong> ${totalPrice.toFixed(2)}</p>
+                            <div className="quantity-container">
+                                <button className="quantity-btn minus" onClick={decreaseQuantity}>−</button>
+                                <span className="quantity-value">{quantity}</span>
+                                <button className="quantity-btn plus" onClick={increaseQuantity}>+</button>
+                            </div>
+
                             <div>
                                 {fetchedItem?.variants?.length > 0 && (
                                     <div className="radio-inputs" role="group" aria-label="Size selection">
@@ -315,8 +314,8 @@ const FoodDetails = ({ item, onClose }) => {
                                         )}
                                     </div>
                                 )}
-                                     {/* Quantity controls */}
-           
+                                {/* Quantity controls */}
+
                                 {showModal && (
                                     <div className="modal-overlay">
                                         <div className="modal-content p-3">
@@ -346,8 +345,7 @@ const FoodDetails = ({ item, onClose }) => {
                                             ) : (
                                                 <p className="no-ingredients">No ingredients available</p>
                                             )}
-                                        
-                                          
+
                                             <div className="total-info">
                                                 <table className="total-table">
                                                     <tbody>

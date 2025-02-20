@@ -12,7 +12,7 @@ import Button from "react-bootstrap/Button";
 function Front() {
     const [menuItems, setMenuItems] = useState([]);
     const [filteredItems, setFilteredItems] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState("null");
     const [selectedItem, setSelectedItem] = useState(null);
     const [categories, setCategories] = useState([]);
     const [showButtons, setShowButtons] = useState(false);
@@ -63,11 +63,11 @@ function Front() {
                         'Content-Type': 'application/json',
                     },
                 });
-
+    
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
                 console.log('API Response:', data);
-
+    
                 if (data && Array.isArray(data.message)) {
                     const baseUrl = 'http://109.199.100.136:6060/';
                     const formattedItems = data.message.map((item) => ({
@@ -79,17 +79,17 @@ function Front() {
                         addons: item.addons || [],
                         combos: item.combos || [],
                         ingredients: item.ingredients || [],
-                        kitchen: item.kitchen
+                        kitchen: item.kitchen,
+                        type: item.type || "regular" 
                     }));
-
-                    const filteredMenu = formattedItems.filter(item =>
-                        allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)
-                    );
-
-                    setMenuItems(filteredMenu);
-                    setFilteredItems(filteredMenu);
-
-                    const uniqueCategories = [...new Set(filteredMenu.map((item) => item.category.toLowerCase()))];
+    
+                    const initialFilteredMenu = formattedItems.filter(item =>
+                        (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) &&
+                        item.type !== "addon" && item.type !== "combo"
+                    );    
+                    setMenuItems(formattedItems); 
+                    setFilteredItems(initialFilteredMenu);     
+                    const uniqueCategories = [...new Set(formattedItems.map((item) => item.category.toLowerCase()))];
                     setCategories(uniqueCategories);
                 } else {
                     throw new Error('Invalid data structure or missing message array');
@@ -98,18 +98,25 @@ function Front() {
                 console.error('Error fetching items:', error);
             }
         };
-
+    
         fetchItems();
     }, [allowedItemGroups]);
-
+    
     const handleFilter = (category) => {
-        const filtered = menuItems.filter((item) =>
-            item.category.toLowerCase() === category.toLowerCase()
-        );
-        setFilteredItems(filtered);
+        if (category === "All") {
+            const allFiltered = menuItems.filter(
+                (item) => item.type !== "addon" && item.type !== "combo"
+            );
+            setFilteredItems(allFiltered);
+        } else {
+            const filtered = menuItems.filter(
+                (item) => item.category.toLowerCase() === category.toLowerCase() &&
+                item.type !== "addon" && item.type !== "combo"
+            );
+            setFilteredItems(filtered);
+        }
         setSelectedCategory(category);
     };
-
     const handlePhoneNumberChange = (e) => {
         setPhoneNumber(e.target.value);
     };
@@ -121,8 +128,6 @@ function Front() {
         }
         setIsPhoneNumberSet(true);
     };
-
-
 
     const handleItemClick = (item) => setSelectedItem(item);
 
@@ -136,7 +141,6 @@ function Front() {
     };
     
     
-
     const handleCheckoutClick = () => {
         setShowButtons(true);
     };
@@ -181,8 +185,6 @@ function Front() {
         return (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.price || 0), 0);
     };
     
-
-
     const handleNavigation = () => {
         if (tableNumber) {
             navigate('/kitchen', { state: { tableNumber, customerName } });
@@ -259,12 +261,23 @@ function Front() {
 
         const payload = {
             customer: customerName,
-            items: validItems.map(item => ({
-                item_name: item.name,
-                basePrice: item.basePrice,
-                quantity: item.quantity,
-                amount: item.basePrice * item.quantity,
-            })),
+            items: validItems.map(item => {
+                const mainItem = {
+                    item_name: item.name,
+                    basePrice: item.basePrice,
+                    quantity: item.quantity,
+                    amount: item.basePrice * item.quantity,
+                };
+    
+                const addons = item.addons ? item.addons.map(addon => ({
+                    item_name: addon.name,
+                    basePrice: addon.price,
+                    quantity: item.quantity,  
+                    amount: addon.price * item.quantity,
+                })) : [];
+    
+                return [mainItem, ...addons];
+            }).flat(),
             total: parseFloat(cartTotal()).toFixed(2),
             payment_terms: [
                 {
@@ -317,7 +330,6 @@ function Front() {
                 if (Array.isArray(data)) {
                     setCustomers(data);
                 } else if (data.message && Array.isArray(data.message)) {
-
                     setCustomers(data.message);
                 } else {
                     console.error("Unexpected response format:", data);
@@ -409,13 +421,9 @@ function Front() {
                     "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details"
                 );
                 const data = await response.json();
-
-
                 const vatTax = data.message?.find(
                     (tax) => tax.name === "VAT - P"
                 );
-
-
                 if (vatTax && vatTax.sales_tax.length > 0) {
                     setVatRate(vatTax.sales_tax[0].rate);
                 }
@@ -426,8 +434,6 @@ function Front() {
 
         fetchTaxes();
     }, []);
-
-
 
     return (
         <>
@@ -470,7 +476,7 @@ function Front() {
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
                                     <div className='row'>
-                                        <div className='col-lg-1 text-start'><h1 className="display-4 fs-2">{tableNumber}</h1></div>
+                                        <div className='col-lg-1 text-start'><h1 className="display-4 fs-2" style={{background: "black", color: "white", borderRadius: "5px", padding: "4px 20px", display: "flex", alignItems: "center", justifyContent: "center"}}>{tableNumber}</h1></div>
                                         <div className='col-10 col-lg-5  mb-2'>
                                             <select
                                                 id="customer-select"
@@ -709,7 +715,6 @@ function Front() {
                                                 <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
                                                 <div className='grand-tot-div justify-content-end'>
                                                 <span>${(cartTotal() + (cartTotal() * vatRate) / 100).toFixed(2)}</span>
-
                                                 </div>
                                             </div>
                                         </div>

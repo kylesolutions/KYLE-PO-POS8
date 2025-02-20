@@ -125,3 +125,49 @@
   .ingredient-table tr:hover {
     background-color: #f1f1f1;
   }
+
+
+  .quantity-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.quantity-btn {
+    width: 35px;
+    height: 35px;
+    font-size: 22px;
+    font-weight: bold;
+    border: none;
+    background-color: #396ea7;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.quantity-btn:hover {
+    background-color: #326dac;
+    transform: scale(1.1);
+}
+
+.quantity-btn:active {
+    transform: scale(0.9);
+}
+
+.quantity-btn.minus {
+    background-color: #bd4f5a;
+}
+
+.quantity-btn.minus:hover {
+    background-color: #b02a37;
+}
+
+.quantity-value {
+    font-size: 20px;
+    font-weight: bold;
+    min-width: 30px;
+    text-align: center;
+}

@@ -16,6 +16,7 @@
   width: 150px;
   height: 150px;
   display: flex;
+  flex-direction: column;  /* Stack elements vertically */
   align-items: center;
   justify-content: center;
   text-align: center;
@@ -29,11 +30,13 @@
     background-color 0.3s ease, 
     color 0.3s ease, 
     border 0.3s ease;
+  background-color: #f8f9fa;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* 🔹 Available Table (Lighter) */
+/* Available Table (Lighter) */
 .table-card.available {
-  background-color: #d9f0d9;  /* Light Green */
+  background-color: #d9f0d9;  
   color: #333;
   border: 2px solid #8fd88f;
 }
@@ -43,9 +46,9 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-/* 🔸 Booked Table (Darker) */
+/* Booked Table (Darker) */
 .table-card.booked {
-  background-color: #4e4e4e;  /* Dark Gray */
+  background-color: #4e4e4e;  
   color: white;
   border: 2px solid #3a3a3a;
 }
@@ -56,8 +59,30 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* 🖱️ Click Effect */
+/* Click Effect */
 .table-card:active {
   transform: scale(0.96);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.table-number {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 8px; /* Creates space between table number and chairs */
+}
+
+.chairs-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px; /* Adjust space between chairs */
+}
+
+.chair-icon {
+  font-size: 22px; /* Adjust chair size */
+  color: #555; /* Default chair color */
+}
+
+.table-card.booked .chair-icon {
+  color: red; /* Change chair color if booked */
 }

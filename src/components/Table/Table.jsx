@@ -10,12 +10,11 @@ function Table() {
   const { setCartItems } = useContext(UserContext);
   const [activeOrders, setActiveOrders] = useState(() => {
     const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
-    return savedOrders.map(order => order.tableNumber); // Track tables with active orders
+    return savedOrders.map(order => order.tableNumber);
   });
 
   const navigate = useNavigate();
 
-  // Handle Table Selection
   const handleTableClick = (tableNumber) => {
     const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
     const existingOrder = savedOrders.find(order => order.tableNumber === tableNumber);
@@ -25,20 +24,16 @@ function Table() {
     } else {
       setCartItems([]);
     }
-
-    // Mark the table as active (darker color)
     setActiveOrders(prevOrders => [...new Set([...prevOrders, tableNumber])]);
 
     alert(`You selected Table ${tableNumber}`);
     navigate("/frontpage", { state: { tableNumber, existingOrder } });
   };
 
-  // Handle Order Completion (Reset Color)
   const handleOrderCompletion = (tableNumber) => {
     setActiveOrders(prevOrders => prevOrders.filter(order => order !== tableNumber));
   };
 
-  // Fetch Tables from API
   useEffect(() => {
     const fetchTables = async () => {
       try {
@@ -74,6 +69,11 @@ function Table() {
                 onClick={() => handleTableClick(table.table_number)}
               >
                 <h2>T{table.table_number}</h2>
+                <div className="chairs-container">
+                  {Array.from({ length: table.number_of_chair }).map((_, chairIndex) => (
+                    <i key={chairIndex} className="fa-solid fa-chair chair-icon"></i>
+                  ))}
+                </div>
               </div>
             ))
           ) : (

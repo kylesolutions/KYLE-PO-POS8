@@ -4,8 +4,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 function Cash() {
     const location = useLocation();
     const [billDetails, setBillDetails] = useState(null);
-    const [cashGiven, setCashGiven] = useState(""); 
+    const [cashGiven, setCashGiven] = useState("");
     const [change, setChange] = useState(0);
+    const [vatRate, setVatRate] = useState(10); // Example VAT percentage (Change as needed)
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -14,16 +15,25 @@ function Cash() {
         }
     }, [location]);
 
+    const calculateVAT = () => {
+        return billDetails ? (billDetails.totalAmount * vatRate) / 100 : 0;
+    };
+
+    const calculateGrandTotal = () => {
+        return billDetails ? billDetails.totalAmount + calculateVAT() : 0;
+    };
+
     const handleCashChange = (e) => {
         const givenAmount = parseFloat(e.target.value);
         setCashGiven(e.target.value);
 
-        if (billDetails && givenAmount >= billDetails.totalAmount) {
-            setChange(givenAmount - billDetails.totalAmount);
+        if (billDetails && givenAmount >= calculateGrandTotal()) {
+            setChange(givenAmount - calculateGrandTotal());
         } else {
             setChange(0);
         }
     };
+
     return (
         <>
             <i className="fi fi-rs-angle-small-left back-button" onClick={() => navigate("/frontpage")}></i>
@@ -48,7 +58,7 @@ function Cash() {
                                             {billDetails.items.map((item, index) => (
                                                 <li key={index} className="list-group-item">
                                                     <strong>{item.name}</strong> - ₹{item.price} x {item.quantity} = ₹{item.totalPrice.toFixed(2)}
-                                                    
+
                                                     {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                         <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                             {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
@@ -67,11 +77,20 @@ function Cash() {
                                             ))}
                                         </ul>
 
-                                        <h4 className="text-center mb-4">
-                                            <span className="badge bg-primary">Total Amount: ₹{billDetails.totalAmount}</span>
-                                        </h4>
+                                        <div className="tax-section">
+                                            <div className="row">
+                                                <div className="col-6 text-start"><strong>Subtotal:</strong></div>
+                                                <div className="col-6 text-end">₹{billDetails.totalAmount.toFixed(2)}</div>
 
-                                        <div className="mb-3">
+                                                <div className="col-6 text-start"><strong>VAT ({vatRate}%):</strong></div>
+                                                <div className="col-6 text-end">₹{calculateVAT().toFixed(2)}</div>
+
+                                                <div className="col-6 text-start"><strong>Grand Total:</strong></div>
+                                                <div className="col-6 text-end"><strong>₹{calculateGrandTotal().toFixed(2)}</strong></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-3 mt-3">
                                             <label className="form-label">Enter Cash Given by Customer:</label>
                                             <input
                                                 type="number"
@@ -91,7 +110,7 @@ function Cash() {
                                             <button
                                                 className="btn btn-success w-100"
                                                 onClick={() => {
-                                                    if (cashGiven >= billDetails.totalAmount) {
+                                                    if (cashGiven >= calculateGrandTotal()) {
                                                         alert("Payment confirmed!");
                                                         navigate("/frontpage");
                                                     } else {
