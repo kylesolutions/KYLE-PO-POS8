@@ -63,11 +63,11 @@ function Front() {
                         'Content-Type': 'application/json',
                     },
                 });
-    
+
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
                 console.log('API Response:', data);
-    
+
                 if (data && Array.isArray(data.message)) {
                     const baseUrl = 'http://109.199.100.136:6060/';
                     const formattedItems = data.message.map((item) => ({
@@ -80,15 +80,18 @@ function Front() {
                         combos: item.combos || [],
                         ingredients: item.ingredients || [],
                         kitchen: item.kitchen,
-                        type: item.type || "regular" 
+                        type: item.type || "regular"
                     }));
-    
-                    const initialFilteredMenu = formattedItems.filter(item =>
-                        (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) &&
-                        item.type !== "addon" && item.type !== "combo"
-                    );    
-                    setMenuItems(formattedItems); 
-                    setFilteredItems(initialFilteredMenu);     
+
+                    setMenuItems(formattedItems);
+
+                    const initialFilteredMenu = formattedItems.filter(
+                        item => (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) &&
+                            item.type !== "addon" && item.type !== "combo"
+                    );
+
+                    setFilteredItems(initialFilteredMenu);
+
                     const uniqueCategories = [...new Set(formattedItems.map((item) => item.category.toLowerCase()))];
                     setCategories(uniqueCategories);
                 } else {
@@ -98,25 +101,20 @@ function Front() {
                 console.error('Error fetching items:', error);
             }
         };
-    
+
         fetchItems();
     }, [allowedItemGroups]);
-    
+
     const handleFilter = (category) => {
-        if (category === "All") {
-            const allFiltered = menuItems.filter(
-                (item) => item.type !== "addon" && item.type !== "combo"
-            );
-            setFilteredItems(allFiltered);
-        } else {
-            const filtered = menuItems.filter(
-                (item) => item.category.toLowerCase() === category.toLowerCase() &&
-                item.type !== "addon" && item.type !== "combo"
-            );
-            setFilteredItems(filtered);
-        }
+        const filtered = menuItems.filter(item =>
+            (category === "All" || item.category.toLowerCase() === category.toLowerCase()) &&
+            item.type !== "addon" &&
+            item.type !== "combo"
+        );
+        setFilteredItems(filtered);
         setSelectedCategory(category);
     };
+
     const handlePhoneNumberChange = (e) => {
         setPhoneNumber(e.target.value);
     };
@@ -139,8 +137,8 @@ function Front() {
         const total = cartItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
         return isNaN(total) ? 0 : total;
     };
-    
-    
+
+
     const handleCheckoutClick = () => {
         setShowButtons(true);
     };
@@ -149,10 +147,10 @@ function Front() {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
                 cartItem.id === item.id &&
-                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
-                    ? { 
-                        ...cartItem, 
+                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
+                    ? {
+                        ...cartItem,
                         quantity: cartItem.quantity + 1,
                         totalPrice: (cartItem.basePrice + getAddonsTotal(cartItem) + getCombosTotal(cartItem)) * (cartItem.quantity + 1)
                     }
@@ -160,16 +158,16 @@ function Front() {
             )
         );
     };
-    
+
     const decreaseQuantity = (item) => {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
                 cartItem.id === item.id &&
-                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
-                cartItem.quantity > 1
-                    ? { 
-                        ...cartItem, 
+                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
+                    cartItem.quantity > 1
+                    ? {
+                        ...cartItem,
                         quantity: cartItem.quantity - 1,
                         totalPrice: (cartItem.basePrice + getAddonsTotal(cartItem) + getCombosTotal(cartItem)) * (cartItem.quantity - 1)
                     }
@@ -180,11 +178,11 @@ function Front() {
     const getAddonsTotal = (item) => {
         return Object.values(item.addonCounts || {}).reduce((sum, price) => sum + price, 0);
     };
-    
+
     const getCombosTotal = (item) => {
         return (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.price || 0), 0);
     };
-    
+
     const handleNavigation = () => {
         if (tableNumber) {
             navigate('/kitchen', { state: { tableNumber, customerName } });
@@ -198,9 +196,7 @@ function Front() {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-
         console.log("Payment Details:", paymentDetails);
-
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -209,16 +205,15 @@ function Front() {
                 price: item.basePrice,
                 quantity: item.quantity,
                 totalPrice: item.basePrice * item.quantity,
-                addonCounts: item.addonCounts || {}, 
+                addonCounts: item.addonCounts || {},
                 selectedCombos: item.selectedCombos || [],
             })),
             totalAmount: cartTotal(),
             payments: [paymentDetails],
         };
-
         try {
             if (method === "CASH") {
-                navigate("/cash", { state: { billDetails} });
+                navigate("/cash", { state: { billDetails } });
                 await handleSaveToBackend(paymentDetails);
                 handlePaymentCompletion(tableNumber);
             } else if (method === "CARD") {
@@ -252,32 +247,19 @@ function Front() {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
-
         const validItems = cartItems.filter(item => item.quantity > 0);
         if (validItems.length !== cartItems.length) {
             alert("All items must have a quantity greater than zero.");
             return;
         }
-
         const payload = {
             customer: customerName,
-            items: validItems.map(item => {
-                const mainItem = {
-                    item_name: item.name,
-                    basePrice: item.basePrice,
-                    quantity: item.quantity,
-                    amount: item.basePrice * item.quantity,
-                };
-    
-                const addons = item.addons ? item.addons.map(addon => ({
-                    item_name: addon.name,
-                    basePrice: addon.price,
-                    quantity: item.quantity,  
-                    amount: addon.price * item.quantity,
-                })) : [];
-    
-                return [mainItem, ...addons];
-            }).flat(),
+            items: validItems.map(item => ({
+                item_name: item.name,
+                basePrice: item.basePrice,
+                quantity: item.quantity,
+                amount: item.basePrice * item.quantity,
+            })),
             total: parseFloat(cartTotal()).toFixed(2),
             payment_terms: [
                 {
@@ -476,7 +458,21 @@ function Front() {
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
                                     <div className='row'>
-                                        <div className='col-lg-1 text-start'><h1 className="display-4 fs-2" style={{background: "black", color: "white", borderRadius: "5px", padding: "4px 20px", display: "flex", alignItems: "center", justifyContent: "center"}}>{tableNumber}</h1></div>
+                                        <div className='col-lg-1 text-start'><h1
+                                            className="display-4 fs-2"
+                                            style={{
+                                                background: tableNumber ? "black" : "transparent",
+                                                color: tableNumber ? "white" : "inherit", 
+                                                borderRadius: tableNumber ? "5px" : "0",
+                                                padding: tableNumber ? "4px 20px" : "0",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center"
+                                            }}
+                                        >
+                                            {tableNumber}
+                                        </h1>
+                                        </div>
                                         <div className='col-10 col-lg-5  mb-2'>
                                             <select
                                                 id="customer-select"
@@ -714,7 +710,7 @@ function Front() {
                                             <div className="col-md-6 mb-2 col-6">
                                                 <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
                                                 <div className='grand-tot-div justify-content-end'>
-                                                <span>${(cartTotal() + (cartTotal() * vatRate) / 100).toFixed(2)}</span>
+                                                    <span>${(cartTotal() + (cartTotal() * vatRate) / 100).toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -783,33 +779,33 @@ function Front() {
                                                                                 <th>Qty</th>
                                                                                 <th>Rate</th>
                                                                                 <th>Total</th>
-                                                                                
+
                                                                             </tr>
                                                                         </thead>
                                                                         <tbody>
                                                                             {cartItems.map((item, index) => (
                                                                                 <tr key={index}>
                                                                                     <td>{item.name}
-                                                                                    {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                                                                <li key={addonName}>+ {addonName} (${addonPrice})</li>
-                                                                            ))}
-                                                                        </ul>
-                                                                    )}
+                                                                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                                            <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                                                {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                                                                    <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                                                                ))}
+                                                                                            </ul>
+                                                                                        )}
 
-                                                                    {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                                            {item.selectedCombos.map((combo, idx) => (
-                                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
-                                                                            ))}
-                                                                        </ul>
-                                                                    )}
+                                                                                        {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                                            <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                                                {item.selectedCombos.map((combo, idx) => (
+                                                                                                    <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
+                                                                                                ))}
+                                                                                            </ul>
+                                                                                        )}
                                                                                     </td>
                                                                                     <td>{item.quantity || 1}</td>
                                                                                     <td>{item.basePrice}</td>
                                                                                     <td>${item.totalPrice.toFixed(2)}</td>
-                                                                                    
+
                                                                                 </tr>
                                                                             ))}
                                                                         </tbody>
