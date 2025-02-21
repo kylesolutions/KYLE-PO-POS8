@@ -41,33 +41,48 @@ function Kitchen() {
                     item => preparedItems.includes(item.id) && item.category !== "Drinks" && item.kitchen === selectedKitchen
                 ),
             }))
-            .filter(order => order.cartItems.length > 0);
-
+            .filter(order => order.cartItems.length > 0); // Remove empty orders
+    
         if (preparedOrders.length === 0) {
             console.warn("No prepared items to inform the bearer about.");
             return;
         }
-
+    
+        // Create customer & table mapping
         const customerTableData = preparedOrders.map(order => ({
             customerName: order.customerName || "Unknown Customer",
             tableNumber: order.tableNumber || "Unknown Table",
         }));
-
-        preparedOrders.forEach(order => {
-            order.cartItems.forEach(item => informBearer(item));
-        });
-
+    
+        // Flatten prepared items to send them separately
+        const preparedItemsData = preparedOrders.flatMap(order =>
+            order.cartItems.map(item => ({
+                id: item.id,
+                name: item.name,
+                selectedSize: item.selectedSize || "N/A",
+                customerName: order.customerName || "Unknown",
+                tableNumber: order.tableNumber || "Unknown",
+                isPickedUp: false, // Initialize as not picked up
+            }))
+        );
+    
+        // Inform bearer for each item
+        preparedItemsData.forEach(item => informBearer(item));
+    
         alert("Items have been marked as Prepared. The bearer has been informed!");
-
-        navigate("/bearer", { state: { customerTableData } });
+    
+        navigate("/bearer", {
+            state: { customerTableData, preparedOrders: preparedItemsData }, 
+        });
     };
+    
 
     return (
         <div className="container mt-4">
             <h3 className="text-center">Kitchen Note</h3>
 
             {/* Kitchen Tabs */}
-            <div className="d-flex mb-3">
+            <div className="d-flex mb-3 gap-3">
                 {kitchens.map(kitchen => (
                     <button
                         key={kitchen}
