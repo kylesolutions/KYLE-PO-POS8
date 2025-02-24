@@ -79,7 +79,7 @@ function Front() {
                         addons: item.addons || [],
                         combos: item.combos || [],
                         ingredients: item.ingredients || [],
-                        kitchen: item.kitchen,
+                        kitchen: item.custom_kitchen,
                         type: item.type || "regular"
                     }));
 
@@ -252,14 +252,29 @@ function Front() {
             alert("All items must have a quantity greater than zero.");
             return;
         }
+    
+        // Create a valid items list including addons and totals
+        const payloadItems = validItems.map(item => {
+            // Calculate base price and addon prices
+            const basePrice = item.basePrice || 0;
+            const quantity = item.quantity || 0;
+            const addonsTotal = Object.values(item.addonCounts || {}).reduce((total, addonPrice) => total + addonPrice, 0);
+            const totalPrice = (basePrice * quantity) + addonsTotal;
+    
+            return {
+                item_name: item.name,
+                basePrice: basePrice,
+                quantity: quantity,
+                totalPrice: totalPrice,  // Including addons
+                addonCounts: item.addonCounts || {},
+                selectedCombos: item.selectedCombos || [],
+            };
+        });
+    
+        // Construct the payload to be sent to the backend
         const payload = {
             customer: customerName,
-            items: validItems.map(item => ({
-                item_name: item.name,
-                basePrice: item.basePrice,
-                quantity: item.quantity,
-                amount: item.basePrice * item.quantity,
-            })),
+            items: payloadItems,
             total: parseFloat(cartTotal()).toFixed(2),
             payment_terms: [
                 {
@@ -269,8 +284,9 @@ function Front() {
             ],
             payments: [paymentDetails],
         };
+    
         console.log("Final Payload before sending to backend:", payload);
-
+    
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
@@ -286,16 +302,17 @@ function Front() {
             const result = await response.json();
             if (result.status === "success") {
                 alert("Cart saved to backend successfully!");
-                setCartItems([]);
-                localStorage.removeItem("savedOrders");
+                setCartItems([]);  // Reset the cart
+                localStorage.removeItem("savedOrders");  // Clear saved orders
             } else {
-                // alert("Failed to save cart. Please try again.");
+                alert("Failed to save cart. Please try again.");
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
             alert("A network error occurred. Please check your connection and try again.");
         }
     };
+    
 
     useEffect(() => {
         const fetchCustomers = async () => {
