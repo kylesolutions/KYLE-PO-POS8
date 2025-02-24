@@ -247,31 +247,45 @@ function Front() {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
+    
         const validItems = cartItems.filter(item => item.quantity > 0);
         if (validItems.length !== cartItems.length) {
             alert("All items must have a quantity greater than zero.");
             return;
         }
     
-        // Create a valid items list including addons and totals
-        const payloadItems = validItems.map(item => {
-            // Calculate base price and addon prices
-            const basePrice = item.basePrice || 0;
-            const quantity = item.quantity || 0;
-            const addonsTotal = Object.values(item.addonCounts || {}).reduce((total, addonPrice) => total + addonPrice, 0);
-            const totalPrice = (basePrice * quantity) + addonsTotal;
+        let payloadItems = [];
     
-            return {
+        validItems.forEach(item => {
+            const basePrice = item.basePrice || 0;
+            const quantity = item.quantity || 1;
+    
+            // Calculate addons total
+            const addonsTotal = Object.values(item.addonCounts || {}).reduce((total, addonPrice) => total + addonPrice, 0);
+    
+            // Main item entry
+            payloadItems.push({
                 item_name: item.name,
                 basePrice: basePrice,
                 quantity: quantity,
-                totalPrice: totalPrice,  // Including addons
+                totalPrice: (basePrice * quantity) + addonsTotal, 
                 addonCounts: item.addonCounts || {},
-                selectedCombos: item.selectedCombos || [],
-            };
+            });
+    
+            // Add combos as separate line items
+            if (item.selectedCombos && item.selectedCombos.length > 0) {
+                item.selectedCombos.forEach(combo => {
+                    payloadItems.push({
+                        item_name: combo.name1,  // Treat combo as a separate item
+                        basePrice: combo.price,
+                        quantity: 1,  // Each combo counts as one unit
+                        totalPrice: combo.price,
+                        addonCounts: {},  // No addons inside combo items
+                    });
+                });
+            }
         });
     
-        // Construct the payload to be sent to the backend
         const payload = {
             customer: customerName,
             items: payloadItems,
@@ -312,6 +326,9 @@ function Front() {
             alert("A network error occurred. Please check your connection and try again.");
         }
     };
+    
+    
+    
     
 
     useEffect(() => {
