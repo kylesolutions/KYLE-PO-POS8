@@ -360,7 +360,6 @@ function Front() {
         }
     };
 
-
     useEffect(() => {
         const saved = localStorage.getItem("savedOrders");
         if (saved) {
@@ -395,6 +394,7 @@ function Front() {
     const cancelCart = () => {
         setCartItems([]);
     }
+    
     const [vatRate, setVatRate] = useState(null);
     useEffect(() => {
         const fetchTaxes = async () => {
