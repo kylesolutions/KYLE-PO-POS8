@@ -316,10 +316,10 @@ function Front() {
             const result = await response.json();
             if (result.status === "success") {
                 alert("Cart saved to backend successfully!");
-                setCartItems([]);  // Reset the cart
-                localStorage.removeItem("savedOrders");  // Clear saved orders
+                setCartItems([]);
+                localStorage.removeItem("savedOrders");
             } else {
-                alert("Failed to save cart. Please try again.");
+                // alert("Failed to save cart. Please try again.");
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
