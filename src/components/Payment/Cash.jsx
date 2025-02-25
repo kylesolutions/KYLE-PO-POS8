@@ -6,7 +6,7 @@ function Cash() {
     const [billDetails, setBillDetails] = useState(null);
     const [cashGiven, setCashGiven] = useState("");
     const [change, setChange] = useState(0);
-    const [vatRate, setVatRate] = useState(10); // Example VAT percentage (Change as needed)
+    const [vatRate, setVatRate] = useState(10); 
     const navigate = useNavigate();
 
     useEffect(() => {

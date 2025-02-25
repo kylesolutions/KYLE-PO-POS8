@@ -192,11 +192,27 @@ function Front() {
     }
 
     const handlePaymentSelection = async (method) => {
+        // Ensure cartItems and customerName are defined
+        if (!cartItems || cartItems.length === 0) {
+            console.error("Cart is empty, cannot proceed.");
+            alert("Cart is empty. Please add items before proceeding.");
+            return;
+        }
+    
+        if (!customerName) {
+            console.error("Customer name is undefined.");
+            alert("Customer name is required.");
+            return;
+        }
+    
+        // Proceed with paymentDetails initialization
         const paymentDetails = {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-        console.log("Payment Details:", paymentDetails);
+        console.log("Debug: paymentDetails before save:", paymentDetails);
+    
+        // Construct billDetails
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -210,98 +226,99 @@ function Front() {
             })),
             totalAmount: cartTotal(),
             payments: [paymentDetails],
+            currency: "AED", // Ensure currency is set correctly
+            exchange_rate: 1.25, // Example exchange rate
         };
-        try {
-            if (method === "CASH") {
-                navigate("/cash", { state: { billDetails } });
-                await handleSaveToBackend(paymentDetails);
+    
+        console.log("Debug: billDetails before save:", billDetails);
+    
+        // Proceed if paymentDetails and billDetails are valid
+        if (paymentDetails && billDetails) {
+            try {
+                await handleSaveToBackend(paymentDetails, billDetails);
+                navigate(method === "CASH" ? "/cash" : "/card", { state: { billDetails } });
                 handlePaymentCompletion(tableNumber);
-            } else if (method === "CARD") {
-                navigate("/card", { state: { billDetails } });
-                await handleSaveToBackend(paymentDetails);
-                handlePaymentCompletion(tableNumber);
-            } else if (method === "UPI") {
-                alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
-                await handleSaveToBackend(paymentDetails);
-                handlePaymentCompletion(tableNumber);
+            } catch (error) {
+                console.error("Error processing payment:", error);
+                alert("Failed to process payment. Please try again.");
             }
-        } catch (error) {
-            console.error("Error processing payment:", error);
-            alert("Failed to process payment. Please try again.");
+        } else {
+            console.error("Error: Invalid paymentDetails or billDetails", paymentDetails, billDetails);
         }
     };
+    
 
+
+    
     const handlePaymentCompletion = (tableNumber) => {
         const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
         const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
         localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
+
         const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
         setBookedTables(updatedBookedTables);
         localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
+
         setCartItems([]);
         alert(`Payment for Table ${tableNumber} is completed. The table is now available.`);
     };
 
-    const handleSaveToBackend = async (paymentDetails) => {
-        if (cartItems.length === 0) {
-            alert("Cart is empty. Please add items before saving.");
-            return;
-        }
-    
-        const validItems = cartItems.filter(item => item.quantity > 0);
-        if (validItems.length !== cartItems.length) {
-            alert("All items must have a quantity greater than zero.");
-            return;
-        }
-    
-        let payloadItems = [];
-    
-        validItems.forEach(item => {
-            const basePrice = item.basePrice || 0;
-            const quantity = item.quantity || 1;
-    
-            // Calculate addons total
-            const addonsTotal = Object.values(item.addonCounts || {}).reduce((total, addonPrice) => total + addonPrice, 0);
-    
-            // Main item entry
-            payloadItems.push({
-                item_name: item.name,
-                basePrice: basePrice,
-                quantity: quantity,
-                totalPrice: (basePrice * quantity) + addonsTotal, 
-                addonCounts: item.addonCounts || {},
-            });
-    
-            // Add combos as separate line items
-            if (item.selectedCombos && item.selectedCombos.length > 0) {
-                item.selectedCombos.forEach(combo => {
-                    payloadItems.push({
-                        item_name: combo.name1,  // Treat combo as a separate item
-                        basePrice: combo.price,
-                        quantity: 1,  // Each combo counts as one unit
-                        totalPrice: combo.price,
-                        addonCounts: {},  // No addons inside combo items
-                    });
-                });
-            }
-        });
-    
-        const payload = {
-            customer: customerName,
-            items: payloadItems,
-            total: parseFloat(cartTotal()).toFixed(2),
-            payment_terms: [
-                {
-                    due_date: "2024-02-01",
-                    payment_terms: "test",
-                },
-            ],
-            payments: [paymentDetails],
-        };
-    
-        console.log("Final Payload before sending to backend:", payload);
-    
+    const handleSaveToBackend = async (paymentDetails, billDetails) => {
         try {
+            console.log("Debug: paymentDetails", paymentDetails);
+            console.log("Debug: billDetails before save:", billDetails);
+
+            if (!billDetails || typeof billDetails !== "object") {
+                console.error("Error: billDetails is undefined or invalid.", billDetails);
+                alert("An error occurred while processing the order. Please refresh the page and try again.");
+                return;
+            }
+            if (!cartItems || cartItems.length === 0) {
+                alert("Cart is empty. Please add items before saving.");
+                return;
+            }
+
+            const validItems = cartItems.filter(item => item.quantity > 0);
+            if (validItems.length !== cartItems.length) {
+                alert("All items must have a quantity greater than zero.");
+                return;
+            }
+
+            let payloadItems = validItems.map(item => ({
+                item_name: item.name,
+                basePrice: item.basePrice || 0,
+                quantity: item.quantity || 1,
+                totalPrice: (item.basePrice || 0) * (item.quantity || 1) +
+                    Object.values(item.addonCounts || {}).reduce((total, addonPrice) => total + addonPrice, 0),
+                addonCounts: item.addonCounts || {},
+            }));
+
+            const currency = billDetails.currency || "AED"; // Default to AED
+            const exchangeRate = Number(billDetails?.exchange_rate) || 1; // Use billDetails.exchange_rate, fallback to 1
+
+            // Ensure exchangeRate is a valid number
+            if (isNaN(exchangeRate) || exchangeRate <= 0) {
+                console.error("Invalid Exchange Rate:", exchangeRate);
+                alert("Exchange rate is missing. Please check currency settings.");
+                return;
+            }
+
+
+            // Build payload
+            const payload = {
+                customer: billDetails.customerName || "Guest",
+                phoneNumber: billDetails.phoneNumber || "N/A",
+                items: payloadItems,
+                total: parseFloat(cartTotal()).toFixed(2),
+                payment_terms: [{ due_date: "2024-02-01", payment_terms: "test" }],
+                payments: [paymentDetails],
+                currency,
+                exchange_rate: exchangeRate,
+            };
+
+            console.log("Final Payload:", payload);
+
+            // Send request to backend
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
                 {
@@ -313,23 +330,52 @@ function Front() {
                     body: JSON.stringify(payload),
                 }
             );
+
             const result = await response.json();
+            console.log("Backend Response:", result);
+
             if (result.status === "success") {
-                alert("Cart saved to backend successfully!");
+                alert("Cart saved successfully!");
                 setCartItems([]);
                 localStorage.removeItem("savedOrders");
             } else {
-                // alert("Failed to save cart. Please try again.");
+                alert(`Error: ${result.message || "Failed to save order"}`);
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
-            alert("A network error occurred. Please check your connection and try again.");
+            alert("A network error occurred. Please try again.");
         }
     };
-    
-    
-    
-    
+
+
+    const handlePaymentEntry = async (invoiceName, paymentDetails) => {
+        try {
+            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                },
+                body: JSON.stringify({
+                    invoice_name: invoiceName,
+                    payment_details: paymentDetails,
+                }),
+            });
+            const result = await response.json();
+
+            console.log("Payment Entry Response:", result);  // Log to check response from payment entry creation
+
+            if (result.status === "success") {
+                return { status: "success", message: "Payment entry created and invoice marked as paid." };
+            } else {
+                return { status: "error", message: result.message || "Failed to create payment entry." };
+            }
+        } catch (error) {
+            console.error("Error processing payment entry:", error);
+            return { status: "error", message: "Failed to create payment entry." };
+        }
+    };
+
 
     useEffect(() => {
         const fetchCustomers = async () => {
@@ -428,7 +474,7 @@ function Front() {
     const cancelCart = () => {
         setCartItems([]);
     }
-    
+
     const [vatRate, setVatRate] = useState(null);
     useEffect(() => {
         const fetchTaxes = async () => {
@@ -496,7 +542,7 @@ function Front() {
                                             className="display-4 fs-2"
                                             style={{
                                                 background: tableNumber ? "black" : "transparent",
-                                                color: tableNumber ? "white" : "inherit", 
+                                                color: tableNumber ? "white" : "inherit",
                                                 borderRadius: tableNumber ? "5px" : "0",
                                                 padding: tableNumber ? "4px 20px" : "0",
                                                 display: "flex",
