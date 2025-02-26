@@ -39,7 +39,6 @@ export const UserProvider = ({ children }) => {
         });
     };
     
-
     const removeFromCart = (item) => {
         setCartItems(prevItems => prevItems.filter(cartItem => cartItem !== item));
     };
@@ -87,36 +86,26 @@ export const UserProvider = ({ children }) => {
     };
   
     const addKitchenOrder = (order) => {
-        // Filter out "Drinks" category items
-        const filteredCartItems = order.cartItems.filter(item => item.category !== "Drinks");
-    
+        const filteredCartItems = order.cartItems.filter(item => item.category !== "Drinks"); 
         if (filteredCartItems.length === 0) {
             alert("No items to send to the kitchen as all items belong to the 'Drinks' category.");
             return;
         }
-    
-        // Group items by kitchen before adding to savedOrders
         const kitchenOrders = filteredCartItems.reduce((acc, item) => {
             const kitchen = item.kitchen || "Unknown Kitchen";
             if (!acc[kitchen]) acc[kitchen] = { ...order, cartItems: [] };
             acc[kitchen].cartItems.push(item);
             return acc;
         }, {});
-    
-        // Convert grouped orders to an array
         const kitchenOrderArray = Object.values(kitchenOrders);
-    
-        // Update state and localStorage
         setSavedOrders(prevOrders => {
-            const updatedOrders = [...prevOrders, ...kitchenOrderArray];  // Append all kitchen orders
+            const updatedOrders = [...prevOrders, ...kitchenOrderArray];
             localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
             return updatedOrders;
         });
-    
         alert("Order successfully sent to the kitchen!");
     };
-    
-    
+       
     const informBearer = (item) => {
         if (!item || (!item.id && !item.name)) {
             console.error("Invalid item passed to informBearer.");

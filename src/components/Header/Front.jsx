@@ -192,27 +192,11 @@ function Front() {
     }
 
     const handlePaymentSelection = async (method) => {
-        // Ensure cartItems and customerName are defined
-        if (!cartItems || cartItems.length === 0) {
-            console.error("Cart is empty, cannot proceed.");
-            alert("Cart is empty. Please add items before proceeding.");
-            return;
-        }
-    
-        if (!customerName) {
-            console.error("Customer name is undefined.");
-            alert("Customer name is required.");
-            return;
-        }
-    
-        // Proceed with paymentDetails initialization
         const paymentDetails = {
             mode_of_payment: method,
             amount: parseFloat(cartTotal()).toFixed(2),
         };
-        console.log("Debug: paymentDetails before save:", paymentDetails);
     
-        // Construct billDetails
         const billDetails = {
             customerName: customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -226,29 +210,30 @@ function Front() {
             })),
             totalAmount: cartTotal(),
             payments: [paymentDetails],
-            currency: "AED", // Ensure currency is set correctly
-            exchange_rate: 1.25, // Example exchange rate
+            currency: "AED", 
+            exchange_rate: 1.25, 
         };
-    
         console.log("Debug: billDetails before save:", billDetails);
-    
-        // Proceed if paymentDetails and billDetails are valid
-        if (paymentDetails && billDetails) {
-            try {
+        try {
+            if (method === "CASH") {
+                navigate("/cash", { state: { billDetails } });
                 await handleSaveToBackend(paymentDetails, billDetails);
-                navigate(method === "CASH" ? "/cash" : "/card", { state: { billDetails } });
                 handlePaymentCompletion(tableNumber);
-            } catch (error) {
-                console.error("Error processing payment:", error);
-                alert("Failed to process payment. Please try again.");
+            } else if (method === "CARD") {
+                navigate("/card", { state: { billDetails } });
+                await handleSaveToBackend(paymentDetails, billDetails);
+                handlePaymentCompletion(tableNumber);
+            } else if (method === "UPI") {
+                alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
+                await handleSaveToBackend(paymentDetails, billDetails);
+                handlePaymentCompletion(tableNumber);
             }
-        } else {
-            console.error("Error: Invalid paymentDetails or billDetails", paymentDetails, billDetails);
+        } catch (error) {
+            console.error("Error processing payment:", error);
+            alert("Failed to process payment. Please try again.");
         }
     };
     
-
-
     
     const handlePaymentCompletion = (tableNumber) => {
         const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
@@ -268,11 +253,12 @@ function Front() {
             console.log("Debug: paymentDetails", paymentDetails);
             console.log("Debug: billDetails before save:", billDetails);
 
-            if (!billDetails || typeof billDetails !== "object") {
-                console.error("Error: billDetails is undefined or invalid.", billDetails);
-                alert("An error occurred while processing the order. Please refresh the page and try again.");
-                return;
+            if (!billDetails || typeof billDetails !== 'object') {
+                console.error("Error: billDetails is undefined or invalid.");
+                alert("Invalid bill details. Please try again.");
+                return; 
             }
+            
             if (!cartItems || cartItems.length === 0) {
                 alert("Cart is empty. Please add items before saving.");
                 return;
@@ -813,7 +799,7 @@ function Front() {
                                                         fontSize: "12px"
                                                     }}
                                                 >
-                                                    Save
+                                                    Save/New
                                                 </button>
                                             </div>
 
