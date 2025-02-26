@@ -185,7 +185,23 @@ function Kitchen() {
                                                 </td>
                                             </>
                                         )}
-                                        <td>{item.name}</td>
+                                        <td>{item.name}
+                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                        {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                            <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+
+                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                        {item.selectedCombos.map((combo, idx) => (
+                                                            <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                        </td>
                                         <td>
                                             <img
                                                 src={item.image}
@@ -247,9 +263,8 @@ function Kitchen() {
                                     onClick={() => setShowStatusPopup(false)}
                                 ></button>
                             </div>
-                            <div className="modal-body">
-                                {/* Search input */}
-                                <div className="mb-3">
+                            <div className="modal-body">                            
+                             <div className="mb-3">
                                     <input
                                         type="text"
                                         className="form-control"
@@ -259,7 +274,6 @@ function Kitchen() {
                                     />
                                 </div>
 
-                                {/* Display data */}
                                 {filteredPickedUpItems.length === 0 ? (
                                     <p>No items have been picked up yet.</p>
                                 ) : (
@@ -281,7 +295,23 @@ function Kitchen() {
                                                     <tr key={index}>
                                                         <td>{item.customerName || "Unknown"}</td>
                                                         <td>{item.tableNumber || "N/A"}</td>
-                                                        <td>{item.name}</td>
+                                                        <td>{item.name}
+                                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                        {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                            <li key={addonName}> {addonName}</li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+
+                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                        {item.selectedCombos.map((combo, idx) => (
+                                                            <li key={idx}> {combo.name1} ({combo.size})</li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                                        </td>
                                                         <td>{item.quantity}</td>
                                                         <td>{item.category}</td>
                                                         <td>{item.kitchen}</td>
