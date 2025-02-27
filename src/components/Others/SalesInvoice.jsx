@@ -26,7 +26,6 @@ function SalesInvoice() {
         fetchInvoices();
     }, []);
 
-    // Filter invoices based on searchDate
     const filteredInvoices = invoices.filter((invoice) =>
         invoice.posting_date.includes(searchDate)
     );
@@ -38,7 +37,6 @@ function SalesInvoice() {
         <div className="container mt-4">
             <h3>Sales Invoices</h3>
 
-            {/* Search Input */}
             <div className="mb-3">
                 <input
                     type="date"

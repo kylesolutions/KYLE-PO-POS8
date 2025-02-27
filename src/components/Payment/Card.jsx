@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function Card() {
-    const [cardNumber, setCardNumber] = useState('');
-    const [expiryDate, setExpiryDate] = useState('');
-    const [cvv, setCvv] = useState('');
+    const [cardNumber, setCardNumber] = useState("");
+    const [expiryDate, setExpiryDate] = useState("");
+    const [cvv, setCvv] = useState("");
     const [errors, setErrors] = useState({});
     const [billDetails, setBillDetails] = useState(null);
     const navigate = useNavigate();
@@ -38,22 +38,25 @@ function Card() {
     const handleCardSubmit = (e) => {
         e.preventDefault();
         if (validateFields()) {
-            alert('Card Payment Confirmed!');
-            navigate('/frontpage');
+            alert("Card Payment Confirmed!");
+            navigate("/frontpage");
         }
     };
 
     const handleExpiryDateChange = (e) => {
-        let value = e.target.value.replace(/\D/g, '');
+        let value = e.target.value.replace(/\D/g, "");
         if (value.length > 2) {
-            value = value.slice(0, 2) + '/' + value.slice(2, 4);
+            value = value.slice(0, 2) + "/" + value.slice(2, 4);
         }
         setExpiryDate(value);
     };
 
     return (
         <>
-        <i className="fi fi-rs-angle-small-left back-button" onClick={() => navigate('/frontpage')}></i>
+            <i
+                className="fi fi-rs-angle-small-left back-button"
+                onClick={() => navigate("/frontpage")}
+            ></i>
             <div className="container mt-5">
                 <div className="row justify-content-center">
                     <div className="col-lg-6 col-md-8 col-sm-10">
@@ -63,38 +66,90 @@ function Card() {
 
                                 {billDetails && (
                                     <div className="mb-4">
-                                        <h5>Customer: <strong>{billDetails.customerName}</strong></h5>
-                                        <p><strong>Phone:</strong> {billDetails.phoneNumber}</p>
+                                        <h5>
+                                            Customer: <strong>{billDetails.customerName}</strong>
+                                        </h5>
+                                        <p>
+                                            <strong>Phone:</strong> {billDetails.phoneNumber}
+                                        </p>
+
                                         <h6>Items Ordered:</h6>
                                         <ul className="list-group mb-3">
                                             {billDetails.items.map((item, index) => (
                                                 <li key={index} className="list-group-item">
-                                                    {item.name} - ${item.price} x {item.quantity} = ${item.totalPrice.toFixed(2)}
+                                                    {item.name} - {item.price.toFixed(2)} x {item.quantity} = {item.totalPrice.toFixed(2)}
                                                     {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                                                <li key={addonName}>+ {addonName} (₹{addonPrice})</li>
-                                                            ))}
+                                                        <ul
+                                                            style={{
+                                                                listStyleType: "none",
+                                                                padding: 0,
+                                                                marginTop: "5px",
+                                                                fontSize: "12px",
+                                                                color: "#888",
+                                                            }}
+                                                        >
+                                                            {Object.entries(item.addonCounts).map(
+                                                                ([addonName, addonPrice]) => (
+                                                                    <li key={addonName}>
+                                                                        + {addonName} ({addonPrice.toFixed(2)})
+                                                                    </li>
+                                                                )
+                                                            )}
                                                         </ul>
                                                     )}
                                                     {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                        <ul
+                                                            style={{
+                                                                listStyleType: "none",
+                                                                padding: 0,
+                                                                marginTop: "5px",
+                                                                fontSize: "12px",
+                                                                color: "#555",
+                                                            }}
+                                                        >
                                                             {item.selectedCombos.map((combo, idx) => (
-                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ₹{combo.price}</li>
+                                                                <li key={idx}>
+                                                                    + {combo.name1} ({combo.size}) - {combo.combo_price.toFixed(2)}
+                                                                </li>
                                                             ))}
                                                         </ul>
                                                     )}
                                                 </li>
                                             ))}
                                         </ul>
-                                        <h4 className="text-center">
-                                            <span className="badge bg-primary">Total: ${billDetails.totalAmount.toFixed(2)}</span>
-                                        </h4>
+
+                                        <div className="tax-section">
+                                            <div className="row">
+                                                <div className="col-6 text-start">
+                                                    <strong>Subtotal:</strong>
+                                                </div>
+                                                <div className="col-6 text-end">
+                                                    {parseFloat(billDetails.subTotal).toFixed(2)}
+                                                </div>
+
+                                                <div className="col-6 text-start">
+                                                    <strong>VAT ({billDetails.vatRate}%):</strong>
+                                                </div>
+                                                <div className="col-6 text-end">
+                                                    {parseFloat(billDetails.vatAmount).toFixed(2)}
+                                                </div>
+
+                                                <div className="col-6 text-start">
+                                                    <strong>Grand Total:</strong>
+                                                </div>
+                                                <div className="col-6 text-end">
+                                                    <strong>{parseFloat(billDetails.totalAmount).toFixed(2)}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
+
                                 <form onSubmit={handleCardSubmit}>
                                     <div className="mb-3">
-                                        <label htmlFor="cardNumber" className="form-label">Card Number</label>
+                                        <label htmlFor="cardNumber" className="form-label">
+                                            Card Number
+                                        </label>
                                         <input
                                             type="text"
                                             id="cardNumber"
@@ -110,7 +165,9 @@ function Card() {
 
                                     <div className="row mb-3">
                                         <div className="col-md-6">
-                                            <label htmlFor="expiryDate" className="form-label">Expiry Date</label>
+                                            <label htmlFor="expiryDate" className="form-label">
+                                                Expiry Date
+                                            </label>
                                             <input
                                                 type="text"
                                                 id="expiryDate"
@@ -125,7 +182,9 @@ function Card() {
                                         </div>
 
                                         <div className="col-md-6">
-                                            <label htmlFor="cvv" className="form-label">CVV</label>
+                                            <label htmlFor="cvv" className="form-label">
+                                                CVV
+                                            </label>
                                             <input
                                                 type="text"
                                                 id="cvv"

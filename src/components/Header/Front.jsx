@@ -192,10 +192,17 @@ function Front() {
     }
 
     const handlePaymentSelection = async (method) => {
+        const vatRateValue = vatRate ? parseFloat(vatRate) : 5;  // Default VAT rate is 5%
+        const subTotal = cartTotal();  // The total before VAT
+        const vatAmount = (subTotal * vatRateValue) / 100;  // VAT calculation
+        const grandTotal = subTotal;  // Exclude VAT from the grand total
+    
         const paymentDetails = {
             mode_of_payment: method,
-            amount: parseFloat(cartTotal()).toFixed(2),
+            amount: grandTotal.toFixed(2),  // Ensure the payment amount is the grand total excluding VAT
         };
+    
+        console.log("Payment Details:", paymentDetails);
     
         const billDetails = {
             customerName: customerName,
@@ -208,160 +215,130 @@ function Front() {
                 addonCounts: item.addonCounts || {},
                 selectedCombos: item.selectedCombos || [],
             })),
-            totalAmount: cartTotal(),
+            subTotal: subTotal.toFixed(2),
+            vatRate: vatRateValue,
+            vatAmount: vatAmount.toFixed(2),
+            totalAmount: grandTotal.toFixed(2),  // Ensure this matches the grand total excluding VAT
             payments: [paymentDetails],
-            currency: "AED", 
-            exchange_rate: 1.25, 
         };
-        console.log("Debug: billDetails before save:", billDetails);
+    
         try {
+            await handleSaveToBackend(paymentDetails, grandTotal);  // Pass grandTotal without VAT to save function
+        
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
-                await handleSaveToBackend(paymentDetails, billDetails);
-                handlePaymentCompletion(tableNumber);
             } else if (method === "CARD") {
                 navigate("/card", { state: { billDetails } });
-                await handleSaveToBackend(paymentDetails, billDetails);
-                handlePaymentCompletion(tableNumber);
             } else if (method === "UPI") {
                 alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
-                await handleSaveToBackend(paymentDetails, billDetails);
-                handlePaymentCompletion(tableNumber);
             }
+    
+            handlePaymentCompletion(tableNumber);
         } catch (error) {
             console.error("Error processing payment:", error);
             alert("Failed to process payment. Please try again.");
         }
     };
     
-    
     const handlePaymentCompletion = (tableNumber) => {
         const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
         const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
         localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
-
         const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
         setBookedTables(updatedBookedTables);
         localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
-
-        setCartItems([]);
+        setCartItems([]);  // Clear cart after successful payment
         alert(`Payment for Table ${tableNumber} is completed. The table is now available.`);
     };
-
-    const handleSaveToBackend = async (paymentDetails, billDetails) => {
-        try {
-            console.log("Debug: paymentDetails", paymentDetails);
-            console.log("Debug: billDetails before save:", billDetails);
-
-            if (!billDetails || typeof billDetails !== 'object') {
-                console.error("Error: billDetails is undefined or invalid.");
-                alert("Invalid bill details. Please try again.");
-                return; 
-            }
-            
-            if (!cartItems || cartItems.length === 0) {
-                alert("Cart is empty. Please add items before saving.");
-                return;
-            }
-
-            const validItems = cartItems.filter(item => item.quantity > 0);
-            if (validItems.length !== cartItems.length) {
-                alert("All items must have a quantity greater than zero.");
-                return;
-            }
-
-            let payloadItems = validItems.map(item => ({
+    
+    const handleSaveToBackend = async (paymentDetails, grandTotal) => {
+        if (cartItems.length === 0) {
+            alert("Cart is empty. Please add items before saving.");
+            return;
+        }
+    
+        // Filter valid items where quantity is greater than 0
+        const validItems = cartItems.filter(item => item.quantity > 0);
+        if (validItems.length !== cartItems.length) {
+            alert("All items must have a quantity greater than zero.");
+            return;
+        }
+    
+        // Create payload items from cart items
+        const payloadItems = validItems.map(item => {
+            const basePrice = item.basePrice || 0;
+            const quantity = item.quantity || 0;
+            const addonsTotal = Object.values(item.addonCounts || {}).reduce((total, addonPrice) => total + addonPrice, 0);
+            const combosTotal = item.selectedCombos
+                ? item.selectedCombos.reduce((total, combo) => total + (combo.combo_price || 0), 0)
+                : 0;
+            const totalPrice = (basePrice * quantity) + addonsTotal + combosTotal;
+    
+            return {
                 item_name: item.name,
-                basePrice: item.basePrice || 0,
-                quantity: item.quantity || 1,
-                totalPrice: (item.basePrice || 0) * (item.quantity || 1) +
-                    Object.values(item.addonCounts || {}).reduce((total, addonPrice) => total + addonPrice, 0),
+                basePrice: basePrice,
+                quantity: quantity,
+                totalPrice: totalPrice,
                 addonCounts: item.addonCounts || {},
-            }));
-
-            const currency = billDetails.currency || "AED"; // Default to AED
-            const exchangeRate = Number(billDetails?.exchange_rate) || 1; // Use billDetails.exchange_rate, fallback to 1
-
-            // Ensure exchangeRate is a valid number
-            if (isNaN(exchangeRate) || exchangeRate <= 0) {
-                console.error("Invalid Exchange Rate:", exchangeRate);
-                alert("Exchange rate is missing. Please check currency settings.");
-                return;
-            }
-
-
-            // Build payload
-            const payload = {
-                customer: billDetails.customerName || "Guest",
-                phoneNumber: billDetails.phoneNumber || "N/A",
-                items: payloadItems,
-                total: parseFloat(cartTotal()).toFixed(2),
-                payment_terms: [{ due_date: "2024-02-01", payment_terms: "test" }],
-                payments: [paymentDetails],
-                currency,
-                exchange_rate: exchangeRate,
+                selectedCombos: item.selectedCombos || [],
             };
-
-            console.log("Final Payload:", payload);
-
-            // Send request to backend
+        });
+    
+        const totalAmount = parseFloat(grandTotal).toFixed(2);  // Ensure totalAmount matches grandTotal without VAT
+        
+        const payload = {
+            customer: customerName,  // Assuming customerName is defined elsewhere
+            items: payloadItems,
+            total: totalAmount,  // Total amount from cart without VAT
+            payment_terms: [
+                {
+                    due_date: "2024-02-01",
+                    payment_terms: "test",  // Example payment terms
+                },
+            ],
+            is_pos: 1,  // Indicating this is a POS transaction
+            paid_amount: totalAmount,  // Total amount paid (same as total without VAT)
+            payments: [
+                {
+                    mode_of_payment: paymentDetails.mode_of_payment,  // Payment method (e.g., "Cash", "Card")
+                    amount: parseFloat(paymentDetails.amount).toFixed(2),  // Payment amount (should be a string or number)
+                }
+            ],
+        };
+    
+        console.log("Final Payload before sending to backend:", payload);
+    
+        try {
+            // Send the payload to the backend via an API call
             const response = await fetch(
-                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice",
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice", 
                 {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",  // Replace with valid token
                     },
                     body: JSON.stringify(payload),
                 }
             );
-
+    
             const result = await response.json();
-            console.log("Backend Response:", result);
-
             if (result.status === "success") {
-                alert("Cart saved successfully!");
-                setCartItems([]);
-                localStorage.removeItem("savedOrders");
+                alert("Cart saved to backend successfully!");
+                setCartItems([]);  // Clear cart after successful save
+                localStorage.removeItem("savedOrders");  // Remove saved orders from localStorage
             } else {
-                alert(`Error: ${result.message || "Failed to save order"}`);
+                alert("Failed to save cart. Please try again.");
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
-            alert("A network error occurred. Please try again.");
+            alert("A network error occurred. Please check your connection and try again.");
         }
     };
-
-
-    const handlePaymentEntry = async (invoiceName, paymentDetails) => {
-        try {
-            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                },
-                body: JSON.stringify({
-                    invoice_name: invoiceName,
-                    payment_details: paymentDetails,
-                }),
-            });
-            const result = await response.json();
-
-            console.log("Payment Entry Response:", result);  // Log to check response from payment entry creation
-
-            if (result.status === "success") {
-                return { status: "success", message: "Payment entry created and invoice marked as paid." };
-            } else {
-                return { status: "error", message: result.message || "Failed to create payment entry." };
-            }
-        } catch (error) {
-            console.error("Error processing payment entry:", error);
-            return { status: "error", message: "Failed to create payment entry." };
-        }
-    };
-
+    
+    
+    
+    
 
     useEffect(() => {
         const fetchCustomers = async () => {
@@ -701,7 +678,7 @@ function Front() {
                                                                     {item.selectedCombos && item.selectedCombos.length > 0 && (
                                                                         <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                                                                             {item.selectedCombos.map((combo, idx) => (
-                                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
+                                                                                <li key={idx}>+ {combo.name1} - ${combo.combo_price}</li>
                                                                             ))}
                                                                         </ul>
                                                                     )}

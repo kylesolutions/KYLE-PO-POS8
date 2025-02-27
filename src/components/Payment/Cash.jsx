@@ -6,29 +6,20 @@ function Cash() {
     const [billDetails, setBillDetails] = useState(null);
     const [cashGiven, setCashGiven] = useState("");
     const [change, setChange] = useState(0);
-    const [vatRate, setVatRate] = useState(10); 
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (location.state) {
+        if (location.state && location.state.billDetails) {
             setBillDetails(location.state.billDetails);
         }
     }, [location]);
 
-    const calculateVAT = () => {
-        return billDetails ? (billDetails.totalAmount * vatRate) / 100 : 0;
-    };
-
-    const calculateGrandTotal = () => {
-        return billDetails ? billDetails.totalAmount + calculateVAT() : 0;
-    };
-
     const handleCashChange = (e) => {
-        const givenAmount = parseFloat(e.target.value);
+        const givenAmount = parseFloat(e.target.value) || 0;
         setCashGiven(e.target.value);
 
-        if (billDetails && givenAmount >= calculateGrandTotal()) {
-            setChange(givenAmount - calculateGrandTotal());
+        if (billDetails && givenAmount >= parseFloat(billDetails.totalAmount)) {
+            setChange(givenAmount - parseFloat(billDetails.totalAmount));
         } else {
             setChange(0);
         }
@@ -69,7 +60,7 @@ function Cash() {
                                                     {item.selectedCombos && item.selectedCombos.length > 0 && (
                                                         <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                                                             {item.selectedCombos.map((combo, idx) => (
-                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ₹{combo.price}</li>
+                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ₹{combo.combo_price}</li>
                                                             ))}
                                                         </ul>
                                                     )}
@@ -80,13 +71,13 @@ function Cash() {
                                         <div className="tax-section">
                                             <div className="row">
                                                 <div className="col-6 text-start"><strong>Subtotal:</strong></div>
-                                                <div className="col-6 text-end">₹{billDetails.totalAmount.toFixed(2)}</div>
+                                                <div className="col-6 text-end">₹{parseFloat(billDetails.subTotal).toFixed(2)}</div>
 
-                                                <div className="col-6 text-start"><strong>VAT ({vatRate}%):</strong></div>
-                                                <div className="col-6 text-end">₹{calculateVAT().toFixed(2)}</div>
+                                                <div className="col-6 text-start"><strong>VAT ({billDetails.vatRate}%):</strong></div>
+                                                <div className="col-6 text-end">₹{parseFloat(billDetails.vatAmount).toFixed(2)}</div>
 
                                                 <div className="col-6 text-start"><strong>Grand Total:</strong></div>
-                                                <div className="col-6 text-end"><strong>₹{calculateGrandTotal().toFixed(2)}</strong></div>
+                                                <div className="col-6 text-end"><strong>₹{parseFloat(billDetails.totalAmount).toFixed(2)}</strong></div>
                                             </div>
                                         </div>
 
@@ -110,7 +101,7 @@ function Cash() {
                                             <button
                                                 className="btn btn-success w-100"
                                                 onClick={() => {
-                                                    if (cashGiven >= calculateGrandTotal()) {
+                                                    if (parseFloat(cashGiven) >= parseFloat(billDetails.totalAmount)) {
                                                         alert("Payment confirmed!");
                                                         navigate("/frontpage");
                                                     } else {

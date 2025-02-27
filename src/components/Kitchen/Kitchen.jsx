@@ -73,7 +73,7 @@ function Kitchen() {
             ),
         }));
 
-        const orderWithItem = savedOrders.find(order => 
+        const orderWithItem = savedOrders.find(order =>
             order.cartItems.some(item => item.id === id)
         );
         const pickedItem = orderWithItem?.cartItems.find(item => item.id === id);
@@ -115,6 +115,11 @@ function Kitchen() {
 
     const handleBack = () => {
         navigate(-1);
+    };
+    const handleDeleteItem = (index) => {
+        const updatedItems = filteredPickedUpItems.filter((_, i) => i !== index);
+        setPickedUpItems(updatedItems);
+        localStorage.setItem("pickedUpItems", JSON.stringify(updatedItems));
     };
 
     return (
@@ -186,21 +191,21 @@ function Kitchen() {
                                             </>
                                         )}
                                         <td>{item.name}
-                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                        {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                                            <li key={addonName}>+ {addonName} (${addonPrice})</li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                    {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                        <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                    ))}
+                                                </ul>
+                                            )}
 
-                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                        {item.selectedCombos.map((combo, idx) => (
-                                                            <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                            {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                    {item.selectedCombos.map((combo, idx) => (
+                                                        <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
                                         </td>
                                         <td>
                                             <img
@@ -251,20 +256,20 @@ function Kitchen() {
                 </div>
             )}
 
-{showStatusPopup && (
+            {showStatusPopup && (
                 <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <div className="modal-dialog modal-lg">
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h5 className="modal-title">Picked Up Items Status</h5>
-                                <button 
-                                    type="button" 
-                                    className="btn-close" 
+                                <button
+                                    type="button"
+                                    className="btn-close"
                                     onClick={() => setShowStatusPopup(false)}
                                 ></button>
                             </div>
-                            <div className="modal-body">                            
-                             <div className="mb-3">
+                            <div className="modal-body">
+                                <div className="mb-3">
                                     <input
                                         type="text"
                                         className="form-control"
@@ -296,26 +301,34 @@ function Kitchen() {
                                                         <td>{item.customerName || "Unknown"}</td>
                                                         <td>{item.tableNumber || "N/A"}</td>
                                                         <td>{item.name}
-                                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                        {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                                            <li key={addonName}> {addonName}</li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                    {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
+                                                                        <li key={addonName}> {addonName}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
 
-                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                        {item.selectedCombos.map((combo, idx) => (
-                                                            <li key={idx}> {combo.name1} ({combo.size})</li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                                            {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                    {item.selectedCombos.map((combo, idx) => (
+                                                                        <li key={idx}> {combo.name1} ({combo.size})</li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
                                                         </td>
                                                         <td>{item.quantity}</td>
                                                         <td>{item.category}</td>
                                                         <td>{item.kitchen}</td>
                                                         <td>{item.pickupTime}</td>
+                                                        <td>
+                                                <button 
+                                                    className="btn btn-danger btn-sm"
+                                                    onClick={() => handleDeleteItem(index)}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
