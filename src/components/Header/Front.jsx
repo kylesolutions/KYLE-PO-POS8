@@ -328,7 +328,7 @@ function Front() {
                 setCartItems([]);  // Clear cart after successful save
                 localStorage.removeItem("savedOrders");  // Remove saved orders from localStorage
             } else {
-                alert("Failed to save cart. Please try again.");
+                // alert("Failed to save cart. Please try again.");
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
