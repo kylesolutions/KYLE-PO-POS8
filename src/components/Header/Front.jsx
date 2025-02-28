@@ -352,7 +352,7 @@ function Front() {
         };
     
         handlePaymentSelection(method); 
-        handleSaveToBackend(paymentDetails, grandTotal);
+        // handleSaveToBackend(paymentDetails, grandTotal);
         handleClose();
     };
     
