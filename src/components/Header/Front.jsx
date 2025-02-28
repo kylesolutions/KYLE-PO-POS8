@@ -45,13 +45,7 @@ function Front() {
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false)
 
-    const handleShow = () => setShowPaymentModal(true);
-    const handleClose = () => setShowPaymentModal(false);
-    const handlePayment = (method) => {
-        handlePaymentSelection(method);
-        handleSaveToBackend();
-        handleClose();
-    };
+
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -195,36 +189,42 @@ function Front() {
         const vatRateValue = vatRate ? parseFloat(vatRate) : 5;  // Default VAT rate is 5%
         const subTotal = cartTotal();  // The total before VAT
         const vatAmount = (subTotal * vatRateValue) / 100;  // VAT calculation
-        const grandTotal = subTotal;  // Exclude VAT from the grand total
-    
+        const grandTotal = subTotal + vatAmount;  // Include VAT in grand total
+
         const paymentDetails = {
             mode_of_payment: method,
-            amount: grandTotal.toFixed(2),  // Ensure the payment amount is the grand total excluding VAT
+            amount: grandTotal.toFixed(2),  // Ensure VAT is included in payment amount
         };
-    
-        console.log("Payment Details:", paymentDetails);
-    
+
+        console.log("Payment Details (Before Sending to Backend):", paymentDetails);
+
+        if (!paymentDetails || !paymentDetails.mode_of_payment) {
+            console.error("Error: Payment Details are missing or incorrect!", paymentDetails);
+            alert("Error: Payment method is not defined. Please try again.");
+            return;
+        }
+
         const billDetails = {
-            customerName: customerName,
-            phoneNumber: phoneNumber || "N/A",
+            customerName: customerName, // Ensure customerName is defined
+            phoneNumber: phoneNumber || "N/A", // Defaults to "N/A" if not provided
             items: cartItems.map((item) => ({
                 name: item.name,
                 price: item.basePrice,
                 quantity: item.quantity,
-                totalPrice: item.basePrice * item.quantity,
-                addonCounts: item.addonCounts || {},
-                selectedCombos: item.selectedCombos || [],
+                totalPrice: item.basePrice * item.quantity, // Total price for the item
+                addonCounts: item.addonCounts || {}, // Ensure addonCounts are provided, else empty object
+                selectedCombos: item.selectedCombos || [], // Ensure selectedCombos is an array, else empty
             })),
-            subTotal: subTotal.toFixed(2),
-            vatRate: vatRateValue,
-            vatAmount: vatAmount.toFixed(2),
-            totalAmount: grandTotal.toFixed(2),  // Ensure this matches the grand total excluding VAT
-            payments: [paymentDetails],
+            subTotal: subTotal.toFixed(2), // Ensure subTotal is formatted to 2 decimal places
+            vatRate: vatRateValue, // Assuming vatRateValue is defined elsewhere
+            vatAmount: vatAmount.toFixed(2), // Ensure vatAmount is formatted to 2 decimal places
+            totalAmount: grandTotal.toFixed(2), // grandTotal should exclude VAT
+            payments: [paymentDetails], // An array of payment details (ensure paymentDetails is defined)
         };
-    
+
         try {
-            await handleSaveToBackend(paymentDetails, grandTotal);  // Pass grandTotal without VAT to save function
-        
+            await handleSaveToBackend(paymentDetails, grandTotal);
+
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
             } else if (method === "CARD") {
@@ -232,14 +232,15 @@ function Front() {
             } else if (method === "UPI") {
                 alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
             }
-    
+
             handlePaymentCompletion(tableNumber);
         } catch (error) {
             console.error("Error processing payment:", error);
             alert("Failed to process payment. Please try again.");
         }
     };
-    
+
+
     const handlePaymentCompletion = (tableNumber) => {
         const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
         const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
@@ -247,98 +248,115 @@ function Front() {
         const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
         setBookedTables(updatedBookedTables);
         localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
-        setCartItems([]);  // Clear cart after successful payment
+        setCartItems([]);
         alert(`Payment for Table ${tableNumber} is completed. The table is now available.`);
     };
-    
+
     const handleSaveToBackend = async (paymentDetails, grandTotal) => {
-        if (cartItems.length === 0) {
-            alert("Cart is empty. Please add items before saving.");
-            return;
-        }
-    
-        // Filter valid items where quantity is greater than 0
-        const validItems = cartItems.filter(item => item.quantity > 0);
-        if (validItems.length !== cartItems.length) {
-            alert("All items must have a quantity greater than zero.");
-            return;
-        }
-    
-        // Create payload items from cart items
-        const payloadItems = validItems.map(item => {
-            const basePrice = item.basePrice || 0;
-            const quantity = item.quantity || 0;
-            const addonsTotal = Object.values(item.addonCounts || {}).reduce((total, addonPrice) => total + addonPrice, 0);
-            const combosTotal = item.selectedCombos
-                ? item.selectedCombos.reduce((total, combo) => total + (combo.combo_price || 0), 0)
-                : 0;
-            const totalPrice = (basePrice * quantity) + addonsTotal + combosTotal;
-    
-            return {
-                item_name: item.name,
-                basePrice: basePrice,
-                quantity: quantity,
-                totalPrice: totalPrice,
-                addonCounts: item.addonCounts || {},
-                selectedCombos: item.selectedCombos || [],
-            };
+    console.log("Inside handleSaveToBackend | Payment Details:", paymentDetails);
+
+    if (!paymentDetails || typeof paymentDetails !== "object") {
+        console.error("handleSaveToBackend received invalid paymentDetails:", paymentDetails);
+        alert("Error: Invalid payment details. Please try again.");
+        return;
+    }
+
+    if (!paymentDetails.mode_of_payment) {
+        console.error("Error: mode_of_payment is missing in paymentDetails!", paymentDetails);
+        alert("Error: Payment method is missing. Please try again.");
+        return;
+    }
+
+    // Ensure all items have a description
+    const allItems = cartItems.map((item) => ({
+        item_name: item.name,
+        description: item.description && item.description.trim() !== "" ? item.description : `Order for ${item.name}`,
+        quantity: item.quantity,
+        basePrice: item.basePrice,
+        addonCounts: item.addons || {},
+        selectedCombos: item.combos || []
+    }));
+
+    const vatRateValue = vatRate ? parseFloat(vatRate) : 5;  
+    const vatAmount = (grandTotal * vatRateValue) / (100 + vatRateValue);
+    const totalWithoutVAT = grandTotal - vatAmount;
+
+    const payload = {
+        customer: customerName,
+        posting_date: new Date().toISOString().split("T")[0],  
+        due_date: new Date().toISOString().split("T")[0], 
+        is_pos: 1,
+        currency: "INR",  
+        conversion_rate: 1,  
+        selling_price_list: "Standard Selling",
+        price_list_currency: "INR",
+        plc_conversion_rate: 1,
+        total: totalWithoutVAT.toFixed(2),
+        net_total: totalWithoutVAT.toFixed(2),
+        base_net_total: totalWithoutVAT.toFixed(2),
+        grand_total: grandTotal.toFixed(2),
+        base_grand_total: grandTotal.toFixed(2),  
+        vatRate: vatRateValue,  
+        vatAmount: vatAmount.toFixed(2), 
+        paid_amount: grandTotal.toFixed(2),  
+        payments: [
+            {
+                mode_of_payment: paymentDetails.mode_of_payment,
+                amount: parseFloat(paymentDetails.amount).toFixed(2),
+            }
+        ],
+        items: allItems,
+    };
+
+    console.log("Final Payload before sending to backend:", payload);
+
+    try {
+        const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            },
+            body: JSON.stringify(payload),
         });
+
+        const result = await response.json();
+
+        if (response.ok && result.status === "success") {
+            alert("POS Invoice saved successfully!");
+            setCartItems([]);
+            localStorage.removeItem("savedOrders");
+        } else {
+            console.error("Backend response error:", result);
+            // alert(`Failed to save POS Invoice: ${result.message || "Unknown error"}`);
+        }
+    } catch (error) {
+        console.error("Network or Request Error:", error);
+        alert("A network error occurred. Please check your connection and try again.");
+    }
+};
+
+
+    const handleShow = () => setShowPaymentModal(true);
+    const handleClose = () => setShowPaymentModal(false);
+
+    const handlePayment = (method) => {
+        const vatRateValue = vatRate ? parseFloat(vatRate) : 5;  // Default VAT rate is 5%
+        const subTotal = cartTotal();  // The total before VAT
+        const vatAmount = (subTotal * vatRateValue) / 100;  // VAT calculation
+        const grandTotal = subTotal + vatAmount;  // Include VAT in grand total
     
-        const totalAmount = parseFloat(grandTotal).toFixed(2);  // Ensure totalAmount matches grandTotal without VAT
-        
-        const payload = {
-            customer: customerName,  // Assuming customerName is defined elsewhere
-            items: payloadItems,
-            total: totalAmount,  // Total amount from cart without VAT
-            payment_terms: [
-                {
-                    due_date: "2024-02-01",
-                    payment_terms: "test",  // Example payment terms
-                },
-            ],
-            is_pos: 1,  // Indicating this is a POS transaction
-            paid_amount: totalAmount,  // Total amount paid (same as total without VAT)
-            payments: [
-                {
-                    mode_of_payment: paymentDetails.mode_of_payment,  // Payment method (e.g., "Cash", "Card")
-                    amount: parseFloat(paymentDetails.amount).toFixed(2),  // Payment amount (should be a string or number)
-                }
-            ],
+        const paymentDetails = {
+            mode_of_payment: method,
+            amount: grandTotal.toFixed(2),
         };
     
-        console.log("Final Payload before sending to backend:", payload);
-    
-        try {
-            // Send the payload to the backend via an API call
-            const response = await fetch(
-                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_sales_invoice", 
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",  // Replace with valid token
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
-    
-            const result = await response.json();
-            if (result.status === "success") {
-                alert("Cart saved to backend successfully!");
-                setCartItems([]);  // Clear cart after successful save
-                localStorage.removeItem("savedOrders");  // Remove saved orders from localStorage
-            } else {
-                // alert("Failed to save cart. Please try again.");
-            }
-        } catch (error) {
-            console.error("Network or Request Error:", error);
-            alert("A network error occurred. Please check your connection and try again.");
-        }
+        handlePaymentSelection(method); 
+        handleSaveToBackend(paymentDetails, grandTotal);
+        handleClose();
     };
     
-    
-    
-    
+
 
     useEffect(() => {
         const fetchCustomers = async () => {
@@ -929,7 +947,7 @@ function Front() {
                                                         </Button>
                                                     </div>
                                                     <div className="col-4">
-                                                        <Button variant="secondary" className="w-100" onClick={() => handlePayment("CARD")} >
+                                                        <Button variant="secondary" className="w-100" onClick={() => handlePayment("CARD")}>
                                                             CARD
                                                         </Button>
                                                     </div>
@@ -946,6 +964,7 @@ function Front() {
                                                 </Button>
                                             </Modal.Footer>
                                         </Modal>
+
                                     </div>
                                 </div>
                                 <span> </span>
