@@ -185,6 +185,28 @@ function Front() {
         }
     }
 
+    const [vatRate, setVatRate] = useState(null);
+    useEffect(() => {
+        const fetchTaxes = async () => {
+            try {
+                const response = await fetch(
+                    "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details"
+                );
+                const data = await response.json();
+                const vatTax = data.message?.find(
+                    (tax) => tax.name === "VAT - P"
+                );
+                if (vatTax && vatTax.sales_tax.length > 0) {
+                    setVatRate(vatTax.sales_tax[0].rate);
+                }
+            } catch (error) {
+                console.error("Error fetching taxes:", error);
+            }
+        };
+
+        fetchTaxes();
+    }, []);
+
     const handlePaymentSelection = async (method) => {
         const vatRateValue = vatRate ? parseFloat(vatRate) : 5;  // Default VAT rate is 5%
         const subTotal = cartTotal();  // The total before VAT
@@ -240,7 +262,6 @@ function Front() {
         }
     };
 
-
     const handlePaymentCompletion = (tableNumber) => {
         const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
         const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
@@ -253,98 +274,108 @@ function Front() {
     };
 
     const handleSaveToBackend = async (paymentDetails, grandTotal) => {
-    console.log("Inside handleSaveToBackend | Payment Details:", paymentDetails);
-
-    if (!paymentDetails || typeof paymentDetails !== "object") {
-        console.error("handleSaveToBackend received invalid paymentDetails:", paymentDetails);
-        alert("Error: Invalid payment details. Please try again.");
-        return;
-    }
-
-    if (!paymentDetails.mode_of_payment) {
-        console.error("Error: mode_of_payment is missing in paymentDetails!", paymentDetails);
-        alert("Error: Payment method is missing. Please try again.");
-        return;
-    }
-
-    // Ensure all items have a description
-    const allItems = cartItems.map((item) => ({
-        item_name: item.name,
-        description: item.description && item.description.trim() !== "" ? item.description : `Order for ${item.name}`,
-        quantity: item.quantity,
-        basePrice: item.basePrice,
-        addonCounts: item.addons || {},
-        selectedCombos: item.combos || []
-    }));
-
-    const vatRateValue = vatRate ? parseFloat(vatRate) : 5;  
-    const vatAmount = (grandTotal * vatRateValue) / (100 + vatRateValue);
-    const totalWithoutVAT = grandTotal - vatAmount;
-
-    const payload = {
-        customer: customerName,
-        posting_date: new Date().toISOString().split("T")[0],  
-        due_date: new Date().toISOString().split("T")[0], 
-        is_pos: 1,
-        currency: "INR",  
-        conversion_rate: 1,  
-        selling_price_list: "Standard Selling",
-        price_list_currency: "INR",
-        plc_conversion_rate: 1,
-        total: totalWithoutVAT.toFixed(2),
-        net_total: totalWithoutVAT.toFixed(2),
-        base_net_total: totalWithoutVAT.toFixed(2),
-        grand_total: grandTotal.toFixed(2),
-        base_grand_total: grandTotal.toFixed(2),  
-        vatRate: vatRateValue,  
-        vatAmount: vatAmount.toFixed(2), 
-        paid_amount: grandTotal.toFixed(2),  
-        payments: [
-            {
-                mode_of_payment: paymentDetails.mode_of_payment,
-                amount: parseFloat(paymentDetails.amount).toFixed(2),
-            }
-        ],
-        items: allItems,
-    };
-
-    console.log("Final Payload before sending to backend:", payload);
-
-    try {
-        const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            },
-            body: JSON.stringify(payload),
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.status === "success") {
-            alert("POS Invoice saved successfully!");
-            setCartItems([]);
-            localStorage.removeItem("savedOrders");
-        } else {
-            console.error("Backend response error:", result);
-            // alert(`Failed to save POS Invoice: ${result.message || "Unknown error"}`);
+        console.log("Inside handleSaveToBackend | Payment Details:", paymentDetails);
+        console.log("Cart Items:", cartItems);
+    
+        if (!paymentDetails || typeof paymentDetails !== "object") {
+            console.error("handleSaveToBackend received invalid paymentDetails:", paymentDetails);
+            alert("Error: Invalid payment details. Please try again.");
+            return;
         }
-    } catch (error) {
-        console.error("Network or Request Error:", error);
-        alert("A network error occurred. Please check your connection and try again.");
-    }
-};
-
+    
+        if (!paymentDetails.mode_of_payment) {
+            console.error("Error: mode_of_payment is missing in paymentDetails!", paymentDetails);
+            alert("Error: Payment method is missing. Please try again.");
+            return;
+        }
+    
+        const allItems = cartItems.map((item) => ({
+            item_name: item.name,
+            item_code: item.item_code || "", 
+            description: item.description && item.description.trim() !== "" ? item.description : `Order for ${item.name}`,
+            quantity: item.quantity,
+            basePrice: item.basePrice,
+            addonCounts: item.addonCounts || {},
+            selectedCombos: item.selectedCombos || [],
+        }));
+    
+        if (allItems.length === 0) {
+            console.error("Error: No items in the cart.");
+            alert("Error: Cannot create an order with no items.");
+            return;
+        }
+    
+        const vatRateValue = vatRate ? parseFloat(vatRate) : 5;
+        const vatAmount = (grandTotal * vatRateValue) / (100 + vatRateValue);
+        const totalWithoutVAT = grandTotal - vatAmount;
+    
+        // New variable to store total taxes and charges (vatAmount)
+        const totalTaxesAndCharges = vatAmount;
+    
+        const payload = {
+            customer: customerName,
+            posting_date: new Date().toISOString().split("T")[0],
+            due_date: new Date().toISOString().split("T")[0],
+            is_pos: 1,
+            currency: "INR",
+            conversion_rate: 1,
+            selling_price_list: "Standard Selling",
+            price_list_currency: "INR",
+            plc_conversion_rate: 1,
+            total: totalWithoutVAT.toFixed(2),
+            net_total: totalWithoutVAT.toFixed(2),
+            base_net_total: totalWithoutVAT.toFixed(2),
+            grand_total: grandTotal.toFixed(2),
+            base_grand_total: grandTotal.toFixed(2),  
+            vatRate: vatRateValue,
+            vatAmount: vatAmount.toFixed(2),
+            paid_amount: grandTotal.toFixed(2),
+            total_taxes_and_charges: totalTaxesAndCharges.toFixed(2),  
+            payments: [
+                {
+                    mode_of_payment: paymentDetails.mode_of_payment,
+                    amount: parseFloat(paymentDetails.amount).toFixed(2),
+                }
+            ],
+            items: allItems,
+        };
+    
+        console.log("Final Payload before sending to backend:", payload);
+    
+        try {
+            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                },
+                body: JSON.stringify(payload),
+            });
+    
+            const result = await response.json();
+    
+            if (response.ok && result.status === "success") {
+                alert("POS Invoice saved successfully!");
+                setCartItems([]);
+                localStorage.removeItem("savedOrders");
+            } else {
+                console.error("Backend response error:", result);
+                alert(`Failed to save POS Invoice: ${result.message || "Unknown error"}`);
+            }
+        } catch (error) {
+            console.error("Network or Request Error:", error);
+            alert("A network error occurred. Please check your connection and try again.");
+        }
+    };
 
     const handleShow = () => setShowPaymentModal(true);
     const handleClose = () => setShowPaymentModal(false);
 
     const handlePayment = (method) => {
-        const vatRateValue = vatRate ? parseFloat(vatRate) : 5;  // Default VAT rate is 5%
-        const subTotal = cartTotal();  // The total before VAT
-        const vatAmount = (subTotal * vatRateValue) / 100;  // VAT calculation
-        const grandTotal = subTotal + vatAmount;  // Include VAT in grand total
+        const vatRateValue = vatRate ? parseFloat(vatRate) : 5;  
+        const subTotal = cartTotal(); 
+        const vatAmount = (subTotal * vatRateValue) / 100;  
+        const grandTotal = subTotal + vatAmount;  
     
         const paymentDetails = {
             mode_of_payment: method,
@@ -355,8 +386,6 @@ function Front() {
         // handleSaveToBackend(paymentDetails, grandTotal);
         handleClose();
     };
-    
-
 
     useEffect(() => {
         const fetchCustomers = async () => {
@@ -456,27 +485,6 @@ function Front() {
         setCartItems([]);
     }
 
-    const [vatRate, setVatRate] = useState(null);
-    useEffect(() => {
-        const fetchTaxes = async () => {
-            try {
-                const response = await fetch(
-                    "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details"
-                );
-                const data = await response.json();
-                const vatTax = data.message?.find(
-                    (tax) => tax.name === "VAT - P"
-                );
-                if (vatTax && vatTax.sales_tax.length > 0) {
-                    setVatRate(vatTax.sales_tax[0].rate);
-                }
-            } catch (error) {
-                console.error("Error fetching taxes:", error);
-            }
-        };
-
-        fetchTaxes();
-    }, []);
 
     return (
         <>
