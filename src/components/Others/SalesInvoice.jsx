@@ -4,10 +4,11 @@ function SalesInvoice() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filterId, setFilterId] = useState(""); // State for filtering by invoice ID
 
   const fetchInvoices = async () => {
     setLoading(true);
-    setError(""); // Reset error state
+    setError("");
 
     try {
       const response = await fetch(
@@ -17,7 +18,6 @@ function SalesInvoice() {
 
       console.log("Full API Response:", data);
 
-      // Check the response structure and set invoices accordingly
       if (data.message && Array.isArray(data.message.invoice)) {
         setInvoices(data.message.invoice);
       } else {
@@ -35,7 +35,17 @@ function SalesInvoice() {
     fetchInvoices();
   }, []);
 
-  // Render function with better error handling
+  // Filter invoices based on invoice ID (name)
+  const filteredInvoices = invoices.filter((invoice) =>
+    invoice.name.toLowerCase().includes(filterId.toLowerCase())
+  );
+
+  // Handle filter input change
+  const handleFilterChange = (e) => {
+    setFilterId(e.target.value);
+  };
+
+  // Render function with table and filter
   const renderContent = () => {
     if (loading) {
       return <p className="text-center">Loading invoices...</p>;
@@ -49,58 +59,78 @@ function SalesInvoice() {
       return <p className="text-center">No POS Invoices Found</p>;
     }
 
-    return invoices.map((invoice, index) => (
-      <div key={invoice.name || index} className="card mb-3 p-3">
-        <h4>Invoice: {invoice.name}</h4>
-        <div className="row">
-          <div className="col-md-6">
-            <p><strong>Customer:</strong> {invoice.customer || "N/A"}</p>
-            <p><strong>Posting Date:</strong> {invoice.posting_date || "N/A"}</p>
-            <p><strong>Grand Total:</strong> ₹{invoice.grand_total || 0}</p>
-          </div>
-          <div className="col-md-6">
-            <p><strong>Total Taxes:</strong> ₹{invoice.total_taxes_and_charges || 0}</p>
-            <p><strong>Currency:</strong> {invoice.currency || "INR"}</p>
-            <p><strong>Paid Amount:</strong> ₹{invoice.paid_amount || 0}</p>
-          </div>
+    return (
+      <>
+        {/* Filter Input */}
+        <div className="mb-4">
+          <label htmlFor="filterId" className="form-label">
+            Filter by Invoice ID:
+          </label>
+          <input
+            type="text"
+            id="filterId"
+            className="form-control w-25"
+            value={filterId}
+            onChange={handleFilterChange}
+            placeholder="Enter Invoice ID (e.g., POSINV-001)"
+          />
         </div>
 
-        {/* Items Table */}
-        <h5 className="mt-3">Items</h5>
+        {/* Invoices Table */}
         <div className="table-responsive">
           <table className="table table-bordered table-hover">
             <thead className="thead-dark">
               <tr>
-                <th>Item Name</th>
-                <th>Description</th>
-                <th>Quantity</th>
-                <th>Rate</th>
-                <th>Amount</th>
+                <th>Invoice ID</th>
+                <th>Customer</th>
+                <th>Posting Date</th>
+                <th>Grand Total (₹)</th>
+                <th>Total Taxes (₹)</th>
+                <th>Currency</th>
+                <th>Paid Amount (₹)</th>
+                <th>Items</th>
               </tr>
             </thead>
             <tbody>
-              {invoice.pos_invoice_items && invoice.pos_invoice_items.length > 0 ? (
-                invoice.pos_invoice_items.map((item, idx) => (
-                  <tr key={idx}>
-                    <td>{item.item_name || "N/A"}</td>
-                    <td>{item.description || "N/A"}</td>
-                    <td>{item.qty || 0}</td>
-                    <td>₹{item.rate || 0}</td>
-                    <td>₹{item.amount || 0}</td>
+              {filteredInvoices.length > 0 ? (
+                filteredInvoices.map((invoice) => (
+                  <tr key={invoice.name}>
+                    <td>{invoice.name}</td>
+                    <td>{invoice.customer || "N/A"}</td>
+                    <td>{invoice.posting_date || "N/A"}</td>
+                    <td>₹{invoice.grand_total || 0}</td>
+                    <td>₹{invoice.total_taxes_and_charges || 0}</td>
+                    <td>{invoice.currency || "INR"}</td>
+                    <td>₹{invoice.paid_amount || 0}</td>
+                    <td>
+                      {invoice.pos_invoice_items &&
+                      invoice.pos_invoice_items.length > 0 ? (
+                        <ul className="list-unstyled">
+                          {invoice.pos_invoice_items.map((item, idx) => (
+                            <li key={idx}>
+                              {item.item_name || "N/A"} (Qty: {item.qty || 0}, ₹
+                              {item.amount || 0})
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        "No items"
+                      )}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="text-center">
-                    No items found for this invoice
+                  <td colSpan="8" className="text-center">
+                    No invoices match the filter
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
-    ));
+      </>
+    );
   };
 
   return (
