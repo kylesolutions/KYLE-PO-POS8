@@ -5,6 +5,7 @@ function SalesInvoice() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterId, setFilterId] = useState(""); // State for filtering by invoice ID
+  const [filterDate, setFilterDate] = useState(""); // State for filtering by posting date
 
   const fetchInvoices = async () => {
     setLoading(true);
@@ -35,17 +36,102 @@ function SalesInvoice() {
     fetchInvoices();
   }, []);
 
-  // Filter invoices based on invoice ID (name)
-  const filteredInvoices = invoices.filter((invoice) =>
-    invoice.name.toLowerCase().includes(filterId.toLowerCase())
-  );
+  // Filter invoices based on invoice ID (name) and posting date
+  const filteredInvoices = invoices.filter((invoice) => {
+    const matchesId = invoice.name.toLowerCase().includes(filterId.toLowerCase());
+    const matchesDate = filterDate
+      ? (invoice.posting_date || "").includes(filterDate)
+      : true; // If no date filter, include all
+    return matchesId && matchesDate;
+  });
 
-  // Handle filter input change
-  const handleFilterChange = (e) => {
+  // Handle filter input changes
+  const handleFilterIdChange = (e) => {
     setFilterId(e.target.value);
   };
 
-  // Render function with table and filter
+  const handleFilterDateChange = (e) => {
+    setFilterDate(e.target.value);
+  };
+
+  // Handle print for a single invoice
+  const handlePrintInvoice = (invoice) => {
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice ${invoice.name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .invoice-container { max-width: 800px; margin: auto; }
+            .invoice-header { text-align: center; margin-bottom: 20px; }
+            .invoice-details { margin-bottom: 20px; }
+            .invoice-details p { margin: 5px 0; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            @media print {
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="invoice-container">
+            <div class="invoice-header">
+              <h2>POS Invoice</h2>
+              <h4>Invoice ID: ${invoice.name}</h4>
+            </div>
+            <div class="invoice-details">
+              <p><strong>Customer:</strong> ${invoice.customer || "N/A"}</p>
+              <p><strong>Posting Date:</strong> ${invoice.posting_date || "N/A"}</p>
+              <p><strong>Grand Total:</strong> ₹${invoice.grand_total || 0}</p>
+              <p><strong>Total Taxes:</strong> ₹${invoice.total_taxes_and_charges || 0}</p>
+              <p><strong>Currency:</strong> ${invoice.currency || "INR"}</p>
+              <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>
+            </div>
+            <h5>Items</h5>
+            <table>
+              <thead>
+                <tr>
+                  <th>Item Name</th>
+                  <th>Description</th>
+                  <th>Quantity</th>
+                  <th>Rate</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  invoice.pos_invoice_items && invoice.pos_invoice_items.length > 0
+                    ? invoice.pos_invoice_items
+                        .map(
+                          (item) => `
+                          <tr>
+                            <td>${item.item_name || "N/A"}</td>
+                            <td>${item.description || "N/A"}</td>
+                            <td>${item.qty || 0}</td>
+                            <td>₹${item.rate || 0}</td>
+                            <td>₹${item.amount || 0}</td>
+                          </tr>
+                        `
+                        )
+                        .join("")
+                    : `<tr><td colspan="5" style="text-align: center;">No items found</td></tr>`
+                }
+              </tbody>
+            </table>
+          </div>
+          <script>
+            window.print();
+            window.onafterprint = function() { window.close(); };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  // Render function with table, filters, and print buttons
   const renderContent = () => {
     if (loading) {
       return <p className="text-center">Loading invoices...</p>;
@@ -61,19 +147,34 @@ function SalesInvoice() {
 
     return (
       <>
-        {/* Filter Input */}
-        <div className="mb-4">
-          <label htmlFor="filterId" className="form-label">
-            Filter by Invoice ID:
-          </label>
-          <input
-            type="text"
-            id="filterId"
-            className="form-control w-25"
-            value={filterId}
-            onChange={handleFilterChange}
-            placeholder="Enter Invoice ID (e.g., POSINV-001)"
-          />
+        {/* Filter Inputs */}
+        <div className="row mb-4">
+          <div className="col-md-6">
+            <label htmlFor="filterId" className="form-label">
+              Filter by Invoice ID:
+            </label>
+            <input
+              type="text"
+              id="filterId"
+              className="form-control"
+              value={filterId}
+              onChange={handleFilterIdChange}
+              placeholder="Enter Invoice ID (e.g., POSINV-001)"
+            />
+          </div>
+          <div className="col-md-6">
+            <label htmlFor="filterDate" className="form-label">
+              Filter by Posting Date:
+            </label>
+            <input
+              type="text"
+              id="filterDate"
+              className="form-control"
+              value={filterDate}
+              onChange={handleFilterDateChange}
+              placeholder="Enter Date (e.g., 2025-03-01)"
+            />
+          </div>
         </div>
 
         {/* Invoices Table */}
@@ -89,6 +190,7 @@ function SalesInvoice() {
                 <th>Currency</th>
                 <th>Paid Amount (₹)</th>
                 <th>Items</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -117,11 +219,19 @@ function SalesInvoice() {
                         "No items"
                       )}
                     </td>
+                    <td>
+                      <button
+                        className="btn btn-sm btn-success"
+                        onClick={() => handlePrintInvoice(invoice)}
+                      >
+                        Print
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="text-center">
+                  <td colSpan="9" className="text-center">
                     No invoices match the filter
                   </td>
                 </tr>
