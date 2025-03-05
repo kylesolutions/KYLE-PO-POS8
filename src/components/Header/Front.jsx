@@ -251,7 +251,7 @@ function Front() {
 
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
-            } else if (method === "CARD") {
+            } else if (method === "CREDIT CARD") {
                 navigate("/card", { state: { billDetails } });
             } else if (method === "UPI") {
                 alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
@@ -910,7 +910,7 @@ function Front() {
                                                         </Button>
                                                     </div>
                                                     <div className="col-4">
-                                                        <Button variant="secondary" className="w-100" onClick={() => handlePayment("CARD")}>
+                                                        <Button variant="secondary" className="w-100" onClick={() => handlePayment("CREDIT CARD")}>
                                                             CARD
                                                         </Button>
                                                     </div>

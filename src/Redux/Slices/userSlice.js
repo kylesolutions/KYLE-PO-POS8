@@ -18,7 +18,6 @@ const userSlice = createSlice({
   reducers: {
     loginSuccess: (state, action) => {
       const { user, session, pos_profile, message } = action.payload;
-
       state.user = user;
       state.session = session;
       state.posProfile = pos_profile;

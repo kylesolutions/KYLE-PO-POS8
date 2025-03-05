@@ -17,7 +17,7 @@ function BearerLogin() {
     setErrorMessage("");
 
     try {
-      const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.bearer_login", {
+      const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.user_login", {
         method: "POST",
         headers: {
           "Accept": "application/json",
@@ -27,30 +27,36 @@ function BearerLogin() {
       });
 
       const data = await response.json();
-      console.log("API Response:", data); 
+      console.log("API Response:", data);
 
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        throw new Error(data.message?.message || "Login failed");
       }
 
-      
-      const { message, user, session, pos_profile } = data;
+      // Destructure the nested message object correctly
+      const { user, session, pos_profile, message } = data;
 
       dispatch(
         loginSuccess({
           user,
           session,
           pos_profile,
-          message,
+          message: {
+            allowed_item_groups: message.allowed_item_groups,
+            allowed_customer_groups: message.allowed_customer_groups,
+            filtered_items: message.filtered_items,
+            filtered_customers: message.filtered_customers,
+          },
         })
       );
 
+      // Store in localStorage (optional, since redux-persist handles this)
       localStorage.setItem("session", session || "");
       localStorage.setItem("pos_profile", pos_profile || "");
-      localStorage.setItem("allowed_item_groups", JSON.stringify(message?.allowed_item_groups || []));
-      localStorage.setItem("allowed_customer_groups", JSON.stringify(message?.allowed_customer_groups || []));
-      localStorage.setItem("filtered_items", JSON.stringify(message?.filtered_items || []));
-      localStorage.setItem("filtered_customers", JSON.stringify(message?.filtered_customers || []));
+      localStorage.setItem("allowed_item_groups", JSON.stringify(message.allowed_item_groups || []));
+      localStorage.setItem("allowed_customer_groups", JSON.stringify(message.allowed_customer_groups || []));
+      localStorage.setItem("filtered_items", JSON.stringify(message.filtered_items || []));
+      localStorage.setItem("filtered_customers", JSON.stringify(message.filtered_customers || []));
 
       alert("Login Successful!");
       navigate("/firsttab");
