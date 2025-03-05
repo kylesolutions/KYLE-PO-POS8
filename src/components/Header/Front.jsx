@@ -168,8 +168,8 @@ function Front() {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
                 cartItem.id === item.id &&
-                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
+                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
                     ? {
                         ...cartItem,
                         quantity: cartItem.quantity + 1,
@@ -184,9 +184,9 @@ function Front() {
         setCartItems(prevItems =>
             prevItems.map(cartItem =>
                 cartItem.id === item.id &&
-                JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
-                cartItem.quantity > 1
+                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
+                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
+                    cartItem.quantity > 1
                     ? {
                         ...cartItem,
                         quantity: cartItem.quantity - 1,
@@ -472,7 +472,7 @@ function Front() {
                     </div>
 
                     <div className="col-lg-7 row2">
-                        <div className="row">
+                        <div className="row" style={{ height: '90vh', overflowY: 'auto' }}> {/* Scrollable container */}
                             {filteredItems.map((item, index) => (
                                 <div className="col-lg-3 col-md-4 col-6 align-items-center my-2" key={index}>
                                     <div className="card" onClick={() => handleItemClick(item)}>
@@ -483,8 +483,8 @@ function Front() {
                                     </div>
                                 </div>
                             ))}
-                            <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} />
                         </div>
+                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} /> {/* Outside scroll */}
                     </div>
 
                     <div className="col-lg-4 row1 px-4">
@@ -492,7 +492,8 @@ function Front() {
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
                                     <div className='row'>
-                                        <div className='col-lg-1 text-start'>
+                                        <div className='col-lg-1 text-start' style={{ position: "relative" }}>
+
                                             <h1
                                                 className="display-4 fs-2"
                                                 style={{
@@ -502,9 +503,21 @@ function Front() {
                                                     padding: tableNumber ? "4px 20px" : "0",
                                                     display: "flex",
                                                     alignItems: "center",
-                                                    justifyContent: "center"
+                                                    justifyContent: "center",
                                                 }}
                                             >
+                                                <small
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: "0px", 
+                                                        left: "50%",
+                                                        transform: "translateX(-50%)",
+                                                        fontSize: "10px",
+                                                        color: "#fff",
+                                                    }}
+                                                >
+                                                    T.no
+                                                </small>
                                                 {tableNumber}
                                             </h1>
                                         </div>
@@ -646,75 +659,77 @@ function Front() {
                                     </div>
 
                                     <div className="table-responsive mt-3">
-                                        <table className="table border text-start">
-                                            <thead className="text-start">
-                                                <tr>
-                                                    <th>T.No.</th>
-                                                    <th>Item Name</th>
-                                                    <th>Qty</th>
-                                                    <th>Price</th>
-                                                    <th>Total Price</th>
-                                                    <th></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="text-start">
-                                                {cartItems.map((item, index) => {
-                                                    const price = item.totalPrice || 0;
-                                                    const quantity = item.quantity || 1;
+    <table className="table border text-start">
+        <thead className="text-start">
+            <tr>
+                <th>T.No.</th>
+                <th>Item Name</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total Price</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody className="text-start">
+            {cartItems.map((item, index) => {
+                const price = item.totalPrice || 0;
+                const quantity = item.quantity || 1;
 
-                                                    return (
-                                                        <tr key={index}>
-                                                            <td className='text-start'>{tableNumber}</td>
-                                                            <td className='text-start'>
-                                                                {item.name}
-                                                                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                        {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                                                            <li key={addonName}>+ {addonName} (${addonPrice})</li>
-                                                                        ))}
-                                                                    </ul>
-                                                                )}
-                                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                                        {item.selectedCombos.map((combo, idx) => (
-                                                                            <li key={idx}>+ {combo.name1} - ${combo.combo_price}</li>
-                                                                        ))}
-                                                                    </ul>
-                                                                )}
-                                                            </td>
-                                                            <td>
-                                                                <button
-                                                                    className="btn btn-secondary btn-sm me-2"
-                                                                    onClick={() => decreaseQuantity(item)}
-                                                                    disabled={quantity <= 1}
-                                                                >
-                                                                    -
-                                                                </button>
-                                                                {quantity}
-                                                                <button
-                                                                    className="btn btn-secondary btn-sm ms-2"
-                                                                    onClick={() => increaseQuantity(item)}
-                                                                >
-                                                                    +
-                                                                </button>
-                                                            </td>
-                                                            <td className='text-start'>${item.basePrice}</td>
-                                                            <td className='text-start'>${item.totalPrice.toFixed(2)}</td>
-                                                            <td>
-                                                                <button
-                                                                    className="btn btn-sm"
-                                                                    onClick={() => removeFromCart(item)}
-                                                                    title="Remove Item"
-                                                                >
-                                                                    <i className="bi bi-trash"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                return (
+                    <tr key={index}>
+                        <td className='text-start'>{tableNumber}</td>
+                        <td className='text-start'>
+                            {item.name}
+                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                    {Object.entries(item.addonCounts)
+                                        .filter(([_, addonPrice]) => addonPrice > 0) // Only show add-ons with price > 0
+                                        .map(([addonName, addonPrice]) => (
+                                            <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                        ))}
+                                </ul>
+                            )}
+                            {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                    {item.selectedCombos.map((combo, idx) => (
+                                        <li key={idx}>+ {combo.name1} - ${combo.combo_price}</li>
+                                    ))}
+                                </ul>
+                            )}
+                        </td>
+                        <td>
+                            <button
+                                className="btn btn-secondary btn-sm me-2"
+                                onClick={() => decreaseQuantity(item)}
+                                disabled={quantity <= 1}
+                            >
+                                -
+                            </button>
+                            {quantity}
+                            <button
+                                className="btn btn-secondary btn-sm ms-2"
+                                onClick={() => increaseQuantity(item)}
+                            >
+                                +
+                            </button>
+                        </td>
+                        <td className='text-start'>${item.basePrice}</td>
+                        <td className='text-start'>${item.totalPrice.toFixed(2)}</td>
+                        <td>
+                            <button
+                                className="btn btn-sm"
+                                onClick={() => removeFromCart(item)}
+                                title="Remove Item"
+                            >
+                                <i className="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                );
+            })}
+        </tbody>
+    </table>
+</div>
                                 </div>
                             </div>
                         </div>

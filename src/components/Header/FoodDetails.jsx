@@ -17,7 +17,6 @@ const FoodDetails = ({ item, onClose }) => {
     const [showModal, setShowModal] = useState(false);
     const [quantity, setQuantity] = useState(1);
 
-
     useEffect(() => {
         const fetchItemDetails = async () => {
             try {
@@ -73,46 +72,27 @@ const FoodDetails = ({ item, onClose }) => {
     useEffect(() => {
         if (fetchedItem) {
             const basePrice = fetchedItem.price;
-
             const addonsPrice = Object.entries(addonCounts).reduce((sum, [addonName, price]) => sum + price, 0);
-
             const comboPrice = selectedCombos.reduce((sum, combo) => {
                 const comboDetail = fetchedItem.combos.find(c => c.name1 === combo.name1);
                 const comboBasePrice = comboDetail ? comboDetail.combo_price : 0;
                 return sum + comboBasePrice;
             }, 0);
-
-            // Calculate total price and multiply by quantity
             const finalPrice = basePrice + addonsPrice + comboPrice;
             setTotalPrice(finalPrice * quantity);
         }
     }, [selectedSize, addonCounts, selectedCombos, comboSizes, fetchedItem, quantity]);
 
-
-
     const handleSizeChange = (size) => setSelectedSize(size);
 
-    const handleAddonCheck = (addon, checked) => {
-        setAddonCounts((prev) => ({
-            ...prev,
-            [addon.name1]: checked ? addon.addon_price : 0,
-        }));
-        handleAddonChange(addon.addon_price, checked);
-    };
-
-    const handleAddonChange = (addonPrice, isChecked) => {
-        setTotalPrice((prevPrice) =>
-            isChecked ? prevPrice + addonPrice : prevPrice - addonPrice
-        );
-    };
-
-    const openAddonPopup = (addon) => setSelectedAddon(addon);
-
-    const closeAddonPopup = () => {
-        if (selectedAddon && addonCounts[selectedAddon.name1] === undefined) {
-            setAddonCounts((prev) => ({ ...prev, [selectedAddon.name1]: 0 }));
-        }
-        setSelectedAddon(null);
+    const toggleAddonSelection = (addon) => {
+        setAddonCounts((prev) => {
+            const isSelected = prev[addon.name1] > 0;
+            return {
+                ...prev,
+                [addon.name1]: isSelected ? 0 : addon.addon_price,
+            };
+        });
     };
 
     const toggleComboSelection = (combo) => {
@@ -182,8 +162,8 @@ const FoodDetails = ({ item, onClose }) => {
                                     <img
                                         src={fetchedItem?.image}
                                         alt={fetchedItem?.name}
-                                        width={100}
-                                        height={100}
+                                        width={150}
+                                        height={150}
                                         className="mb-3 rounded d-flex mx-auto"
                                     />
                                     <i className="fa-solid fa-info info-icon" onClick={() => setShowModal(true)}></i>
@@ -194,7 +174,8 @@ const FoodDetails = ({ item, onClose }) => {
                                 <strong>Category:</strong> {fetchedItem?.category}
                             </p>
                             <p className="text-center">
-                                <strong>Total Price:</strong> ${totalPrice.toFixed(2)}</p>
+                                <strong>Total Price:</strong> ${totalPrice.toFixed(2)}
+                            </p>
                             <div className="quantity-container">
                                 <button className="quantity-btn minus" onClick={decreaseQuantity}>−</button>
                                 <span className="quantity-value">{quantity}</span>
@@ -221,22 +202,20 @@ const FoodDetails = ({ item, onClose }) => {
                                 {fetchedItem?.addons?.length > 0 && (
                                     <div className="mt-3">
                                         <strong>Add-ons:</strong>
-                                        <ul className="addons-list d-flex justify-content-evenly">
+                                        <ul className="addons-list d-flex justify-content-evenly flex-wrap">
                                             {fetchedItem.addons.map((addon) => {
                                                 const baseUrl = 'http://109.199.100.136:6060/';
+                                                const isSelected = addonCounts[addon.name1] > 0;
                                                 return (
-                                                    <li key={addon.name1} className="addon-item">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={addonCounts[addon.name1] > 0 || false}
-                                                            onChange={(e) =>
-                                                                handleAddonCheck(addon, e.target.checked)
-                                                            }
-                                                        />
+                                                    <li
+                                                        key={addon.name1}
+                                                        className={`addon-item ${isSelected ? 'selected' : ''}`}
+                                                        onClick={() => toggleAddonSelection(addon)}
+                                                    >
                                                         <img
                                                             src={addon.addon_image ? `${baseUrl}${addon.addon_image}` : 'default-addon-image.jpg'}
-                                                            width={50}
-                                                            height={50}
+                                                            width={75}
+                                                            height={75}
                                                             className="mx-2 rounded"
                                                             alt={addon.name1}
                                                             onError={(e) => {
@@ -253,27 +232,6 @@ const FoodDetails = ({ item, onClose }) => {
                                     </div>
                                 )}
 
-                                {selectedAddon && (
-                                    <div className="addon-popup card shadow">
-                                        <div className="card-body">
-                                            <h5 className="card-title text-center">
-                                                Customize Add-on: {selectedAddon.name1}
-                                            </h5>
-                                            <img
-                                                src={selectedAddon.addon_image ? `${baseUrl}${selectedAddon.addon_image}` : 'default-addon-image.jpg'}
-                                                alt={selectedAddon.name1}
-                                                width={80}
-                                                height={80}
-                                                className="mb-3"
-                                            />
-                                            <div className="text-center mt-4">
-                                                <button className="btn" onClick={closeAddonPopup}>
-                                                    Done
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                                 {fetchedItem?.combos?.length > 0 && (
                                     <div>
                                         <div className="form-check mt-4">
@@ -289,37 +247,37 @@ const FoodDetails = ({ item, onClose }) => {
                                             <div className="combo-list mt-3">
                                                 <h5>Combo Options:</h5>
                                                 <div className="row">
-                                                    {fetchedItem.combos.map((combo) => (
-                                                        <div
-                                                            key={combo.name1}
-                                                            className={`col-lg-3 col-md-4 col-6 text-center mb-3 ${selectedCombos.some((selected) => selected.name1 === combo.name1) ? 'selected' : ''
-                                                                }`}
-                                                            onClick={() => toggleComboSelection(combo)}
-                                                        >
-                                                            <div className="combo-option">
-                                                                <img
-                                                                    src={combo.combo_image ? `http://109.199.100.136:6060${combo.combo_image}` : 'default-combo-image.jpg'}
-                                                                    alt={combo.name1}
-                                                                    width={100}
-                                                                    height={70}
-                                                                    className="rounded mb-2"
-                                                                />
-                                                                <p>{combo.name1}</p>
-                                                                <p>${combo.combo_price}</p>
+                                                    {fetchedItem.combos.map((combo) => {
+                                                        const isSelected = selectedCombos.some((selected) => selected.name1 === combo.name1);
+                                                        return (
+                                                            <div
+                                                                key={combo.name1}
+                                                                className={`col-lg-3 col-md-4 col-6 text-center mb-3 combo-item ${isSelected ? 'selected' : ''}`}
+                                                                onClick={() => toggleComboSelection(combo)}
+                                                            >
+                                                                <div className="combo-option">
+                                                                    <img
+                                                                        src={combo.combo_image ? `http://109.199.100.136:6060${combo.combo_image}` : 'default-combo-image.jpg'}
+                                                                        alt={combo.name1}
+                                                                        width={100}
+                                                                        height={70}
+                                                                        className="rounded mb-2"
+                                                                    />
+                                                                    <p>{combo.name1}</p>
+                                                                    <p>${combo.combo_price}</p>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 )}
-                                {/* Quantity controls */}
-
                                 {showModal && (
                                     <div className="modal-overlay">
                                         <div className="modal-content p-3">
-                                            <span className="close-btn" role="button" onClick={() => setShowModal(false)}>&times;</span>
+                                            <span className="close-btn" role="button" onClick={() => setShowModal(false)}>×</span>
                                             {fetchedItem?.ingredients?.length > 0 ? (
                                                 <div className="ingredient-container">
                                                     <h3 className="ingredient-title">Ingredients</h3>
@@ -363,7 +321,6 @@ const FoodDetails = ({ item, onClose }) => {
                                         </div>
                                     </div>
                                 )}
-
                             </div>
                         </div>
                         <div className="modal-footer">

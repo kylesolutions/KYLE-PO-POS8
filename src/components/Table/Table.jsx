@@ -57,7 +57,7 @@ function Table() {
 
   return (
     <>
-      <i className="fi fi-rs-angle-small-left back-button" onClick={() => navigate('/firsttab')}></i>
+      <i className="fi fi-rs-angle-small-left back-button1" onClick={() => navigate('/firsttab')}></i>
       <div className="table-page container">
         <h1>Restaurant Table Layout</h1>
         <div className="table-grid row">

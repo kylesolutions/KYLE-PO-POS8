@@ -1,5 +1,8 @@
-.addons-list{
-    list-style: none;
+/* Existing styles unchanged unless noted */
+.addons-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .image-i {
@@ -16,7 +19,8 @@
   padding: 5px;
   border-radius: 50%;
   font-size: 14px;
-  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); 
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
 }
 
 .close-btn {
@@ -36,138 +40,216 @@
   transition: 0.3s;
 }
 
-/* addons */
+/* Add-ons */
+.addon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 10px;
+  margin: 5px;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
 
-.addon-popup {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1050;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    width: 300px;
-  }
-  .addon-popup1 {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1050;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    width: 500px;
-  }
-  .addon-popup .card-body {
-    padding: 20px;
-  }
-  .addon-popup img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 4px;
-  }
-  .addonName{
-    font-size: small
-  }
-  .addon-options input{
-    margin-right: 10px;
-  }
-  .addon-options1 input{
-    margin-right: 10px;
-  }
+.addon-item:hover {
+  background-color: #f0f0f0;
+}
 
+.addon-item.selected {
+  border: 2px solid #007bff; /* Blue border for selected add-ons */
+  background-color: #e7f1ff; /* Light blue background */
+}
 
-  /* ingredients */
+.addon-item img {
+  width: 75px;
+  height: 75px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+}
 
-.ingredient-container {
-    margin: 20px 0;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  }
-  
-  .ingredient-title {
-    margin-bottom: 16px;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #333;
-    text-align: center;
-    border-bottom: 2px solid #ddd;
-    padding-bottom: 8px;
-  }
-  
-  .ingredient-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 16px;
-  }
-  
-  .ingredient-table th,
-  .ingredient-table td {
-    padding: 10px;
-    text-align: center;
-    border: 1px solid #ddd;
-  }
-  
-  .ingredient-table th {
-    background-color: #f2f2f2;
-    font-weight: bold;
-  }
-  
-  .ingredient-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-  }
-  
-  .ingredient-table tr:hover {
-    background-color: #f1f1f1;
-  }
+.addon-item span {
+  font-size: 14px;
+  text-align: center;
+}
 
+/* Combos */
+.combo-item {
+  transition: all 0.3s ease;
+}
 
-  .quantity-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 10px;
+.combo-item:hover {
+  background-color: #f0f0f0;
+}
+
+.combo-item.selected {
+  border: 2px solid #007bff; /* Blue border for selected combos */
+  background-color: #e7f1ff; /* Light blue background */
+  border-radius: 8px; /* Match add-ons */
+}
+
+.combo-option {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.combo-option img {
+  width: 100px;
+  height: 70px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+}
+
+.combo-option p {
+  margin: 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Main item image */
+.image-i img {
+  width: 150px;
+  height: 150px;
+  border-radius: 8px;
+}
+
+/* Remaining styles unchanged */
+.quantity-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .quantity-btn {
-    width: 35px;
-    height: 35px;
-    font-size: 22px;
-    font-weight: bold;
-    border: none;
-    background-color: #396ea7;
-    color: white;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+  width: 35px;
+  height: 35px;
+  font-size: 22px;
+  font-weight: bold;
+  border: none;
+  background-color: #396ea7;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .quantity-btn:hover {
-    background-color: #326dac;
-    transform: scale(1.1);
+  background-color: #326dac;
+  transform: scale(1.1);
 }
 
 .quantity-btn:active {
-    transform: scale(0.9);
+  transform: scale(0.9);
 }
 
 .quantity-btn.minus {
-    background-color: #bd4f5a;
+  background-color: #bd4f5a;
 }
 
 .quantity-btn.minus:hover {
-    background-color: #b02a37;
+  background-color: #b02a37;
 }
 
 .quantity-value {
-    font-size: 20px;
-    font-weight: bold;
-    min-width: 30px;
-    text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+}
+
+/* Ingredients styles unchanged */
+
+/* Ingredients */
+.ingredient-container {
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.ingredient-title {
+  margin-bottom: 16px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 8px;
+}
+
+.ingredient-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.ingredient-table th,
+.ingredient-table td {
+  padding: 10px;
+  text-align: center;
+  border: 1px solid #ddd;
+}
+
+.ingredient-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.ingredient-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.ingredient-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+/* Quantity controls */
+.quantity-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.quantity-btn {
+  width: 35px;
+  height: 35px;
+  font-size: 22px;
+  font-weight: bold;
+  border: none;
+  background-color: #396ea7;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.quantity-btn:hover {
+  background-color: #326dac;
+  transform: scale(1.1);
+}
+
+.quantity-btn:active {
+  transform: scale(0.9);
+}
+
+.quantity-btn.minus {
+  background-color: #bd4f5a;
+}
+
+.quantity-btn.minus:hover {
+  background-color: #b02a37;
+}
+
+.quantity-value {
+  font-size: 20px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
 }

@@ -1,21 +1,70 @@
-.mainTab{
-    height: 100vh;  
+/* Container styling */
+.main {
+    padding: 20px; /* Add padding for breathing room */
+    min-height: 100vh; /* Full height for centering */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background-color: #f8f9fa; /* Light background for contrast */
 }
-.main{
-    background: #979797;
-}
-.mainButton{
-    background-color: rgb(241, 229, 214);
+
+/* Back button styling */
+.back-button {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    font-size: 2rem; /* Larger icon */
+    color: #007bff; /* Bootstrap primary color */
+    background: none;
     border: none;
-    border-radius: 2px;
-    padding: 50px 100px;
-    width: 500px;
+    cursor: pointer;
+    transition: color 0.3s ease;
 }
-.mainButton:focus{
-    background-color:azure;
+
+.back-button:hover {
+    color: #0056b3; /* Darker shade on hover */
+}
+
+/* Main button styling */
+.main-button {
+    width: 100%; /* Full width of column */
+    max-width: 250px; /* Cap button width */
+    padding: 15px 20px; /* Larger padding for touch targets */
+    font-size: 1.2rem; /* Larger text */
+    font-weight: bold;
+    text-transform: uppercase; /* Consistent with your design */
+    color: white;
+    background-color: #007bff; /* Bootstrap primary color */
     border: none;
-    border-radius: 2px; 
+    border-radius: 8px; /* Rounded corners */
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
 }
-.back-button{
-    font-size: 50px;
+
+.main-button:hover {
+    background-color: #0056b3; /* Darker shade on hover */
+    transform: scale(1.05); /* Slight scale-up effect */
+}
+
+.main-button:active {
+    transform: scale(0.95); /* Slight press effect */
+}
+
+/* Responsive adjustments */
+@media (max-width: 767px) {
+    .main-button {
+        font-size: 1rem; /* Smaller text on mobile */
+        padding: 12px 15px; /* Adjust padding */
+    }
+}
+
+@media (max-width: 575px) {
+    .main {
+        padding: 15px; /* Reduce padding on small screens */
+    }
+    .back-button {
+        font-size: 1.5rem; /* Smaller icon on mobile */
+        top: 10px;
+        left: 10px;
+    }
 }
