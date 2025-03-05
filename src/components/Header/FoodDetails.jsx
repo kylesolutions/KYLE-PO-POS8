@@ -6,14 +6,14 @@ const FoodDetails = ({ item, onClose }) => {
     if (!item) return null;
 
     const { addToCart, setTotalPrice, totalPrice } = useContext(UserContext);
-    const sizePriceMultipliers = { S: 1.0, M: 1.2, L: 1.5 };
     const [selectedSize, setSelectedSize] = useState("M");
     const [addonCounts, setAddonCounts] = useState({});
-    const [selectedAddon, setSelectedAddon] = useState(null);
-    const [comboSizes, setComboSizes] = useState({});
+    const [selectedCombo, setSelectedCombo] = useState(null);
+    const [comboVariants, setComboVariants] = useState({});
     const [selectedCombos, setSelectedCombos] = useState([]);
     const [showCombos, setShowCombos] = useState(false);
     const [fetchedItem, setFetchedItem] = useState(null);
+    const [allItems, setAllItems] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [quantity, setQuantity] = useState(1);
 
@@ -34,33 +34,42 @@ const FoodDetails = ({ item, onClose }) => {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
                 const data = await response.json();
+                console.log("Raw API Response:", data); // Debug: Log raw response
 
-                if (data && Array.isArray(data.message)) {
-                    const baseUrl = "http://109.199.100.136:6060/";
-                    const selectedItem = data.message.find((i) => i.name === item.name);
-
-                    if (selectedItem) {
-                        const formattedAddonData = selectedItem.addons || [];
-                        const formattedComboData = selectedItem.combos || [];
-                        const formattedIngredientsData = selectedItem.ingredients || [];
-
-                        setFetchedItem({
-                            name: selectedItem.item_name,
-                            category: selectedItem.item_group,
-                            kitchen: selectedItem.kitchen,
-                            image: selectedItem.image
-                                ? `${baseUrl}${selectedItem.image}`
-                                : "default-image.jpg",
-                            price: selectedItem.price_list_rate || 0,
-                            addons: formattedAddonData,
-                            combos: formattedComboData,
-                            ingredients: formattedIngredientsData,
-                            calories: selectedItem.custom_total_calories,
-                            protein: selectedItem.custom_total_protein,
-                        });
-                    }
+                let itemList;
+                if (data && Array.isArray(data)) {
+                    itemList = data; // Direct array
+                } else if (data && data.message && Array.isArray(data.message)) {
+                    itemList = data.message; // Wrapped in message
                 } else {
                     throw new Error("Invalid data structure");
+                }
+
+                const baseUrl = "http://109.199.100.136:6060/";
+                setAllItems(itemList);
+                const selectedItem = itemList.find((i) => i.name === item.name);
+
+                if (selectedItem) {
+                    const formattedAddonData = selectedItem.addons || [];
+                    const formattedComboData = selectedItem.combos || [];
+                    const formattedVariantData = selectedItem.variants || [];
+                    const formattedIngredientsData = selectedItem.ingredients || [];
+
+                    setFetchedItem({
+                        name: selectedItem.item_name,
+                        category: selectedItem.item_group,
+                        kitchen: selectedItem.kitchen,
+                        image: selectedItem.image
+                            ? `${baseUrl}${selectedItem.image}`
+                            : "default-image.jpg",
+                        price: selectedItem.price_list_rate || 0,
+                        addons: formattedAddonData,
+                        combos: formattedComboData,
+                        variants: formattedVariantData,
+                        ingredients: formattedIngredientsData,
+                        calories: selectedItem.custom_total_calories,
+                        protein: selectedItem.custom_total_protein,
+                    });
                 }
             } catch (error) {
                 console.error("Error fetching item details:", error);
@@ -81,7 +90,7 @@ const FoodDetails = ({ item, onClose }) => {
             const finalPrice = basePrice + addonsPrice + comboPrice;
             setTotalPrice(finalPrice * quantity);
         }
-    }, [selectedSize, addonCounts, selectedCombos, comboSizes, fetchedItem, quantity]);
+    }, [addonCounts, selectedCombos, fetchedItem, quantity]);
 
     const handleSizeChange = (size) => setSelectedSize(size);
 
@@ -95,25 +104,31 @@ const FoodDetails = ({ item, onClose }) => {
         });
     };
 
-    const toggleComboSelection = (combo) => {
+    const handleComboClick = (combo) => {
+        const comboItem = allItems.find(i => i.name === combo.name1);
+        if (comboItem && comboItem.custom_variant_applicable && comboItem.variants?.length > 0) {
+            setSelectedCombo({ ...combo, variants: comboItem.variants });
+        } else {
+            toggleComboSelection(combo);
+        }
+    };
+
+    const toggleComboSelection = (combo, variant = null) => {
         setSelectedCombos((prevCombos) => {
             const isAlreadySelected = prevCombos.some((selected) => selected.name1 === combo.name1);
             if (isAlreadySelected) {
                 return prevCombos.filter((selected) => selected.name1 !== combo.name1);
             } else {
-                return [...prevCombos, combo];
+                return [...prevCombos, { ...combo, selectedVariant: variant }];
             }
         });
-
-        setComboSizes((prevSizes) => {
-            if (prevSizes[combo.name1]) {
-                const newSizes = { ...prevSizes };
-                delete newSizes[combo.name1];
-                return newSizes;
-            } else {
-                return { ...prevSizes, [combo.name1]: 'M' };
-            }
-        });
+        if (variant) {
+            setComboVariants((prev) => ({
+                ...prev,
+                [combo.name1]: variant,
+            }));
+        }
+        setSelectedCombo(null);
     };
 
     const handleAddToCart = () => {
@@ -127,10 +142,8 @@ const FoodDetails = ({ item, onClose }) => {
             addonCounts,
             selectedCombos: selectedCombos.map((combo) => ({
                 ...combo,
-                size: comboSizes[combo.name1] || "M",
-                price: 50 * sizePriceMultipliers[comboSizes[combo.name1] || "M"],
+                selectedVariant: combo.selectedVariant || null,
             })),
-            selectedAddon,
             kitchen: item.kitchen,
             quantity,
             totalPrice,
@@ -184,19 +197,22 @@ const FoodDetails = ({ item, onClose }) => {
 
                             <div>
                                 {fetchedItem?.variants?.length > 0 && (
-                                    <div className="radio-inputs" role="group" aria-label="Size selection">
-                                        {Object.keys(sizePriceMultipliers).map((size) => (
-                                            <label key={size} className="radio">
-                                                <input
-                                                    type="radio"
-                                                    name="size"
-                                                    value={size}
-                                                    checked={selectedSize === size}
-                                                    onChange={() => handleSizeChange(size)}
-                                                />
-                                                <span className="name">{size}</span>
-                                            </label>
-                                        ))}
+                                    <div className="mt-3">
+                                        <strong>Variants:</strong>
+                                        <div className="radio-inputs" role="group" aria-label="Variant selection">
+                                            {fetchedItem.variants.map((variant, index) => (
+                                                <label key={index} className="radio">
+                                                    <input
+                                                        type="radio"
+                                                        name="variant"
+                                                        value={variant.type_of_variants}
+                                                        checked={selectedSize === variant.type_of_variants}
+                                                        onChange={() => handleSizeChange(variant.type_of_variants)}
+                                                    />
+                                                    <span className="name">{variant.type_of_variants}</span>
+                                                </label>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                                 {fetchedItem?.addons?.length > 0 && (
@@ -253,7 +269,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                             <div
                                                                 key={combo.name1}
                                                                 className={`col-lg-3 col-md-4 col-6 text-center mb-3 combo-item ${isSelected ? 'selected' : ''}`}
-                                                                onClick={() => toggleComboSelection(combo)}
+                                                                onClick={() => handleComboClick(combo)}
                                                             >
                                                                 <div className="combo-option">
                                                                     <img
@@ -274,6 +290,40 @@ const FoodDetails = ({ item, onClose }) => {
                                         )}
                                     </div>
                                 )}
+
+                                {selectedCombo && (
+                                    <div className="combo-popup card shadow">
+                                        <div className="card-body">
+                                            <h5 className="card-title text-center">
+                                                Select Variant for {selectedCombo.name1}
+                                            </h5>
+                                            <img
+                                                src={selectedCombo.combo_image ? `http://109.199.100.136:6060${selectedCombo.combo_image}` : 'default-combo-image.jpg'}
+                                                alt={selectedCombo.name1}
+                                                width={80}
+                                                height={80}
+                                                className="mb-3 d-block mx-auto"
+                                            />
+                                            <div className="variant-options">
+                                                {selectedCombo.variants.map((variant, index) => (
+                                                    <button
+                                                        key={index}
+                                                        className={`btn ${comboVariants[selectedCombo.name1] === variant.type_of_variants ? 'btn-primary' : 'btn-outline-secondary'} m-2`}
+                                                        onClick={() => toggleComboSelection(selectedCombo, variant.type_of_variants)}
+                                                    >
+                                                        {variant.type_of_variants}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="text-center mt-4">
+                                                <button className="btn btn-secondary" onClick={() => setSelectedCombo(null)}>
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {showModal && (
                                     <div className="modal-overlay">
                                         <div className="modal-content p-3">

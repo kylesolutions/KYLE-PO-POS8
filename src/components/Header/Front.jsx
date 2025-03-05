@@ -69,6 +69,7 @@ function Front() {
                         price: item.price_list_rate || 0,
                         addons: item.addons || [],
                         combos: item.combos || [],
+                        variants: item.variants || [],
                         ingredients: item.ingredients || [],
                         kitchen: item.custom_kitchen,
                         type: item.type || "regular"
@@ -364,6 +365,11 @@ function Front() {
         handleClose();
     };
 
+    const [customerInput, setCustomerInput] = useState(""); // New state for input value
+    const [filteredCustomers, setFilteredCustomers] = useState([]); // Filtered customer list
+    const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false); // Show/hide suggestions
+
+    // Fetch customers (unchanged)
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
@@ -378,8 +384,10 @@ function Front() {
                 console.log("Raw API Response:", data);
                 if (Array.isArray(data)) {
                     setCustomers(data);
+                    setFilteredCustomers(data); // Initially show all customers
                 } else if (data.message && Array.isArray(data.message)) {
                     setCustomers(data.message);
+                    setFilteredCustomers(data.message);
                 }
             } catch (error) {
                 console.error("Network error:", error);
@@ -388,34 +396,78 @@ function Front() {
         fetchCustomers();
     }, []);
 
-    const handleCreateCustomer = async () => {
-        if (!newCustomerName.trim()) {
+    // Handle customer input change and filtering
+    const handleCustomerInputChange = (e) => {
+        const value = e.target.value;
+        setCustomerInput(value);
+        setCustomerName(value); // Sync with customerName for consistency
+        setShowCustomerSuggestions(true);
+
+        if (value.trim() === "") {
+            setFilteredCustomers(customers); // Show all if input is empty
+        } else {
+            const filtered = customers.filter((customer) =>
+                customer.customer_name.toLowerCase().includes(value.toLowerCase())
+            );
+            setFilteredCustomers(filtered);
+        }
+    };
+
+    // Handle customer selection from suggestions
+    const handleCustomerSelect = (customerName) => {
+        setCustomerInput(customerName);
+        setCustomerName(customerName);
+        setShowCustomerSuggestions(false);
+    };
+
+    // Handle Enter key or button to create new customer
+    const handleCustomerSubmit = async () => {
+        const trimmedInput = customerInput.trim();
+        if (!trimmedInput) {
             alert("Customer name is required.");
             return;
         }
-        try {
-            const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                },
-                body: JSON.stringify({ customer_name: newCustomerName.trim() }),
-            });
 
-            const data = await response.json();
-            if (data.status === "success") {
-                alert("Customer creation done successfully");
-                const newCustomer = { customer_name: newCustomerName.trim() };
-                setCustomers((prev) => [...prev, newCustomer]);
-                setCustomerName(newCustomerName.trim());
-                setNewCustomerName("");
-            } else {
-                alert(data.message);
+        // Check if customer already exists
+        const customerExists = customers.some(
+            (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
+        );
+
+        if (!customerExists) {
+            try {
+                const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                    },
+                    body: JSON.stringify({ customer_name: trimmedInput }),
+                });
+
+                const data = await response.json();
+                if (data.status === "success") {
+                    alert("Customer created successfully!");
+                    const newCustomer = { customer_name: trimmedInput };
+                    setCustomers((prev) => [...prev, newCustomer]);
+                    setFilteredCustomers((prev) => [...prev, newCustomer]);
+                    setCustomerName(trimmedInput);
+                } else {
+                    alert(data.message || "Failed to create customer.");
+                }
+            } catch (error) {
+                console.error("Error creating customer:", error);
+                alert("Failed to create customer. Please try again.");
             }
-        } catch (error) {
-            console.error("Error creating customer:", error);
-            alert("Failed to create customer. Please try again.");
+        } else {
+            setCustomerName(trimmedInput); // Use existing customer
+        }
+        setShowCustomerSuggestions(false);
+    };
+
+    // Handle Enter key press
+    const handleKeyPress = (e) => {
+        if (e.key === "Enter") {
+            handleCustomerSubmit();
         }
     };
 
@@ -472,7 +524,7 @@ function Front() {
                     </div>
 
                     <div className="col-lg-7 row2">
-                        <div className="row" style={{ height: '90vh', overflowY: 'auto' }}> {/* Scrollable container */}
+                        <div className="row" style={{ height: '90vh', overflowY: 'auto' }}>
                             {filteredItems.map((item, index) => (
                                 <div className="col-lg-3 col-md-4 col-6 align-items-center my-2" key={index}>
                                     <div className="card" onClick={() => handleItemClick(item)}>
@@ -484,7 +536,7 @@ function Front() {
                                 </div>
                             ))}
                         </div>
-                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} /> {/* Outside scroll */}
+                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} />
                     </div>
 
                     <div className="col-lg-4 row1 px-4">
@@ -521,90 +573,67 @@ function Front() {
                                                 {tableNumber}
                                             </h1>
                                         </div>
-                                        <div className='col-10 col-lg-5 mb-2'>
-                                            <select
-                                                id="customer-select"
-                                                value={customerName}
-                                                onChange={(e) => setCustomerName(e.target.value)}
+                                        <div className='col-10 col-lg-5 mb-2 position-relative'>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="Enter Customer Name"
+                                            value={customerInput}
+                                            onChange={handleCustomerInputChange}
+                                            onKeyPress={handleKeyPress}
+                                            style={{
+                                                width: "100%",
+                                                padding: "10px",
+                                                border: "1px solid #ccc",
+                                                borderRadius: "5px",
+                                                fontSize: "1rem",
+                                            }}
+                                        />
+                                        {showCustomerSuggestions && filteredCustomers.length > 0 && (
+                                            <ul
+                                                className="customer-suggestions"
                                                 style={{
+                                                    position: "absolute",
+                                                    top: "100%",
+                                                    left: 0,
                                                     width: "100%",
-                                                    padding: "10px",
+                                                    maxHeight: "150px",
+                                                    overflowY: "auto",
+                                                    backgroundColor: "#fff",
                                                     border: "1px solid #ccc",
                                                     borderRadius: "5px",
-                                                    fontSize: "1rem",
+                                                    listStyleType: "none",
+                                                    padding: 0,
+                                                    margin: 0,
+                                                    zIndex: 1000,
                                                 }}
                                             >
-                                                <option value="One Time Customer">One Time Customer</option>
-                                                {customers.map((customer, index) => (
-                                                    <option key={index} value={customer.customer_name}>
+                                                {filteredCustomers.map((customer, index) => (
+                                                    <li
+                                                        key={index}
+                                                        onClick={() => handleCustomerSelect(customer.customer_name)}
+                                                        style={{
+                                                            padding: "8px 12px",
+                                                            cursor: "pointer",
+                                                            borderBottom: "1px solid #eee",
+                                                        }}
+                                                        onMouseEnter={(e) => (e.target.style.backgroundColor = "#f0f0f0")}
+                                                        onMouseLeave={(e) => (e.target.style.backgroundColor = "#fff")}
+                                                    >
                                                         {customer.customer_name}
-                                                    </option>
+                                                    </li>
                                                 ))}
-                                            </select>
-                                        </div>
-                                        <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                            <span
-                                                onClick={() => setShowModal(true)}
-                                                style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
-                                            >
-                                                <i className="bi bi-plus"></i>
-                                            </span>
-                                        </div>
-
-                                        {showModal && (
-                                            <div
-                                                className="modal fade show d-block"
-                                                tabIndex="-1"
-                                                role="dialog"
-                                                aria-labelledby="customerModalLabel"
-                                                aria-hidden="true"
-                                                style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-                                            >
-                                                <div className="modal-dialog" role="document">
-                                                    <div className="modal-content">
-                                                        <div className="modal-header">
-                                                            <h5 className="modal-title" id="customerModalLabel">
-                                                                Create New Customer
-                                                            </h5>
-                                                            <button
-                                                                type="button"
-                                                                className="btn-close"
-                                                                onClick={() => setShowModal(false)}
-                                                            ></button>
-                                                        </div>
-                                                        <div className="modal-body">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Enter New Customer Name"
-                                                                value={newCustomerName}
-                                                                onChange={(e) => setNewCustomerName(e.target.value)}
-                                                                style={{
-                                                                    width: "100%",
-                                                                    padding: "10px",
-                                                                    marginBottom: "10px",
-                                                                    border: "1px solid #ccc",
-                                                                    borderRadius: "5px",
-                                                                    fontSize: "1rem",
-                                                                }}
-                                                            />
-                                                            <button
-                                                                onClick={handleCreateCustomer}
-                                                                className="btn w-100"
-                                                                style={{
-                                                                    padding: "10px 20px",
-                                                                    fontSize: "1rem",
-                                                                    fontWeight: "bold",
-                                                                    backgroundColor: 'black',
-                                                                    color: 'white'
-                                                                }}
-                                                            >
-                                                                Create Customer
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            </ul>
                                         )}
+                                    </div>
+                                    <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <span
+                                            onClick={handleCustomerSubmit}
+                                            style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
+                                        >
+                                            <i className="bi bi-check"></i> {/* Check icon to confirm */}
+                                        </span>
+                                    </div>
 
                                         {!isPhoneNumberSet ? (
                                             <>

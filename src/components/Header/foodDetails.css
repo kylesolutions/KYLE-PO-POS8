@@ -253,3 +253,32 @@
   min-width: 30px;
   text-align: center;
 }
+
+.combo-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1050;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 300px;
+}
+
+.combo-popup .card-body {
+  padding: 20px;
+}
+
+.combo-popup img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.variant-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
