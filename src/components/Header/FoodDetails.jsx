@@ -220,7 +220,6 @@ const FoodDetails = ({ item, onClose }) => {
                                 <strong>Item Total:</strong> ${itemTotal.toFixed(2)}
                             </p>
                             <div className="quantity-container">
-                                <strong>Main Item Quantity:</strong>
                                 <button className="quantity-btn minus" onClick={decreaseMainQuantity}>−</button>
                                 <span className="quantity-value">{mainQuantity}</span>
                                 <button className="quantity-btn plus" onClick={increaseMainQuantity}>+</button>

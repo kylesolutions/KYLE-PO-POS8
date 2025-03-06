@@ -16,7 +16,7 @@ function Front() {
     const [selectedItem, setSelectedItem] = useState(null);
     const [categories, setCategories] = useState([]);
     const [showButtons, setShowButtons] = useState(false);
-    const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems, totalPrice } = useContext(UserContext); // Removed updateAddonQuantity
+    const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems, totalPrice } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
     const { tableNumber, existingOrder } = state || {};
@@ -201,9 +201,9 @@ function Front() {
                 name: item.name,
                 price: item.basePrice,
                 quantity: item.quantity,
-                totalPrice: (item.basePrice * item.quantity) + // Base price * quantity
-                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + // Add-ons
-                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.combo_price || 0) + (combo.variantPrice || 0), 0), // Combos
+                totalPrice: (item.basePrice * item.quantity) + 
+                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
+                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.combo_price || 0) + (combo.variantPrice || 0), 0),
                 addonCounts: item.addonCounts || {},
                 selectedCombos: item.selectedCombos || [],
             })),
@@ -259,16 +259,34 @@ function Front() {
             return;
         }
 
-        const allItems = cartItems.map((item) => ({
-            item_name: item.name,
-            item_code: item.item_code || "",
-            description: item.description && item.description.trim() !== "" ? item.description : `Order for ${item.name}`,
-            qty: item.quantity,
-            rate: item.basePrice,
-            amount: item.basePrice * item.quantity,
-            addonCounts: item.addonCounts || {},
-            selectedCombos: item.selectedCombos || [],
-        }));
+        const allItems = cartItems.flatMap((item) => {
+            const mainItem = {
+                item_name: item.name,
+                item_code: item.item_code || "",
+                description: item.description && item.description.trim() !== "" ? item.description : `Order for ${item.name}`,
+                qty: item.quantity,
+                rate: item.basePrice,
+                amount: item.basePrice * item.quantity,
+            };
+
+            const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                item_name: addonName,
+                description: `Addon: ${addonName}`,
+                qty: quantity, // Use add-on quantity directly
+                rate: price,
+                amount: price * quantity,
+            }));
+
+            const comboItems = (item.selectedCombos || []).map((combo) => ({
+                item_name: combo.name1,
+                description: `Combo: ${combo.name1}`,
+                qty: item.quantity, // Combos tied to main item quantity
+                rate: combo.combo_price || 0,
+                amount: (combo.combo_price || 0) * item.quantity,
+            }));
+
+            return [mainItem, ...addonItems, ...comboItems];
+        });
 
         if (allItems.length === 0) {
             console.error("Error: No items in the cart.");
@@ -311,12 +329,13 @@ function Front() {
 
             const result = await response.json();
 
-            if (response.ok && result.status === "success") {
+            if (response.ok && result.status === "paid") {
                 alert(`POS Invoice saved successfully! Grand Total: ₹${result.grand_total}`);
                 setCartItems([]);
                 localStorage.removeItem("savedOrders");
             } else {
                 console.error("Backend response error:", result);
+                // alert(`Failed to save POS Invoice: ${result.message || "Unknown error"}`);
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
