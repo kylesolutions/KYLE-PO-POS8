@@ -48,21 +48,30 @@ function Cash() {
                                         <ul className="list-group mb-4">
                                             {billDetails.items.map((item, index) => (
                                                 <li key={index} className="list-group-item">
-                                                    <strong>{item.name}</strong> - ₹{item.price} x {item.quantity} = ₹{(item.totalPrice || 0).toFixed(2)}
+                                                    <strong>{item.name}</strong> - ₹{item.price} x {item.quantity} = ₹{(item.price * item.quantity).toFixed(2)}
                                                     {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                         <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                             {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                <li key={addonName}>+ {addonName} x{quantity} (₹{price * quantity})</li>
+                                                                <li key={addonName}>
+                                                                    + {addonName} x{quantity} (₹{(price * quantity).toFixed(2)})
+                                                                </li>
                                                             ))}
                                                         </ul>
                                                     )}
                                                     {item.selectedCombos && item.selectedCombos.length > 0 && (
                                                         <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                                                             {item.selectedCombos.map((combo, idx) => (
-                                                                <li key={idx}>+ {combo.name1} {combo.selectedVariant ? `(${combo.selectedVariant})` : ''} - ₹{(combo.combo_price || 0) + (combo.variantPrice || 0)}</li>
+                                                                <li key={idx}>
+                                                                    + {combo.name1} x{combo.quantity || 1} 
+                                                                    {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} 
+                                                                    - ₹{(((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1)).toFixed(2)}
+                                                                </li>
                                                             ))}
                                                         </ul>
                                                     )}
+                                                    <div style={{ marginTop: "5px", fontWeight: "bold" }}>
+                                                        Total: ₹{(item.totalPrice).toFixed(2)}
+                                                    </div>
                                                 </li>
                                             ))}
                                         </ul>

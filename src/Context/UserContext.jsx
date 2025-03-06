@@ -29,9 +29,10 @@ export const UserProvider = ({ children }) => {
             const combosPrice = (item.selectedCombos || []).reduce((comboSum, combo) => {
                 const comboBasePrice = combo.combo_price || 0;
                 const variantPrice = combo.variantPrice || 0;
-                return comboSum + comboBasePrice + variantPrice;
+                const comboQuantity = combo.quantity || 1; // Use combo-specific quantity
+                return comboSum + (comboBasePrice + variantPrice) * comboQuantity;
             }, 0);
-            return sum + (basePrice * item.quantity) + addonsPrice + combosPrice; // Adjusted to not multiply addons/combos by quantity
+            return sum + (basePrice * item.quantity) + addonsPrice + combosPrice;
         }, 0);
         setTotalPrice(newTotalPrice);
     }, [cartItems]);
@@ -51,8 +52,23 @@ export const UserProvider = ({ children }) => {
                     }
                 });
 
-                // Merge selectedCombos (stacking approach; adjust if needed)
-                const mergedCombos = [...(existingItem.selectedCombos || []), ...(newItem.selectedCombos || [])];
+                // Merge selectedCombos by stacking quantities for matching combos
+                const mergedCombos = [...(existingItem.selectedCombos || [])];
+                (newItem.selectedCombos || []).forEach((newCombo) => {
+                    const comboMatchIndex = mergedCombos.findIndex(
+                        (combo) =>
+                            combo.name1 === newCombo.name1 &&
+                            combo.selectedVariant === newCombo.selectedVariant
+                    );
+                    if (comboMatchIndex !== -1) {
+                        // Matching combo found, increase its quantity
+                        mergedCombos[comboMatchIndex].quantity =
+                            (mergedCombos[comboMatchIndex].quantity || 1) + (newCombo.quantity || 1);
+                    } else {
+                        // No match, add the new combo
+                        mergedCombos.push({ ...newCombo });
+                    }
+                });
 
                 return prevItems.map((cartItem, index) =>
                     index === existingItemIndex
@@ -60,7 +76,7 @@ export const UserProvider = ({ children }) => {
                               ...cartItem,
                               quantity: cartItem.quantity + newItem.quantity, // Increase main quantity
                               addonCounts: mergedAddonCounts, // Merge add-on quantities
-                              selectedCombos: mergedCombos, // Merge combos
+                              selectedCombos: mergedCombos, // Merge combos with quantities
                           }
                         : cartItem
                 );
@@ -81,7 +97,7 @@ export const UserProvider = ({ children }) => {
     const updateCartItem = (updatedItem) => {
         setCartItems((prevItems) =>
             prevItems.map((item) =>
-                item.id === updatedItem.id ? updatedItem : item // Simplified to match by id only
+                item.id === updatedItem.id ? updatedItem : item
             )
         );
     };

@@ -10,12 +10,12 @@ const FoodDetails = ({ item, onClose }) => {
     const [addonCounts, setAddonCounts] = useState({});
     const [selectedCombo, setSelectedCombo] = useState(null);
     const [comboVariants, setComboVariants] = useState({});
-    const [selectedCombos, setSelectedCombos] = useState([]);
+    const [selectedCombos, setSelectedCombos] = useState([]); // Now includes quantity
     const [showCombos, setShowCombos] = useState(false);
     const [fetchedItem, setFetchedItem] = useState(null);
     const [allItems, setAllItems] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [mainQuantity, setMainQuantity] = useState(1); // Renamed for clarity
+    const [mainQuantity, setMainQuantity] = useState(1); // Main item quantity
     const [itemTotal, setItemTotal] = useState(0);
 
     useEffect(() => {
@@ -90,7 +90,7 @@ const FoodDetails = ({ item, onClose }) => {
 
     useEffect(() => {
         if (fetchedItem) {
-            const basePrice = fetchedItem.price * mainQuantity; // Only main item price scales with quantity
+            const basePrice = fetchedItem.price * mainQuantity; // Main item price scales with mainQuantity
             const addonsPrice = Object.entries(addonCounts).reduce((sum, [_, { price, quantity }]) => 
                 sum + (price * quantity), 0); // Add-on price based on their own quantities
             const comboPrice = selectedCombos.reduce((sum, combo) => {
@@ -99,7 +99,7 @@ const FoodDetails = ({ item, onClose }) => {
                 const variantPrice = combo.selectedVariant 
                     ? (allItems.find(i => i.name === combo.name1)?.variants.find(v => v.type_of_variants === combo.selectedVariant)?.variant_price || 0) 
                     : 0;
-                return sum + comboBasePrice + variantPrice; // Combos treated as single units
+                return sum + (comboBasePrice + variantPrice) * combo.quantity; // Multiply by combo-specific quantity
             }, 0);
             const finalPrice = basePrice + addonsPrice + comboPrice;
             setItemTotal(finalPrice);
@@ -137,7 +137,7 @@ const FoodDetails = ({ item, onClose }) => {
             if (isAlreadySelected) {
                 return prevCombos.filter((selected) => selected.name1 !== combo.name1);
             } else {
-                return [...prevCombos, { ...combo, selectedVariant: variant }];
+                return [...prevCombos, { ...combo, selectedVariant: variant, quantity: 1 }]; // Default quantity 1
             }
         });
         if (variant) {
@@ -158,6 +158,18 @@ const FoodDetails = ({ item, onClose }) => {
         setSelectedCombo(null);
     };
 
+    const updateComboQuantity = (comboName, qtyChange) => {
+        setSelectedCombos((prevCombos) =>
+            prevCombos.map((combo) => {
+                if (combo.name1 === comboName) {
+                    const newQuantity = Math.max(1, combo.quantity + qtyChange); // Minimum 1
+                    return { ...combo, quantity: newQuantity };
+                }
+                return combo;
+            })
+        );
+    };
+
     const handleAddToCart = () => {
         const customizedItem = {
             id: item.id,
@@ -173,9 +185,10 @@ const FoodDetails = ({ item, onClose }) => {
                 ...combo,
                 selectedVariant: combo.selectedVariant || null,
                 variantPrice: allItems.find(i => i.name === combo.name1)?.variants.find(v => v.type_of_variants === combo.selectedVariant)?.variant_price || 0,
+                quantity: combo.quantity, // Include combo-specific quantity
             })),
             kitchen: item.kitchen,
-            quantity: mainQuantity, // Renamed for clarity
+            quantity: mainQuantity, // Main item quantity
         };
         console.log("Adding to cart:", customizedItem);
         addToCart(customizedItem);
@@ -311,6 +324,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                 <div className="row">
                                                     {fetchedItem.combos.map((combo) => {
                                                         const isSelected = selectedCombos.some((selected) => selected.name1 === combo.name1);
+                                                        const comboData = selectedCombos.find((selected) => selected.name1 === combo.name1) || { quantity: 0 };
                                                         return (
                                                             <div
                                                                 key={combo.name1}
@@ -327,6 +341,24 @@ const FoodDetails = ({ item, onClose }) => {
                                                                     />
                                                                     <p>{combo.name1}</p>
                                                                     <p>${combo.combo_price}</p>
+                                                                    {isSelected && (
+                                                                        <div className="quantity-container mt-2">
+                                                                            <button
+                                                                                className="quantity-btn minus"
+                                                                                onClick={(e) => { e.stopPropagation(); updateComboQuantity(combo.name1, -1); }}
+                                                                                disabled={comboData.quantity <= 1}
+                                                                            >
+                                                                                −
+                                                                            </button>
+                                                                            <span className="quantity-value">{comboData.quantity}</span>
+                                                                            <button
+                                                                                className="quantity-btn plus"
+                                                                                onClick={(e) => { e.stopPropagation(); updateComboQuantity(combo.name1, 1); }}
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         );

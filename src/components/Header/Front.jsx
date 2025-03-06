@@ -147,7 +147,16 @@ function Front() {
         return tax && tax.sales_tax.length > 0 ? parseFloat(tax.sales_tax[0].rate) : 5;
     };
 
-    const getSubTotal = () => totalPrice;
+    const getSubTotal = () => {
+        return cartItems.reduce((sum, item) => {
+            const mainPrice = item.basePrice * item.quantity;
+            const addonPrice = Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => 
+                sum + (price * quantity), 0);
+            const comboPrice = (item.selectedCombos || []).reduce((sum, combo) => 
+                sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0);
+            return sum + mainPrice + addonPrice + comboPrice;
+        }, 0);
+    };
 
     const getTaxAmount = () => {
         const subTotal = getSubTotal();
@@ -203,7 +212,7 @@ function Front() {
                 quantity: item.quantity,
                 totalPrice: (item.basePrice * item.quantity) + 
                     Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
-                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.combo_price || 0) + (combo.variantPrice || 0), 0),
+                    (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0),
                 addonCounts: item.addonCounts || {},
                 selectedCombos: item.selectedCombos || [],
             })),
@@ -280,9 +289,9 @@ function Front() {
             const comboItems = (item.selectedCombos || []).map((combo) => ({
                 item_name: combo.name1,
                 description: `Combo: ${combo.name1}`,
-                qty: item.quantity, // Combos tied to main item quantity
+                qty: combo.quantity || 1, // Use combo-specific quantity
                 rate: combo.combo_price || 0,
-                amount: (combo.combo_price || 0) * item.quantity,
+                amount: (combo.combo_price || 0) * (combo.quantity || 1),
             }));
 
             return [mainItem, ...addonItems, ...comboItems];
@@ -329,13 +338,13 @@ function Front() {
 
             const result = await response.json();
 
-            if (response.ok && result.status === "paid") {
+            if (response.ok && result.status === "success") { // Updated to match backend response
                 alert(`POS Invoice saved successfully! Grand Total: ₹${result.grand_total}`);
                 setCartItems([]);
                 localStorage.removeItem("savedOrders");
             } else {
                 console.error("Backend response error:", result);
-                // alert(`Failed to save POS Invoice: ${result.message || "Unknown error"}`);
+                alert(`Failed to save POS Invoice: ${result.message || "Unknown error"}`);
             }
         } catch (error) {
             console.error("Network or Request Error:", error);
@@ -687,7 +696,7 @@ function Front() {
                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
                                                                         <li key={addonName}>
-                                                                            + {addonName} x{quantity} (${price * quantity})
+                                                                            + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
                                                                         </li>
                                                                     ))}
                                                                 </ul>
@@ -696,8 +705,8 @@ function Front() {
                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                                                                     {item.selectedCombos.map((combo, idx) => (
                                                                         <li key={idx}>
-                                                                            + {combo.name1}
-                                                                            {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} - ${combo.combo_price}
+                                                                            + {combo.name1} x{combo.quantity || 1}
+                                                                            {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} - ${((combo.combo_price || 0) * (combo.quantity || 1)).toFixed(2)}
                                                                         </li>
                                                                     ))}
                                                                 </ul>
@@ -723,7 +732,7 @@ function Front() {
                                                         <td className='text-start'>
                                                             ${((item.basePrice * item.quantity) + 
                                                                 Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
-                                                                (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.combo_price || 0) + (combo.variantPrice || 0), 0)
+                                                                (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0)
                                                             ).toFixed(2)}
                                                         </td>
                                                         <td>
@@ -847,7 +856,7 @@ function Front() {
                                                                                         {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                             <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                 {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                                                    <li key={addonName}>+ {addonName} x{quantity} (${price * quantity})</li>
+                                                                                                    <li key={addonName}>+ {addonName} x{quantity} (${(price * quantity).toFixed(2)})</li>
                                                                                                 ))}
                                                                                             </ul>
                                                                                         )}
@@ -855,8 +864,8 @@ function Front() {
                                                                                             <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                                                                                                 {item.selectedCombos.map((combo, idx) => (
                                                                                                     <li key={idx}>
-                                                                                                        + {combo.name1}
-                                                                                                        {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} - ${combo.combo_price}
+                                                                                                        + {combo.name1} x{combo.quantity || 1}
+                                                                                                        {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} - ${(((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1)).toFixed(2)}
                                                                                                     </li>
                                                                                                 ))}
                                                                                             </ul>
@@ -867,7 +876,7 @@ function Front() {
                                                                                     <td>
                                                                                         ${((item.basePrice * item.quantity) + 
                                                                                             Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
-                                                                                            (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.combo_price || 0) + (combo.variantPrice || 0), 0)
+                                                                                            (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0)
                                                                                         ).toFixed(2)}
                                                                                     </td>
                                                                                 </tr>
