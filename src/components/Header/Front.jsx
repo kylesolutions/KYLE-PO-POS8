@@ -16,10 +16,11 @@ function Front() {
     const [selectedItem, setSelectedItem] = useState(null);
     const [categories, setCategories] = useState([]);
     const [showButtons, setShowButtons] = useState(false);
-    const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems } = useContext(UserContext);
+    const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems, totalPrice } = useContext(UserContext); // Removed updateAddonQuantity
     const location = useLocation();
     const { state } = useLocation();
     const { tableNumber, existingOrder } = state || {};
+
     useEffect(() => {
         if (location.state) {
             setPhoneNumber(location.state.phoneNumber || existingOrder?.phoneNumber || "");
@@ -27,6 +28,7 @@ function Front() {
             setIsPhoneNumberSet(!!(location.state.phoneNumber || existingOrder?.phoneNumber));
         }
     }, [location.state, existingOrder]);
+
     const [isPhoneNumberSet, setIsPhoneNumberSet] = useState(false);
     const [savedOrders, setSavedOrders] = useState([]);
     const [phoneNumber, setPhoneNumber] = useState("");
@@ -39,8 +41,8 @@ function Front() {
     const user = useSelector((state) => state.user.user);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
     const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
-    const [taxTemplates, setTaxTemplates] = useState([]); // Store tax templates
-    const [selectedTaxTemplate, setSelectedTaxTemplate] = useState("VAT - P"); // Default tax template
+    const [taxTemplates, setTaxTemplates] = useState([]);
+    const [selectedTaxTemplate, setSelectedTaxTemplate] = useState("VAT - P");
     const printRef = useRef();
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -94,7 +96,6 @@ function Front() {
         fetchItems();
     }, [allowedItemGroups]);
 
-    // Fetch tax templates
     useEffect(() => {
         const fetchTaxes = async () => {
             try {
@@ -104,7 +105,6 @@ function Front() {
                 const data = await response.json();
                 if (data.message && Array.isArray(data.message)) {
                     setTaxTemplates(data.message);
-                    // Set default tax template to "VAT - P" if it exists
                     const defaultTax = data.message.find(tax => tax.name === "VAT - P");
                     if (defaultTax) setSelectedTaxTemplate(defaultTax.name);
                 }
@@ -142,68 +142,33 @@ function Front() {
         setSelectedItem(null);
     };
 
-    const cartTotal = () => {
-        const total = cartItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
-        return isNaN(total) ? 0 : total;
-    };
-
-    // Calculate tax amount and grand total locally for display
     const getTaxRate = () => {
         const tax = taxTemplates.find(t => t.name === selectedTaxTemplate);
-        return tax && tax.sales_tax.length > 0 ? parseFloat(tax.sales_tax[0].rate) : 5; // Default to 5% if no tax found
+        return tax && tax.sales_tax.length > 0 ? parseFloat(tax.sales_tax[0].rate) : 5;
     };
 
+    const getSubTotal = () => totalPrice;
+
     const getTaxAmount = () => {
-        const subTotal = cartTotal();
+        const subTotal = getSubTotal();
         const taxRate = getTaxRate();
         return (subTotal * taxRate) / 100;
     };
 
     const getGrandTotal = () => {
-        return cartTotal() + getTaxAmount();
+        return getSubTotal() + getTaxAmount();
     };
 
     const handleCheckoutClick = () => setShowButtons(true);
 
     const increaseQuantity = (item) => {
-        setCartItems(prevItems =>
-            prevItems.map(cartItem =>
-                cartItem.id === item.id &&
-                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos)
-                    ? {
-                        ...cartItem,
-                        quantity: cartItem.quantity + 1,
-                        totalPrice: (cartItem.basePrice + getAddonsTotal(cartItem) + getCombosTotal(cartItem)) * (cartItem.quantity + 1)
-                    }
-                    : cartItem
-            )
-        );
+        updateCartItem({ ...item, quantity: item.quantity + 1 });
     };
 
     const decreaseQuantity = (item) => {
-        setCartItems(prevItems =>
-            prevItems.map(cartItem =>
-                cartItem.id === item.id &&
-                    JSON.stringify(cartItem.addonCounts) === JSON.stringify(item.addonCounts) &&
-                    JSON.stringify(cartItem.selectedCombos) === JSON.stringify(item.selectedCombos) &&
-                    cartItem.quantity > 1
-                    ? {
-                        ...cartItem,
-                        quantity: cartItem.quantity - 1,
-                        totalPrice: (cartItem.basePrice + getAddonsTotal(cartItem) + getCombosTotal(cartItem)) * (cartItem.quantity - 1)
-                    }
-                    : cartItem
-            )
-        );
-    };
-
-    const getAddonsTotal = (item) => {
-        return Object.values(item.addonCounts || {}).reduce((sum, price) => sum + price, 0);
-    };
-
-    const getCombosTotal = (item) => {
-        return (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.price || 0), 0);
+        if (item.quantity > 1) {
+            updateCartItem({ ...item, quantity: item.quantity - 1 });
+        }
     };
 
     const handleNavigation = () => {
@@ -215,20 +180,20 @@ function Front() {
     };
 
     const handlePaymentSelection = async (method) => {
-        const subTotal = cartTotal();
+        const subTotal = getSubTotal();
         const paymentDetails = {
             mode_of_payment: method,
-            amount: subTotal.toFixed(2), // Send subtotal; backend will adjust with taxes
+            amount: subTotal.toFixed(2),
         };
-
+    
         console.log("Payment Details (Before Sending to Backend):", paymentDetails);
-
+    
         if (!paymentDetails || !paymentDetails.mode_of_payment) {
             console.error("Error: Payment Details are missing or incorrect!", paymentDetails);
             alert("Error: Payment method is not defined. Please try again.");
             return;
         }
-
+    
         const billDetails = {
             customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -236,7 +201,9 @@ function Front() {
                 name: item.name,
                 price: item.basePrice,
                 quantity: item.quantity,
-                totalPrice: item.basePrice * item.quantity,
+                totalPrice: (item.basePrice * item.quantity) + // Base price * quantity
+                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + // Add-ons
+                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.combo_price || 0) + (combo.variantPrice || 0), 0), // Combos
                 addonCounts: item.addonCounts || {},
                 selectedCombos: item.selectedCombos || [],
             })),
@@ -246,10 +213,10 @@ function Front() {
             totalAmount: getGrandTotal().toFixed(2),
             payments: [paymentDetails],
         };
-
+    
         try {
             await handleSaveToBackend(paymentDetails, subTotal);
-
+    
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
             } else if (method === "CREDIT CARD") {
@@ -257,7 +224,7 @@ function Front() {
             } else if (method === "UPI") {
                 alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
             }
-
+    
             handlePaymentCompletion(tableNumber);
         } catch (error) {
             console.error("Error processing payment:", error);
@@ -319,13 +286,13 @@ function Front() {
             selling_price_list: "Standard Selling",
             price_list_currency: "INR",
             plc_conversion_rate: 1,
-            total: subTotal.toFixed(2), // Subtotal before taxes
+            total: subTotal.toFixed(2),
             net_total: subTotal.toFixed(2),
             base_net_total: subTotal.toFixed(2),
-            taxes_and_charges: selectedTaxTemplate, // Send selected tax template
+            taxes_and_charges: selectedTaxTemplate,
             payments: [{
                 mode_of_payment: paymentDetails.mode_of_payment,
-                amount: paymentDetails.amount, // Subtotal; backend will adjust
+                amount: paymentDetails.amount,
             }],
             items: allItems,
         };
@@ -365,11 +332,10 @@ function Front() {
         handleClose();
     };
 
-    const [customerInput, setCustomerInput] = useState(""); // New state for input value
-    const [filteredCustomers, setFilteredCustomers] = useState([]); // Filtered customer list
-    const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false); // Show/hide suggestions
+    const [customerInput, setCustomerInput] = useState("");
+    const [filteredCustomers, setFilteredCustomers] = useState([]);
+    const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
 
-    // Fetch customers (unchanged)
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
@@ -384,7 +350,7 @@ function Front() {
                 console.log("Raw API Response:", data);
                 if (Array.isArray(data)) {
                     setCustomers(data);
-                    setFilteredCustomers(data); // Initially show all customers
+                    setFilteredCustomers(data);
                 } else if (data.message && Array.isArray(data.message)) {
                     setCustomers(data.message);
                     setFilteredCustomers(data.message);
@@ -396,15 +362,14 @@ function Front() {
         fetchCustomers();
     }, []);
 
-    // Handle customer input change and filtering
     const handleCustomerInputChange = (e) => {
         const value = e.target.value;
         setCustomerInput(value);
-        setCustomerName(value); // Sync with customerName for consistency
+        setCustomerName(value);
         setShowCustomerSuggestions(true);
 
         if (value.trim() === "") {
-            setFilteredCustomers(customers); // Show all if input is empty
+            setFilteredCustomers(customers);
         } else {
             const filtered = customers.filter((customer) =>
                 customer.customer_name.toLowerCase().includes(value.toLowerCase())
@@ -413,14 +378,12 @@ function Front() {
         }
     };
 
-    // Handle customer selection from suggestions
     const handleCustomerSelect = (customerName) => {
         setCustomerInput(customerName);
         setCustomerName(customerName);
         setShowCustomerSuggestions(false);
     };
 
-    // Handle Enter key or button to create new customer
     const handleCustomerSubmit = async () => {
         const trimmedInput = customerInput.trim();
         if (!trimmedInput) {
@@ -428,7 +391,6 @@ function Front() {
             return;
         }
 
-        // Check if customer already exists
         const customerExists = customers.some(
             (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
         );
@@ -459,12 +421,11 @@ function Front() {
                 alert("Failed to create customer. Please try again.");
             }
         } else {
-            setCustomerName(trimmedInput); // Use existing customer
+            setCustomerName(trimmedInput);
         }
         setShowCustomerSuggestions(false);
     };
 
-    // Handle Enter key press
     const handleKeyPress = (e) => {
         if (e.key === "Enter") {
             handleCustomerSubmit();
@@ -545,7 +506,6 @@ function Front() {
                                 <div className="text-center row">
                                     <div className='row'>
                                         <div className='col-lg-1 text-start' style={{ position: "relative" }}>
-
                                             <h1
                                                 className="display-4 fs-2"
                                                 style={{
@@ -561,7 +521,7 @@ function Front() {
                                                 <small
                                                     style={{
                                                         position: "absolute",
-                                                        top: "0px", 
+                                                        top: "0px",
                                                         left: "50%",
                                                         transform: "translateX(-50%)",
                                                         fontSize: "10px",
@@ -574,66 +534,66 @@ function Front() {
                                             </h1>
                                         </div>
                                         <div className='col-10 col-lg-5 mb-2 position-relative'>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder="Enter Customer Name"
-                                            value={customerInput}
-                                            onChange={handleCustomerInputChange}
-                                            onKeyPress={handleKeyPress}
-                                            style={{
-                                                width: "100%",
-                                                padding: "10px",
-                                                border: "1px solid #ccc",
-                                                borderRadius: "5px",
-                                                fontSize: "1rem",
-                                            }}
-                                        />
-                                        {showCustomerSuggestions && filteredCustomers.length > 0 && (
-                                            <ul
-                                                className="customer-suggestions"
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Enter Customer Name"
+                                                value={customerInput}
+                                                onChange={handleCustomerInputChange}
+                                                onKeyPress={handleKeyPress}
                                                 style={{
-                                                    position: "absolute",
-                                                    top: "100%",
-                                                    left: 0,
                                                     width: "100%",
-                                                    maxHeight: "150px",
-                                                    overflowY: "auto",
-                                                    backgroundColor: "#fff",
+                                                    padding: "10px",
                                                     border: "1px solid #ccc",
                                                     borderRadius: "5px",
-                                                    listStyleType: "none",
-                                                    padding: 0,
-                                                    margin: 0,
-                                                    zIndex: 1000,
+                                                    fontSize: "1rem",
                                                 }}
+                                            />
+                                            {showCustomerSuggestions && filteredCustomers.length > 0 && (
+                                                <ul
+                                                    className="customer-suggestions"
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: "100%",
+                                                        left: 0,
+                                                        width: "100%",
+                                                        maxHeight: "150px",
+                                                        overflowY: "auto",
+                                                        backgroundColor: "#fff",
+                                                        border: "1px solid #ccc",
+                                                        borderRadius: "5px",
+                                                        listStyleType: "none",
+                                                        padding: 0,
+                                                        margin: 0,
+                                                        zIndex: 1000,
+                                                    }}
+                                                >
+                                                    {filteredCustomers.map((customer, index) => (
+                                                        <li
+                                                            key={index}
+                                                            onClick={() => handleCustomerSelect(customer.customer_name)}
+                                                            style={{
+                                                                padding: "8px 12px",
+                                                                cursor: "pointer",
+                                                                borderBottom: "1px solid #eee",
+                                                            }}
+                                                            onMouseEnter={(e) => (e.target.style.backgroundColor = "#f0f0f0")}
+                                                            onMouseLeave={(e) => (e.target.style.backgroundColor = "#fff")}
+                                                        >
+                                                            {customer.customer_name}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                        <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            <span
+                                                onClick={handleCustomerSubmit}
+                                                style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
                                             >
-                                                {filteredCustomers.map((customer, index) => (
-                                                    <li
-                                                        key={index}
-                                                        onClick={() => handleCustomerSelect(customer.customer_name)}
-                                                        style={{
-                                                            padding: "8px 12px",
-                                                            cursor: "pointer",
-                                                            borderBottom: "1px solid #eee",
-                                                        }}
-                                                        onMouseEnter={(e) => (e.target.style.backgroundColor = "#f0f0f0")}
-                                                        onMouseLeave={(e) => (e.target.style.backgroundColor = "#fff")}
-                                                    >
-                                                        {customer.customer_name}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </div>
-                                    <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                        <span
-                                            onClick={handleCustomerSubmit}
-                                            style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
-                                        >
-                                            <i className="bi bi-check"></i> {/* Check icon to confirm */}
-                                        </span>
-                                    </div>
+                                                <i className="bi bi-check"></i>
+                                            </span>
+                                        </div>
 
                                         {!isPhoneNumberSet ? (
                                             <>
@@ -663,7 +623,6 @@ function Front() {
                                         )}
                                     </div>
 
-                                    {/* Tax Selection Dropdown */}
                                     <div className="row mt-2">
                                         <div className="col-12">
                                             <label htmlFor="tax-template" className="form-label" style={{ fontSize: "14px" }}>Select Tax Template:</label>
@@ -688,77 +647,80 @@ function Front() {
                                     </div>
 
                                     <div className="table-responsive mt-3">
-    <table className="table border text-start">
-        <thead className="text-start">
-            <tr>
-                <th>T.No.</th>
-                <th>Item Name</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Total Price</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody className="text-start">
-            {cartItems.map((item, index) => {
-                const price = item.totalPrice || 0;
-                const quantity = item.quantity || 1;
-
-                return (
-                    <tr key={index}>
-                        <td className='text-start'>{tableNumber}</td>
-                        <td className='text-start'>
-                            {item.name}
-                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                    {Object.entries(item.addonCounts)
-                                        .filter(([_, addonPrice]) => addonPrice > 0) // Only show add-ons with price > 0
-                                        .map(([addonName, addonPrice]) => (
-                                            <li key={addonName}>+ {addonName} (${addonPrice})</li>
-                                        ))}
-                                </ul>
-                            )}
-                            {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                    {item.selectedCombos.map((combo, idx) => (
-                                        <li key={idx}>+ {combo.name1} - ${combo.combo_price}</li>
-                                    ))}
-                                </ul>
-                            )}
-                        </td>
-                        <td>
-                            <button
-                                className="btn btn-secondary btn-sm me-2"
-                                onClick={() => decreaseQuantity(item)}
-                                disabled={quantity <= 1}
-                            >
-                                -
-                            </button>
-                            {quantity}
-                            <button
-                                className="btn btn-secondary btn-sm ms-2"
-                                onClick={() => increaseQuantity(item)}
-                            >
-                                +
-                            </button>
-                        </td>
-                        <td className='text-start'>${item.basePrice}</td>
-                        <td className='text-start'>${item.totalPrice.toFixed(2)}</td>
-                        <td>
-                            <button
-                                className="btn btn-sm"
-                                onClick={() => removeFromCart(item)}
-                                title="Remove Item"
-                            >
-                                <i className="bi bi-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                );
-            })}
-        </tbody>
-    </table>
-</div>
+                                        <table className="table border text-start">
+                                            <thead className="text-start">
+                                                <tr>
+                                                    <th>T.No.</th>
+                                                    <th>Item Name</th>
+                                                    <th>Qty</th>
+                                                    <th>Price</th>
+                                                    <th>Total</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="text-start">
+                                                {cartItems.map((item, index) => (
+                                                    <tr key={index}>
+                                                        <td className='text-start'>{tableNumber}</td>
+                                                        <td className='text-start'>
+                                                            {item.name}
+                                                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                    {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                                                                        <li key={addonName}>
+                                                                            + {addonName} x{quantity} (${price * quantity})
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
+                                                            {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                    {item.selectedCombos.map((combo, idx) => (
+                                                                        <li key={idx}>
+                                                                            + {combo.name1}
+                                                                            {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} - ${combo.combo_price}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-secondary btn-sm me-2"
+                                                                onClick={() => decreaseQuantity(item)}
+                                                                disabled={item.quantity <= 1}
+                                                            >
+                                                                -
+                                                            </button>
+                                                            {item.quantity}
+                                                            <button
+                                                                className="btn btn-secondary btn-sm ms-2"
+                                                                onClick={() => increaseQuantity(item)}
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </td>
+                                                        <td className='text-start'>${item.basePrice}</td>
+                                                        <td className='text-start'>
+                                                            ${((item.basePrice * item.quantity) + 
+                                                                Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
+                                                                (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.combo_price || 0) + (combo.variantPrice || 0), 0)
+                                                            ).toFixed(2)}
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm"
+                                                                onClick={() => removeFromCart(item)}
+                                                                title="Remove Item"
+                                                            >
+                                                                <i className="bi bi-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -777,7 +739,7 @@ function Front() {
                                             <div className="col-md-6 mb-2 col-6">
                                                 <h5 className="mb-0" style={{ "font-size": "12px" }}>Subtotal</h5>
                                                 <div className='grand-tot-div'>
-                                                    <span>$</span><span>{cartTotal().toFixed(2)}</span>
+                                                    <span>$</span><span>{getSubTotal().toFixed(2)}</span>
                                                 </div>
                                             </div>
                                             <div className="col-md-6 mb-2 col-6">
@@ -865,22 +827,30 @@ function Front() {
                                                                                         {item.name}
                                                                                         {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                             <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                                                {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                                                                                    <li key={addonName}>+ {addonName} (${addonPrice})</li>
+                                                                                                {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                                                                                                    <li key={addonName}>+ {addonName} x{quantity} (${price * quantity})</li>
                                                                                                 ))}
                                                                                             </ul>
                                                                                         )}
                                                                                         {item.selectedCombos && item.selectedCombos.length > 0 && (
                                                                                             <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                                                                                                 {item.selectedCombos.map((combo, idx) => (
-                                                                                                    <li key={idx}>+ {combo.name1} ({combo.size}) - ${combo.price}</li>
+                                                                                                    <li key={idx}>
+                                                                                                        + {combo.name1}
+                                                                                                        {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} - ${combo.combo_price}
+                                                                                                    </li>
                                                                                                 ))}
                                                                                             </ul>
                                                                                         )}
                                                                                     </td>
                                                                                     <td>{item.quantity || 1}</td>
                                                                                     <td>${item.basePrice}</td>
-                                                                                    <td>${item.totalPrice.toFixed(2)}</td>
+                                                                                    <td>
+                                                                                        ${((item.basePrice * item.quantity) + 
+                                                                                            Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
+                                                                                            (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.combo_price || 0) + (combo.variantPrice || 0), 0)
+                                                                                        ).toFixed(2)}
+                                                                                    </td>
                                                                                 </tr>
                                                                             ))}
                                                                         </tbody>
@@ -889,7 +859,7 @@ function Front() {
                                                                         <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
                                                                         <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
                                                                         <div className="col-6 text-start"><strong>Subtotal:</strong></div>
-                                                                        <div className="col-6 text-end">${cartTotal().toFixed(2)}</div>
+                                                                        <div className="col-6 text-end">${getSubTotal().toFixed(2)}</div>
                                                                         <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
                                                                         <div className="col-6 text-end">${getTaxAmount().toFixed(2)}</div>
                                                                         <div className="col-6 text-start"><strong>Grand Total:</strong></div>

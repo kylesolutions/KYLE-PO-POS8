@@ -48,19 +48,18 @@ function Cash() {
                                         <ul className="list-group mb-4">
                                             {billDetails.items.map((item, index) => (
                                                 <li key={index} className="list-group-item">
-                                                    <strong>{item.name}</strong> - ₹{item.price} x {item.quantity} = ₹{item.totalPrice.toFixed(2)}
-
+                                                    <strong>{item.name}</strong> - ₹{item.price} x {item.quantity} = ₹{(item.totalPrice || 0).toFixed(2)}
                                                     {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                         <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                            {Object.entries(item.addonCounts).map(([addonName, addonPrice]) => (
-                                                                <li key={addonName}>+ {addonName} (₹{addonPrice})</li>
+                                                            {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                                                                <li key={addonName}>+ {addonName} x{quantity} (₹{price * quantity})</li>
                                                             ))}
                                                         </ul>
                                                     )}
                                                     {item.selectedCombos && item.selectedCombos.length > 0 && (
                                                         <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                                                             {item.selectedCombos.map((combo, idx) => (
-                                                                <li key={idx}>+ {combo.name1} ({combo.size}) - ₹{combo.combo_price}</li>
+                                                                <li key={idx}>+ {combo.name1} {combo.selectedVariant ? `(${combo.selectedVariant})` : ''} - ₹{(combo.combo_price || 0) + (combo.variantPrice || 0)}</li>
                                                             ))}
                                                         </ul>
                                                     )}
@@ -72,10 +71,8 @@ function Cash() {
                                             <div className="row">
                                                 <div className="col-6 text-start"><strong>Subtotal:</strong></div>
                                                 <div className="col-6 text-end">₹{parseFloat(billDetails.subTotal).toFixed(2)}</div>
-
                                                 <div className="col-6 text-start"><strong>VAT ({billDetails.vatRate}%):</strong></div>
                                                 <div className="col-6 text-end">₹{parseFloat(billDetails.vatAmount).toFixed(2)}</div>
-
                                                 <div className="col-6 text-start"><strong>Grand Total:</strong></div>
                                                 <div className="col-6 text-end"><strong>₹{parseFloat(billDetails.totalAmount).toFixed(2)}</strong></div>
                                             </div>
@@ -115,7 +112,7 @@ function Cash() {
                                     </div>
                                 ) : (
                                     <div className="text-center">
-                                        <p>Loading...</p>
+                                        <p>No bill details available.</p>
                                     </div>
                                 )}
                             </div>

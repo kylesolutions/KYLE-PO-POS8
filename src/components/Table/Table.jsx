@@ -20,9 +20,17 @@ function Table() {
     const existingOrder = savedOrders.find(order => order.tableNumber === tableNumber);
 
     if (existingOrder) {
-      setCartItems(existingOrder.cartItems);
+      // Ensure cartItems structure matches FoodDetails output
+      const formattedCartItems = existingOrder.cartItems.map(item => ({
+        ...item,
+        basePrice: item.basePrice || 0,
+        quantity: item.quantity || 1, // Main item quantity
+        addonCounts: item.addonCounts || {}, // Static add-on quantities
+        selectedCombos: item.selectedCombos || [],
+      }));
+      setCartItems(formattedCartItems);
     } else {
-      setCartItems([]);
+      setCartItems([]); // Reset cart for new table
     }
     setActiveOrders(prevOrders => [...new Set([...prevOrders, tableNumber])]);
 
@@ -32,6 +40,9 @@ function Table() {
 
   const handleOrderCompletion = (tableNumber) => {
     setActiveOrders(prevOrders => prevOrders.filter(order => order !== tableNumber));
+    const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
+    const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
+    localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
   };
 
   useEffect(() => {

@@ -5,7 +5,7 @@ import './foodDetails.css';
 const FoodDetails = ({ item, onClose }) => {
     if (!item) return null;
 
-    const { addToCart, setTotalPrice, totalPrice } = useContext(UserContext);
+    const { addToCart } = useContext(UserContext);
     const [selectedSize, setSelectedSize] = useState("M");
     const [addonCounts, setAddonCounts] = useState({});
     const [selectedCombo, setSelectedCombo] = useState(null);
@@ -15,7 +15,8 @@ const FoodDetails = ({ item, onClose }) => {
     const [fetchedItem, setFetchedItem] = useState(null);
     const [allItems, setAllItems] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [quantity, setQuantity] = useState(1);
+    const [mainQuantity, setMainQuantity] = useState(1); // Renamed for clarity
+    const [itemTotal, setItemTotal] = useState(0);
 
     useEffect(() => {
         const fetchItemDetails = async () => {
@@ -34,25 +35,34 @@ const FoodDetails = ({ item, onClose }) => {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
                 const data = await response.json();
-                console.log("Raw API Response:", data); // Debug: Log raw response
+                console.log("Raw API Response:", data);
 
                 let itemList;
                 if (data && Array.isArray(data)) {
-                    itemList = data; // Direct array
+                    itemList = data;
                 } else if (data && data.message && Array.isArray(data.message)) {
-                    itemList = data.message; // Wrapped in message
+                    itemList = data.message;
                 } else {
                     throw new Error("Invalid data structure");
                 }
 
                 const baseUrl = "http://109.199.100.136:6060/";
-                setAllItems(itemList);
+                setAllItems(itemList.map(item => ({
+                    ...item,
+                    variants: item.variants ? item.variants.map(v => ({
+                        type_of_variants: v.type_of_variants,
+                        variant_price: parseFloat(v.variants_price) || 0
+                    })) : []
+                })));
                 const selectedItem = itemList.find((i) => i.name === item.name);
 
                 if (selectedItem) {
                     const formattedAddonData = selectedItem.addons || [];
                     const formattedComboData = selectedItem.combos || [];
-                    const formattedVariantData = selectedItem.variants || [];
+                    const formattedVariantData = (selectedItem.variants || []).map(v => ({
+                        type_of_variants: v.type_of_variants,
+                        variant_price: parseFloat(v.variants_price) || 0
+                    }));
                     const formattedIngredientsData = selectedItem.ingredients || [];
 
                     setFetchedItem({
@@ -80,26 +90,34 @@ const FoodDetails = ({ item, onClose }) => {
 
     useEffect(() => {
         if (fetchedItem) {
-            const basePrice = fetchedItem.price;
-            const addonsPrice = Object.entries(addonCounts).reduce((sum, [addonName, price]) => sum + price, 0);
+            const basePrice = fetchedItem.price * mainQuantity; // Only main item price scales with quantity
+            const addonsPrice = Object.entries(addonCounts).reduce((sum, [_, { price, quantity }]) => 
+                sum + (price * quantity), 0); // Add-on price based on their own quantities
             const comboPrice = selectedCombos.reduce((sum, combo) => {
                 const comboDetail = fetchedItem.combos.find(c => c.name1 === combo.name1);
                 const comboBasePrice = comboDetail ? comboDetail.combo_price : 0;
-                return sum + comboBasePrice;
+                const variantPrice = combo.selectedVariant 
+                    ? (allItems.find(i => i.name === combo.name1)?.variants.find(v => v.type_of_variants === combo.selectedVariant)?.variant_price || 0) 
+                    : 0;
+                return sum + comboBasePrice + variantPrice; // Combos treated as single units
             }, 0);
             const finalPrice = basePrice + addonsPrice + comboPrice;
-            setTotalPrice(finalPrice * quantity);
+            setItemTotal(finalPrice);
         }
-    }, [addonCounts, selectedCombos, fetchedItem, quantity]);
+    }, [addonCounts, selectedCombos, fetchedItem, mainQuantity]);
 
     const handleSizeChange = (size) => setSelectedSize(size);
 
-    const toggleAddonSelection = (addon) => {
+    const toggleAddonSelection = (addon, qtyChange = 0) => {
         setAddonCounts((prev) => {
-            const isSelected = prev[addon.name1] > 0;
+            const current = prev[addon.name1] || { price: 0, quantity: 0 };
+            const newQuantity = Math.max(0, current.quantity + qtyChange);
             return {
                 ...prev,
-                [addon.name1]: isSelected ? 0 : addon.addon_price,
+                [addon.name1]: {
+                    price: addon.addon_price,
+                    quantity: newQuantity
+                }
             };
         });
     };
@@ -123,10 +141,19 @@ const FoodDetails = ({ item, onClose }) => {
             }
         });
         if (variant) {
+            const comboItem = allItems.find(i => i.name === combo.name1);
+            const variantDetail = comboItem?.variants.find(v => v.type_of_variants === variant);
+            const variantPrice = variantDetail?.variant_price || 0;
             setComboVariants((prev) => ({
                 ...prev,
-                [combo.name1]: variant,
+                [combo.name1]: { variant, price: variantPrice },
             }));
+        } else {
+            setComboVariants((prev) => {
+                const newVariants = { ...prev };
+                delete newVariants[combo.name1];
+                return newVariants;
+            });
         }
         setSelectedCombo(null);
     };
@@ -139,24 +166,27 @@ const FoodDetails = ({ item, onClose }) => {
             category: item.category,
             basePrice: item.price,
             selectedSize,
-            addonCounts,
+            addonCounts: Object.fromEntries(
+                Object.entries(addonCounts).filter(([_, { quantity }]) => quantity > 0)
+            ),
             selectedCombos: selectedCombos.map((combo) => ({
                 ...combo,
                 selectedVariant: combo.selectedVariant || null,
+                variantPrice: allItems.find(i => i.name === combo.name1)?.variants.find(v => v.type_of_variants === combo.selectedVariant)?.variant_price || 0,
             })),
             kitchen: item.kitchen,
-            quantity,
-            totalPrice,
+            quantity: mainQuantity, // Renamed for clarity
         };
+        console.log("Adding to cart:", customizedItem);
         addToCart(customizedItem);
         onClose();
     };
 
-    const increaseQuantity = () => setQuantity(prevQuantity => prevQuantity + 1);
+    const increaseMainQuantity = () => setMainQuantity(prevQuantity => prevQuantity + 1);
 
-    const decreaseQuantity = () => {
-        if (quantity > 1) {
-            setQuantity(prevQuantity => prevQuantity - 1);
+    const decreaseMainQuantity = () => {
+        if (mainQuantity > 1) {
+            setMainQuantity(prevQuantity => prevQuantity - 1);
         }
     };
 
@@ -187,12 +217,13 @@ const FoodDetails = ({ item, onClose }) => {
                                 <strong>Category:</strong> {fetchedItem?.category}
                             </p>
                             <p className="text-center">
-                                <strong>Total Price:</strong> ${totalPrice.toFixed(2)}
+                                <strong>Item Total:</strong> ${itemTotal.toFixed(2)}
                             </p>
                             <div className="quantity-container">
-                                <button className="quantity-btn minus" onClick={decreaseQuantity}>−</button>
-                                <span className="quantity-value">{quantity}</span>
-                                <button className="quantity-btn plus" onClick={increaseQuantity}>+</button>
+                                <strong>Main Item Quantity:</strong>
+                                <button className="quantity-btn minus" onClick={decreaseMainQuantity}>−</button>
+                                <span className="quantity-value">{mainQuantity}</span>
+                                <button className="quantity-btn plus" onClick={increaseMainQuantity}>+</button>
                             </div>
 
                             <div>
@@ -209,7 +240,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                         checked={selectedSize === variant.type_of_variants}
                                                         onChange={() => handleSizeChange(variant.type_of_variants)}
                                                     />
-                                                    <span className="name">{variant.type_of_variants}</span>
+                                                    <span className="name">{variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price})` : ''}</span>
                                                 </label>
                                             ))}
                                         </div>
@@ -221,12 +252,12 @@ const FoodDetails = ({ item, onClose }) => {
                                         <ul className="addons-list d-flex justify-content-evenly flex-wrap">
                                             {fetchedItem.addons.map((addon) => {
                                                 const baseUrl = 'http://109.199.100.136:6060/';
-                                                const isSelected = addonCounts[addon.name1] > 0;
+                                                const addonData = addonCounts[addon.name1] || { price: addon.addon_price, quantity: 0 };
+                                                const isSelected = addonData.quantity > 0;
                                                 return (
                                                     <li
                                                         key={addon.name1}
                                                         className={`addon-item ${isSelected ? 'selected' : ''}`}
-                                                        onClick={() => toggleAddonSelection(addon)}
                                                     >
                                                         <img
                                                             src={addon.addon_image ? `${baseUrl}${addon.addon_image}` : 'default-addon-image.jpg'}
@@ -241,6 +272,22 @@ const FoodDetails = ({ item, onClose }) => {
                                                         />
                                                         <span>{addon.name1}</span>
                                                         <span>${addon.addon_price}</span>
+                                                        <div className="quantity-container mt-2">
+                                                            <button
+                                                                className="quantity-btn minus"
+                                                                onClick={() => toggleAddonSelection(addon, -1)}
+                                                                disabled={addonData.quantity <= 0}
+                                                            >
+                                                                −
+                                                            </button>
+                                                            <span className="quantity-value">{addonData.quantity}</span>
+                                                            <button
+                                                                className="quantity-btn plus"
+                                                                onClick={() => toggleAddonSelection(addon, 1)}
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
                                                     </li>
                                                 );
                                             })}
@@ -308,10 +355,10 @@ const FoodDetails = ({ item, onClose }) => {
                                                 {selectedCombo.variants.map((variant, index) => (
                                                     <button
                                                         key={index}
-                                                        className={`btn ${comboVariants[selectedCombo.name1] === variant.type_of_variants ? 'btn-primary' : 'btn-outline-secondary'} m-2`}
+                                                        className={`btn ${comboVariants[selectedCombo.name1]?.variant === variant.type_of_variants ? 'btn-primary' : 'btn-outline-secondary'} m-2`}
                                                         onClick={() => toggleComboSelection(selectedCombo, variant.type_of_variants)}
                                                     >
-                                                        {variant.type_of_variants}
+                                                        {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price})` : ''}
                                                     </button>
                                                 ))}
                                             </div>
