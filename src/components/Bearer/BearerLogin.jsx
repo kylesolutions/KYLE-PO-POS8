@@ -26,37 +26,46 @@ function BearerLogin() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
-      console.log("API Response:", data);
-
+      // Check if the response is OK before parsing
       if (!response.ok) {
-        throw new Error(data.message?.message || "Login failed");
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
       }
 
-      // Destructure the nested message object correctly
-      const { user, session, pos_profile, message } = data;
+      const data = await response.json();
+      console.log("Raw API Response:", data); // Log the full response
 
-      dispatch(
-        loginSuccess({
-          user,
-          session,
-          pos_profile,
-          message: {
-            allowed_item_groups: message.allowed_item_groups,
-            allowed_customer_groups: message.allowed_customer_groups,
-            filtered_items: message.filtered_items,
-            filtered_customers: message.filtered_customers,
-          },
-        })
-      );
+      // Handle possible nested response (Frappe convention)
+      const responseData = data.message || data; // Use data.message if it exists, else data
 
-      // Store in localStorage (optional, since redux-persist handles this)
+      // Destructure from the correct level
+      const { user, session, pos_profile, allowed_item_groups, allowed_customer_groups, filtered_items, filtered_customers } = responseData;
+
+      if (!user) {
+        throw new Error("User field missing in API response");
+      }
+
+      const payload = {
+        user, // Should be "bearer1@gmail.com"
+        session,
+        pos_profile,
+        message: {
+          allowed_item_groups: allowed_item_groups || [],
+          allowed_customer_groups: allowed_customer_groups || [],
+          filtered_items: filtered_items || [],
+          filtered_customers: filtered_customers || [],
+        },
+      };
+      console.log("Dispatching loginSuccess with payload:", payload);
+
+      dispatch(loginSuccess(payload));
+
       localStorage.setItem("session", session || "");
       localStorage.setItem("pos_profile", pos_profile || "");
-      localStorage.setItem("allowed_item_groups", JSON.stringify(message.allowed_item_groups || []));
-      localStorage.setItem("allowed_customer_groups", JSON.stringify(message.allowed_customer_groups || []));
-      localStorage.setItem("filtered_items", JSON.stringify(message.filtered_items || []));
-      localStorage.setItem("filtered_customers", JSON.stringify(message.filtered_customers || []));
+      localStorage.setItem("allowed_item_groups", JSON.stringify(allowed_item_groups || []));
+      localStorage.setItem("allowed_customer_groups", JSON.stringify(allowed_customer_groups || []));
+      localStorage.setItem("filtered_items", JSON.stringify(filtered_items || []));
+      localStorage.setItem("filtered_customers", JSON.stringify(filtered_customers || []));
 
       alert("Login Successful!");
       navigate("/firsttab");

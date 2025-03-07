@@ -19,10 +19,19 @@ function Kitchen() {
         setPickedUpItems(storedPickedUpItems);
     }, []);
 
+    // Extract unique kitchens from all items (main, addons, combos)
     const kitchens = [
         ...new Set(
             savedOrders.flatMap((order) =>
-                order.cartItems.map((item) => item.kitchen).filter((kitchen) => kitchen)
+                [
+                    ...order.cartItems.map((item) => item.kitchen),
+                    ...Object.values(order.cartItems.flatMap((item) => 
+                        Object.values(item.addonCounts || {}).map((addon) => addon.kitchen || "Unknown")
+                    )),
+                    ...order.cartItems.flatMap((item) => 
+                        (item.selectedCombos || []).map((combo) => combo.kitchen || "Unknown")
+                    ),
+                ].filter((kitchen) => kitchen)
             )
         ),
     ];
@@ -33,29 +42,77 @@ function Kitchen() {
         }
     }, [kitchens, selectedKitchen]);
 
-    const filteredOrders = savedOrders
-        .map((order) => ({
-            ...order,
-            cartItems: order.cartItems.filter(
-                (item) =>
-                    item.kitchen === selectedKitchen &&
-                    item.category !== "Drinks" &&
-                    item.status !== "PickedUp"
+    // Flatten items, addons, and combos into a single list with kitchen filtering
+    const filteredItems = savedOrders.flatMap((order) =>
+        [
+            ...order.cartItems.map((item) => ({
+                ...item,
+                type: "main",
+                customerName: order.customerName,
+                tableNumber: order.tableNumber,
+                id: item.id || `${order.tableNumber}-${item.name}`, // Ensure unique ID
+            })),
+            ...order.cartItems.flatMap((item) =>
+                Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
+                    name: addonName,
+                    quantity,
+                    kitchen: kitchen || "Unknown",
+                    type: "addon",
+                    customerName: order.customerName,
+                    tableNumber: order.tableNumber,
+                    id: `${order.tableNumber}-${addonName}-${item.name}`, // Unique ID for addon
+                    status: item.status, // Inherit status from main item initially
+                }))
             ),
-        }))
-        .filter((order) => order.cartItems.length > 0);
+            ...order.cartItems.flatMap((item) =>
+                (item.selectedCombos || []).map((combo) => ({
+                    name: combo.name1,
+                    quantity: combo.quantity || 1,
+                    kitchen: combo.kitchen || "Unknown",
+                    type: "combo",
+                    selectedVariant: combo.selectedVariant,
+                    customerName: order.customerName,
+                    tableNumber: order.tableNumber,
+                    id: `${order.tableNumber}-${combo.name1}-${item.name}`, // Unique ID for combo
+                    status: item.status, // Inherit status from main item initially
+                }))
+            ),
+        ]
+    ).filter(
+        (item) =>
+            item.kitchen === selectedKitchen &&
+            item.category !== "Drinks" && // Assuming addons/combos don't have category "Drinks"
+            item.status !== "PickedUp"
+    );
 
     const handleStatusChange = (id, newStatus) => {
         const updatedOrders = savedOrders.map((order) => ({
             ...order,
-            cartItems: order.cartItems.map((item) =>
-                item.id === id ? { ...item, status: newStatus } : item
-            ),
+            cartItems: order.cartItems.map((item) => {
+                // Update status for main item, addons, and combos independently
+                const updatedItem = { ...item };
+                if (item.id === id) updatedItem.status = newStatus;
+                if (Object.values(item.addonCounts || {}).some((addon) => `${order.tableNumber}-${addon.name}-${item.name}` === id)) {
+                    updatedItem.addonCounts = {
+                        ...item.addonCounts,
+                        [Object.keys(item.addonCounts).find((key) => `${order.tableNumber}-${key}-${item.name}` === id)]: {
+                            ...item.addonCounts[Object.keys(item.addonCounts).find((key) => `${order.tableNumber}-${key}-${item.name}` === id)],
+                            status: newStatus,
+                        },
+                    };
+                }
+                if ((item.selectedCombos || []).some((combo) => `${order.tableNumber}-${combo.name1}-${item.name}` === id)) {
+                    updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
+                        `${order.tableNumber}-${combo.name1}-${item.name}` === id ? { ...combo, status: newStatus } : combo
+                    );
+                }
+                return updatedItem;
+            }),
         }));
 
         if (newStatus === "Prepared") {
             setPreparedItems((prev) => [...new Set([...prev, id])]);
-        } else if (newStatus !== "Prepared") {
+        } else {
             setPreparedItems((prev) => prev.filter((itemId) => itemId !== id));
         }
 
@@ -68,23 +125,33 @@ function Kitchen() {
         const pickupTime = new Date().toLocaleString();
         const updatedOrders = savedOrders.map((order) => ({
             ...order,
-            cartItems: order.cartItems.map((item) =>
-                item.id === id ? { ...item, status: "PickedUp" } : item
-            ),
+            cartItems: order.cartItems.map((item) => {
+                const updatedItem = { ...item };
+                if (item.id === id) updatedItem.status = "PickedUp";
+                if (Object.values(item.addonCounts || {}).some((addon) => `${order.tableNumber}-${addon.name}-${item.name}` === id)) {
+                    updatedItem.addonCounts = {
+                        ...item.addonCounts,
+                        [Object.keys(item.addonCounts).find((key) => `${order.tableNumber}-${key}-${item.name}` === id)]: {
+                            ...item.addonCounts[Object.keys(item.addonCounts).find((key) => `${order.tableNumber}-${key}-${item.name}` === id)],
+                            status: "PickedUp",
+                        },
+                    };
+                }
+                if ((item.selectedCombos || []).some((combo) => `${order.tableNumber}-${combo.name1}-${item.name}` === id)) {
+                    updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
+                        `${order.tableNumber}-${combo.name1}-${item.name}` === id ? { ...combo, status: "PickedUp" } : combo
+                    );
+                }
+                return updatedItem;
+            }),
         }));
 
-        const orderWithItem = savedOrders.find((order) =>
-            order.cartItems.some((item) => item.id === id)
-        );
-        const pickedItem = orderWithItem?.cartItems.find((item) => item.id === id);
-
-        if (pickedItem && orderWithItem) {
+        const pickedItem = filteredItems.find((item) => item.id === id);
+        if (pickedItem) {
             const newPickedUpItem = {
                 ...pickedItem,
-                pickupTime: pickupTime,
+                pickupTime,
                 kitchen: selectedKitchen,
-                customerName: orderWithItem.customerName || "Unknown",
-                tableNumber: orderWithItem.tableNumber || "N/A",
             };
             setPickedUpItems((prev) => {
                 const newItems = [...prev, newPickedUpItem];
@@ -92,6 +159,7 @@ function Kitchen() {
                 return newItems;
             });
         }
+
         setSavedOrders(updatedOrders);
         localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
     };
@@ -157,7 +225,7 @@ function Kitchen() {
             </div>
 
             <h5>Current Orders - {selectedKitchen || "Select a Kitchen"}</h5>
-            {filteredOrders.length === 0 ? (
+            {filteredItems.length === 0 ? (
                 <p>No orders for this kitchen.</p>
             ) : (
                 <div className="table-responsive">
@@ -169,48 +237,22 @@ function Kitchen() {
                                 <th>Item</th>
                                 <th>Image</th>
                                 <th>Quantity</th>
-                                <th>Category</th>
+                                <th>Type</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredOrders.map((order, orderIndex) =>
-                                order.cartItems.map((item, itemIndex) => (
-                                    <tr
-                                        key={`${orderIndex}-${itemIndex}`}
-                                        style={getRowStyle(item.status)}
-                                    >
-                                        {itemIndex === 0 && (
-                                            <>
-                                                <td rowSpan={order.cartItems.length}>
-                                                    {order.customerName || "Unknown"}
-                                                </td>
-                                                <td rowSpan={order.cartItems.length}>
-                                                    {order.tableNumber || "N/A"}
-                                                </td>
-                                            </>
-                                        )}
-                                        <td>
-                                            {item.name}
-                                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                    {Object.entries(item.addonCounts).map(([addonName, { quantity }]) => (
-                                                        <li key={addonName}>+ {addonName} x{quantity}</li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                            {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                    {item.selectedCombos.map((combo, idx) => (
-                                                        <li key={idx}>
-                                                            + {combo.name1} {combo.selectedVariant ? `(${combo.selectedVariant})` : ''}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                        </td>
-                                        <td>
+                            {filteredItems.map((item, index) => (
+                                <tr key={index} style={getRowStyle(item.status)}>
+                                    <td>{item.customerName || "Unknown"}</td>
+                                    <td>{item.tableNumber || "N/A"}</td>
+                                    <td>
+                                        {item.name}
+                                        {item.type === "combo" && item.selectedVariant && ` (${item.selectedVariant})`}
+                                    </td>
+                                    <td>
+                                        {item.image && (
                                             <img
                                                 src={item.image}
                                                 className="rounded"
@@ -222,38 +264,38 @@ function Kitchen() {
                                                 }}
                                                 alt={item.name}
                                             />
-                                        </td>
-                                        <td>{item.quantity}</td>
-                                        <td>{item.category}</td>
-                                        <td>
-                                            <select
-                                                value={item.status || "Pending"}
-                                                onChange={(e) =>
-                                                    handleStatusChange(item.id, e.target.value)
-                                                }
-                                                className="form-select"
+                                        )}
+                                    </td>
+                                    <td>{item.quantity}</td>
+                                    <td>{item.type}</td>
+                                    <td>
+                                        <select
+                                            value={item.status || "Pending"}
+                                            onChange={(e) =>
+                                                handleStatusChange(item.id, e.target.value)
+                                            }
+                                            className="form-select"
+                                        >
+                                            <option value="Pending">Pending</option>
+                                            <option value="Preparing">Preparing</option>
+                                            <option value="Prepared">Prepared</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        {item.status === "Prepared" && item.status !== "PickedUp" && (
+                                            <button
+                                                className="btn btn-success"
+                                                onClick={() => handlePickUp(item.id)}
                                             >
-                                                <option value="Pending">Pending</option>
-                                                <option value="Preparing">Preparing</option>
-                                                <option value="Prepared">Prepared</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            {item.status === "Prepared" && item.status !== "PickedUp" && (
-                                                <button
-                                                    className="btn btn-success"
-                                                    onClick={() => handlePickUp(item.id)}
-                                                >
-                                                    Mark as Picked Up
-                                                </button>
-                                            )}
-                                            {item.status === "PickedUp" && (
-                                                <span className="text-success">Picked Up ✅</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
+                                                Mark as Picked Up
+                                            </button>
+                                        )}
+                                        {item.status === "PickedUp" && (
+                                            <span className="text-success">Picked Up ✅</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
@@ -293,7 +335,7 @@ function Kitchen() {
                                                     <th>Table</th>
                                                     <th>Item</th>
                                                     <th>Quantity</th>
-                                                    <th>Category</th>
+                                                    <th>Type</th>
                                                     <th>Kitchen</th>
                                                     <th>Pickup Time</th>
                                                     <th>Action</th>
@@ -306,25 +348,10 @@ function Kitchen() {
                                                         <td>{item.tableNumber || "N/A"}</td>
                                                         <td>
                                                             {item.name}
-                                                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                    {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                        <li key={addonName}>+ {addonName} x{quantity} (${price * quantity})</li>
-                                                                    ))}
-                                                                </ul>
-                                                            )}
-                                                            {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                                    {item.selectedCombos.map((combo, idx) => (
-                                                                        <li key={idx}>
-                                                                            + {combo.name1} {combo.selectedVariant ? `(${combo.selectedVariant})` : ''} - ${(combo.combo_price || 0) + (combo.variantPrice || 0)}
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            )}
+                                                            {item.type === "combo" && item.selectedVariant && ` (${item.selectedVariant})`}
                                                         </td>
                                                         <td>{item.quantity}</td>
-                                                        <td>{item.category}</td>
+                                                        <td>{item.type}</td>
                                                         <td>{item.kitchen}</td>
                                                         <td>{item.pickupTime}</td>
                                                         <td>

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import UserContext from '../../Context/UserContext';
 import './front.css';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -43,7 +43,7 @@ function Front() {
     const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
     const [taxTemplates, setTaxTemplates] = useState([]);
     const [selectedTaxTemplate, setSelectedTaxTemplate] = useState("VAT - P");
-    const printRef = useRef();
+
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -69,18 +69,29 @@ function Front() {
                         category: item.item_group,
                         image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
                         price: item.price_list_rate || 0,
-                        addons: item.addons || [],
-                        combos: item.combos || [],
+                        addons: (item.addons || []).map((addon) => ({
+                            name: addon.name || addon.item_name || "Unnamed Addon",
+                            price: addon.price || addon.price_list_rate || 0,
+                            kitchen: addon.kitchen || addon.custom_kitchen || "Unknown",
+                        })),
+                        combos: (item.combos || []).map((combo) => ({
+                            name1: combo.name1 || combo.item_name || "Unnamed Combo",
+                            combo_price: combo.price || combo.combo_price || combo.price_list_rate || 0,
+                            kitchen: combo.kitchen || combo.custom_kitchen || "Unknown",
+                            variants: combo.variants || [],
+                        })),
                         variants: item.variants || [],
                         ingredients: item.ingredients || [],
-                        kitchen: item.custom_kitchen,
-                        type: item.type || "regular"
+                        kitchen: item.custom_kitchen || "Unknown",
+                        type: item.type || "regular",
                     }));
 
                     setMenuItems(formattedItems);
                     const initialFilteredMenu = formattedItems.filter(
-                        item => (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) &&
-                            item.type !== "addon" && item.type !== "combo"
+                        (item) =>
+                            (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) &&
+                            item.type !== "addon" &&
+                            item.type !== "combo"
                     );
                     setFilteredItems(initialFilteredMenu);
                     const uniqueCategories = [...new Set(formattedItems.map((item) => item.category.toLowerCase()))];
@@ -138,6 +149,7 @@ function Front() {
     const handleItemClick = (item) => setSelectedItem(item);
 
     const handleItemUpdate = (updatedItem) => {
+        console.log("Updated Item from FoodDetails:", updatedItem); // Debug
         updateCartItem(updatedItem);
         setSelectedItem(null);
     };
@@ -150,10 +162,12 @@ function Front() {
     const getSubTotal = () => {
         return cartItems.reduce((sum, item) => {
             const mainPrice = item.basePrice * item.quantity;
-            const addonPrice = Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => 
-                sum + (price * quantity), 0);
-            const comboPrice = (item.selectedCombos || []).reduce((sum, combo) => 
-                sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0);
+            const addonPrice = Object.entries(item.addonCounts || {}).reduce(
+                (sum, [_, { price, quantity }]) => sum + (price * quantity), 0
+            );
+            const comboPrice = (item.selectedCombos || []).reduce(
+                (sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0
+            );
             return sum + mainPrice + addonPrice + comboPrice;
         }, 0);
     };
@@ -190,19 +204,20 @@ function Front() {
 
     const handlePaymentSelection = async (method) => {
         const subTotal = getSubTotal();
+        const grandTotal = getGrandTotal();
         const paymentDetails = {
             mode_of_payment: method,
-            amount: subTotal.toFixed(2),
+            amount: grandTotal.toFixed(2),
         };
-    
+
         console.log("Payment Details (Before Sending to Backend):", paymentDetails);
-    
+
         if (!paymentDetails || !paymentDetails.mode_of_payment) {
             console.error("Error: Payment Details are missing or incorrect!", paymentDetails);
             alert("Error: Payment method is not defined. Please try again.");
             return;
         }
-    
+
         const billDetails = {
             customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -210,8 +225,8 @@ function Front() {
                 name: item.name,
                 price: item.basePrice,
                 quantity: item.quantity,
-                totalPrice: (item.basePrice * item.quantity) + 
-                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
+                totalPrice: (item.basePrice * item.quantity) +
+                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
                     (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0),
                 addonCounts: item.addonCounts || {},
                 selectedCombos: item.selectedCombos || [],
@@ -219,13 +234,13 @@ function Front() {
             subTotal: subTotal.toFixed(2),
             vatRate: getTaxRate(),
             vatAmount: getTaxAmount().toFixed(2),
-            totalAmount: getGrandTotal().toFixed(2),
+            totalAmount: grandTotal.toFixed(2),
             payments: [paymentDetails],
         };
-    
+
         try {
             await handleSaveToBackend(paymentDetails, subTotal);
-    
+
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
             } else if (method === "CREDIT CARD") {
@@ -233,7 +248,7 @@ function Front() {
             } else if (method === "UPI") {
                 alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
             }
-    
+
             handlePaymentCompletion(tableNumber);
         } catch (error) {
             console.error("Error processing payment:", error);
@@ -276,22 +291,25 @@ function Front() {
                 qty: item.quantity,
                 rate: item.basePrice,
                 amount: item.basePrice * item.quantity,
+                kitchen: item.kitchen || "Unknown", // Include kitchen
             };
 
-            const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+            const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
                 item_name: addonName,
                 description: `Addon: ${addonName}`,
-                qty: quantity, // Use add-on quantity directly
+                qty: quantity,
                 rate: price,
                 amount: price * quantity,
+                kitchen: kitchen || "Unknown", // Preserve kitchen
             }));
 
             const comboItems = (item.selectedCombos || []).map((combo) => ({
                 item_name: combo.name1,
-                description: `Combo: ${combo.name1}`,
-                qty: combo.quantity || 1, // Use combo-specific quantity
-                rate: combo.combo_price || 0,
-                amount: (combo.combo_price || 0) * (combo.quantity || 1),
+                description: `Combo: ${combo.name1}${combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}`,
+                qty: combo.quantity || 1,
+                rate: (combo.combo_price || 0) + (combo.variantPrice || 0),
+                amount: ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1),
+                kitchen: combo.kitchen || "Unknown", // Preserve kitchen
             }));
 
             return [mainItem, ...addonItems, ...comboItems];
@@ -338,7 +356,7 @@ function Front() {
 
             const result = await response.json();
 
-            if (response.ok && result.status === "success") { // Updated to match backend response
+            if (response.ok && result.status === "success") {
                 alert(`POS Invoice saved successfully! Grand Total: ₹${result.grand_total}`);
                 setCartItems([]);
                 localStorage.removeItem("savedOrders");
@@ -480,6 +498,8 @@ function Front() {
             cartItems,
             timestamp: new Date().toISOString(),
         };
+
+        console.log("Saving Order:", newOrder); // Debug
 
         setSavedOrders((prev) => {
             const existingOrders = prev.filter((order) => order.tableNumber !== tableNumber);
@@ -691,10 +711,10 @@ function Front() {
                                                     <tr key={index}>
                                                         <td className='text-start'>{tableNumber}</td>
                                                         <td className='text-start'>
-                                                            {item.name}
+                                                            {item.name} 
                                                             {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                    {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                                                                    {Object.entries(item.addonCounts).map(([addonName, { price, quantity, kitchen }]) => (
                                                                         <li key={addonName}>
                                                                             + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
                                                                         </li>
@@ -706,7 +726,8 @@ function Front() {
                                                                     {item.selectedCombos.map((combo, idx) => (
                                                                         <li key={idx}>
                                                                             + {combo.name1} x{combo.quantity || 1}
-                                                                            {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} - ${((combo.combo_price || 0) * (combo.quantity || 1)).toFixed(2)}
+                                                                            {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} 
+                                                                            - ${(combo.selectedVariant ? (combo.variantPrice || 0) : (combo.combo_price || 0)) * (combo.quantity || 1).toFixed(2)} 
                                                                         </li>
                                                                     ))}
                                                                 </ul>
@@ -730,8 +751,8 @@ function Front() {
                                                         </td>
                                                         <td className='text-start'>${item.basePrice}</td>
                                                         <td className='text-start'>
-                                                            ${((item.basePrice * item.quantity) + 
-                                                                Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
+                                                            ${((item.basePrice * item.quantity) +
+                                                                Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
                                                                 (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0)
                                                             ).toFixed(2)}
                                                         </td>
@@ -865,7 +886,8 @@ function Front() {
                                                                                                 {item.selectedCombos.map((combo, idx) => (
                                                                                                     <li key={idx}>
                                                                                                         + {combo.name1} x{combo.quantity || 1}
-                                                                                                        {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} - ${(((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1)).toFixed(2)}
+                                                                                                        {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} 
+                                                                                                        - ${(combo.selectedVariant ? (combo.variantPrice || 0) : (combo.combo_price || 0)) * (combo.quantity || 1).toFixed(2)}
                                                                                                     </li>
                                                                                                 ))}
                                                                                             </ul>
@@ -874,8 +896,8 @@ function Front() {
                                                                                     <td>{item.quantity || 1}</td>
                                                                                     <td>${item.basePrice}</td>
                                                                                     <td>
-                                                                                        ${((item.basePrice * item.quantity) + 
-                                                                                            Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) + 
+                                                                                        ${((item.basePrice * item.quantity) +
+                                                                                            Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
                                                                                             (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0)
                                                                                         ).toFixed(2)}
                                                                                     </td>

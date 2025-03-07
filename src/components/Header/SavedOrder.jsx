@@ -24,8 +24,8 @@ function SavedOrder({ orders, setSavedOrders }) {
       ...item,
       basePrice: item.basePrice || 0,
       quantity: item.quantity || 1, // Main item quantity
-      addonCounts: item.addonCounts || {}, // Static add-on quantities
-      selectedCombos: item.selectedCombos || [],
+      addonCounts: item.addonCounts || {}, // Static add-on quantities with kitchen info
+      selectedCombos: item.selectedCombos || [], // Combos with kitchen info
     }));
     setCartItems(formattedCartItems);
     alert(`You selected Table ${order.tableNumber}`);
@@ -68,18 +68,25 @@ function SavedOrder({ orders, setSavedOrders }) {
                   <td>
                     {order.cartItems.map((item, i) => (
                       <div key={i}>
-                        {item.name} - Qty: {item.quantity}
+                        <div>
+                          {item.name} - Qty: {item.quantity}
+                        </div>
                         {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                           <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                            {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                              <li key={addonName}>+ {addonName} x{quantity} (${price * quantity})</li>
+                            {Object.entries(item.addonCounts).map(([addonName, { price, quantity, kitchen }]) => (
+                              <li key={addonName}>
+                                + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
+                              </li>
                             ))}
                           </ul>
                         )}
                         {item.selectedCombos && item.selectedCombos.length > 0 && (
                           <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                             {item.selectedCombos.map((combo, idx) => (
-                              <li key={idx}>+ {combo.name1} {combo.selectedVariant ? `(${combo.selectedVariant})` : ''} - ${combo.combo_price}</li>
+                              <li key={idx}>
+                                + {combo.name1} x{combo.quantity || 1} {combo.selectedVariant ? `(${combo.selectedVariant})` : ''} 
+                                - ${(combo.combo_price || 0).toFixed(2)}
+                              </li>
                             ))}
                           </ul>
                         )}
