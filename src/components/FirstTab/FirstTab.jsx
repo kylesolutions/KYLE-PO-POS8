@@ -14,7 +14,7 @@ function FirstTab() {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a', // Ensure this token is valid
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
                     },
                 });
                 if (!response.ok) {
@@ -39,12 +39,12 @@ function FirstTab() {
         fetchDeliveryTypes();
     }, []);
 
-    // Navigation logic: Only "DINE IN" goes to /table, others to /frontpage
+    // Navigation logic: Pass deliveryType in state
     const handleNavigation = (type) => {
         if (type.toUpperCase() === "DINE IN") {
-            navigate('/table');
+            navigate('/table', { state: { deliveryType: type.toUpperCase() } });
         } else {
-            navigate('/frontpage');
+            navigate('/frontpage', { state: { deliveryType: type.toUpperCase() } });
         }
     };
 

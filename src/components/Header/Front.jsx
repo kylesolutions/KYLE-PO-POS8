@@ -19,7 +19,7 @@ function Front() {
     const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems, totalPrice } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
-    const { tableNumber, existingOrder } = state || {};
+    const { tableNumber, existingOrder, deliveryType } = state || {}; // Retrieve deliveryType
 
     useEffect(() => {
         if (location.state) {
@@ -43,6 +43,11 @@ function Front() {
     const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
     const [taxTemplates, setTaxTemplates] = useState([]);
     const [selectedTaxTemplate, setSelectedTaxTemplate] = useState("VAT - P");
+
+    // New state variables for delivery details
+    const [address, setAddress] = useState("");
+    const [whatsappNumber, setWhatsappNumber] = useState("");
+    const [email, setEmail] = useState("");
 
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -149,7 +154,7 @@ function Front() {
     const handleItemClick = (item) => setSelectedItem(item);
 
     const handleItemUpdate = (updatedItem) => {
-        console.log("Updated Item from FoodDetails:", updatedItem); // Debug
+        console.log("Updated Item from FoodDetails:", updatedItem);
         updateCartItem(updatedItem);
         setSelectedItem(null);
     };
@@ -236,6 +241,12 @@ function Front() {
             vatAmount: getTaxAmount().toFixed(2),
             totalAmount: grandTotal.toFixed(2),
             payments: [paymentDetails],
+            // Include delivery details if not DINE IN
+            ...(deliveryType !== "DINE IN" && {
+                address,
+                whatsappNumber,
+                email,
+            }),
         };
 
         try {
@@ -264,25 +275,25 @@ function Front() {
         setBookedTables(updatedBookedTables);
         localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
         setCartItems([]);
-        alert(`Payment for Table ${tableNumber} is completed. The table is now available.`);
+        alert(`Payment for Table ${tableNumber || "Order"} is completed.`);
     };
 
     const handleSaveToBackend = async (paymentDetails, subTotal) => {
         console.log("Inside handleSaveToBackend | Payment Details:", paymentDetails);
         console.log("Cart Items:", cartItems);
-    
+
         if (!paymentDetails || typeof paymentDetails !== "object") {
             console.error("handleSaveToBackend received invalid paymentDetails:", paymentDetails);
             alert("Error: Invalid payment details. Please try again.");
             return;
         }
-    
+
         if (!paymentDetails.mode_of_payment) {
             console.error("Error: mode_of_payment is missing in paymentDetails!", paymentDetails);
             alert("Error: Payment method is missing. Please try again.");
             return;
         }
-    
+
         const allItems = cartItems.flatMap((item) => {
             const mainItem = {
                 item_name: item.name,
@@ -291,36 +302,36 @@ function Front() {
                 qty: item.quantity,
                 rate: item.basePrice,
                 amount: item.basePrice * item.quantity,
-                kitchen: item.kitchen || "Unknown", // Include kitchen
+                kitchen: item.kitchen || "Unknown",
             };
-    
+
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
                 item_name: addonName,
                 description: `Addon: ${addonName}`,
                 qty: quantity,
                 rate: price,
                 amount: price * quantity,
-                kitchen: kitchen || "Unknown", // Preserve kitchen
+                kitchen: kitchen || "Unknown",
             }));
-    
+
             const comboItems = (item.selectedCombos || []).map((combo) => ({
                 item_name: combo.name1,
                 description: `Combo: ${combo.name1}${combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}`,
                 qty: combo.quantity || 1,
                 rate: (combo.combo_price || 0) + (combo.variantPrice || 0),
                 amount: ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1),
-                kitchen: combo.kitchen || "Unknown", // Preserve kitchen
+                kitchen: combo.kitchen || "Unknown",
             }));
-    
+
             return [mainItem, ...addonItems, ...comboItems];
         });
-    
+
         if (allItems.length === 0) {
             console.error("Error: No items in the cart.");
             alert("Error: Cannot create an order with no items.");
             return;
         }
-    
+
         const payload = {
             customer: customerName,
             posting_date: new Date().toISOString().split("T")[0],
@@ -340,10 +351,16 @@ function Front() {
                 amount: paymentDetails.amount,
             }],
             items: allItems,
+            // Include delivery details if not DINE IN
+            ...(deliveryType !== "DINE IN" && {
+                custom_address: address,
+                custom_whatsapp_number: whatsappNumber,
+                custom_email: email,
+            }),
         };
-    
+
         console.log("Final Payload before sending to backend:", payload);
-    
+
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
                 method: "POST",
@@ -353,11 +370,10 @@ function Front() {
                 },
                 body: JSON.stringify(payload),
             });
-    
+
             const result = await response.json();
-            console.log("Raw Backend Response:", result); // Debug the full response
-    
-            // Check the nested status
+            console.log("Raw Backend Response:", result);
+
             if (response.ok && result.message?.status === "success") {
                 alert(`POS Invoice saved successfully! Grand Total: ₹${result.message.grand_total}`);
                 setCartItems([]);
@@ -499,9 +515,10 @@ function Front() {
             phoneNumber,
             cartItems,
             timestamp: new Date().toISOString(),
+            ...(deliveryType !== "DINE IN" && { address, whatsappNumber, email }), // Include delivery details
         };
 
-        console.log("Saving Order:", newOrder); // Debug
+        console.log("Saving Order:", newOrder);
 
         setSavedOrders((prev) => {
             const existingOrders = prev.filter((order) => order.tableNumber !== tableNumber);
@@ -510,7 +527,7 @@ function Front() {
             setCartItems([]);
             return updatedOrders;
         });
-        alert(`Order for Table ${tableNumber} saved successfully!`);
+        alert(`Order for ${tableNumber ? `Table ${tableNumber}` : deliveryType} saved successfully!`);
     };
 
     const cancelCart = () => setCartItems([]);
@@ -555,6 +572,7 @@ function Front() {
                             <div className="col-12 p-2 p-md-2 mb-3 d-flex justify-content-between flex-column">
                                 <div className="text-center row">
                                     <div className='row'>
+                                        {tableNumber? <> 
                                         <div className='col-lg-1 text-start' style={{ position: "relative" }}>
                                             <h1
                                                 className="display-4 fs-2"
@@ -670,6 +688,132 @@ function Front() {
                                             <div className='col-10 col-lg-5 mb-2 d-flex align-items-center'>
                                                 <p className="text-muted mb-0">Ph: {phoneNumber}</p>
                                             </div>
+                                        )}</>:
+                                        <>
+                                        <div className='col-10 col-lg-5 mb-2 position-relative'>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Enter Customer Name"
+                                                value={customerInput}
+                                                onChange={handleCustomerInputChange}
+                                                onKeyPress={handleKeyPress}
+                                                style={{
+                                                    width: "100%",
+                                                    padding: "10px",
+                                                    border: "1px solid #ccc",
+                                                    borderRadius: "5px",
+                                                    fontSize: "1rem",
+                                                }}
+                                            />
+                                            {showCustomerSuggestions && filteredCustomers.length > 0 && (
+                                                <ul
+                                                    className="customer-suggestions"
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: "100%",
+                                                        left: 0,
+                                                        width: "100%",
+                                                        maxHeight: "150px",
+                                                        overflowY: "auto",
+                                                        backgroundColor: "#fff",
+                                                        border: "1px solid #ccc",
+                                                        borderRadius: "5px",
+                                                        listStyleType: "none",
+                                                        padding: 0,
+                                                        margin: 0,
+                                                        zIndex: 1000,
+                                                    }}
+                                                >
+                                                    {filteredCustomers.map((customer, index) => (
+                                                        <li
+                                                            key={index}
+                                                            onClick={() => handleCustomerSelect(customer.customer_name)}
+                                                            style={{
+                                                                padding: "8px 12px",
+                                                                cursor: "pointer",
+                                                                borderBottom: "1px solid #eee",
+                                                            }}
+                                                            onMouseEnter={(e) => (e.target.style.backgroundColor = "#f0f0f0")}
+                                                            onMouseLeave={(e) => (e.target.style.backgroundColor = "#fff")}
+                                                        >
+                                                            {customer.customer_name}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                        <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            <span
+                                                onClick={handleCustomerSubmit}
+                                                style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
+                                            >
+                                                <i className="bi bi-check"></i>
+                                            </span>
+                                        </div>
+
+                                        {!isPhoneNumberSet ? (
+                                            <>
+                                                <div className='col-10 col-lg-5 mb-2'>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        placeholder="Enter phone number"
+                                                        value={phoneNumber}
+                                                        onChange={handlePhoneNumberChange}
+                                                        style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
+                                                    />
+                                                </div>
+                                                <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <span
+                                                        onClick={handleSetPhoneNumber}
+                                                        style={{ fontWeight: "bold", cursor: "pointer" }}
+                                                    >
+                                                        <i className="bi bi-send"></i>
+                                                    </span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className='col-10 col-lg-5 mb-2 d-flex align-items-center'>
+                                                <p className="text-muted mb-0">Ph: {phoneNumber}</p>
+                                            </div>
+                                        )}
+                                        </>}
+                                        
+
+                                        {deliveryType && deliveryType !== "DINE IN" && (
+                                            <>
+                                                <div className='col-12 mb-2'>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        placeholder="Enter delivery address"
+                                                        value={address}
+                                                        onChange={(e) => setAddress(e.target.value)}
+                                                        style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
+                                                    />
+                                                </div>
+                                                <div className='col-12 mb-2'>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        placeholder="Enter WhatsApp number"
+                                                        value={whatsappNumber}
+                                                        onChange={(e) => setWhatsappNumber(e.target.value)}
+                                                        style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
+                                                    />
+                                                </div>
+                                                <div className='col-12 mb-2'>
+                                                    <input
+                                                        type="email"
+                                                        className="form-control"
+                                                        placeholder="Enter email"
+                                                        value={email}
+                                                        onChange={(e) => setEmail(e.target.value)}
+                                                        style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
+                                                    />
+                                                </div>
+                                            </>
                                         )}
                                     </div>
 
@@ -782,25 +926,25 @@ function Front() {
                                     <div className="col-12 col-lg-6">
                                         <div className="row">
                                             <div className="col-md-6 mb-2 col-6">
-                                                <h5 className="mb-0" style={{ "font-size": "12px" }}>Total Quantity</h5>
+                                                <h5 className="mb-0" style={{ "fontSize": "12px" }}>Total Quantity</h5>
                                                 <div className='grand-tot-div justify-content-end'>
                                                     <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                 </div>
                                             </div>
                                             <div className="col-md-6 mb-2 col-6">
-                                                <h5 className="mb-0" style={{ "font-size": "12px" }}>Subtotal</h5>
+                                                <h5 className="mb-0" style={{ "fontSize": "12px" }}>Subtotal</h5>
                                                 <div className='grand-tot-div'>
                                                     <span>$</span><span>{getSubTotal().toFixed(2)}</span>
                                                 </div>
                                             </div>
                                             <div className="col-md-6 mb-2 col-6">
-                                                <h5 className="mb-0" style={{ fontSize: "12px" }}>Tax</h5>
+                                                <h5 className="mb-0" style={{ "fontSize": "12px" }}>Tax</h5>
                                                 <div className='grand-tot-div justify-content-end'>
                                                     <span>${getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
                                                 </div>
                                             </div>
                                             <div className="col-md-6 mb-2 col-6">
-                                                <h5 className="mb-0" style={{ "font-size": "12px" }}>Grand Total</h5>
+                                                <h5 className="mb-0" style={{ "fontSize": "12px" }}>Grand Total</h5>
                                                 <div className='grand-tot-div justify-content-end'>
                                                     <span>${getGrandTotal().toFixed(2)}</span>
                                                 </div>
@@ -859,9 +1003,16 @@ function Front() {
                                                             <div className="modal-body">
                                                                 <div className="bill-section border p-3 shadow rounded">
                                                                     <div className="d-flex justify-content-between">
-                                                                        <p><strong>Table No:</strong> {tableNumber}</p>
+                                                                        <p><strong>{tableNumber ? "Table No" : "Delivery Type"}:</strong> {tableNumber || deliveryType}</p>
                                                                         <p><strong>Customer:</strong> {customerName}</p>
                                                                     </div>
+                                                                    {deliveryType !== "DINE IN" && (
+                                                                        <div className="mt-2">
+                                                                            <p><strong>Address:</strong> {address || "N/A"}</p>
+                                                                            <p><strong>WhatsApp:</strong> {whatsappNumber || "N/A"}</p>
+                                                                            <p><strong>Email:</strong> {email || "N/A"}</p>
+                                                                        </div>
+                                                                    )}
                                                                     <table className="table border text-start mt-2">
                                                                         <thead>
                                                                             <tr>
