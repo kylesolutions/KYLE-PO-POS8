@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import "bootstrap/dist/css/bootstrap.min.css"; // Ensure Bootstrap CSS is imported
 
 function SalesInvoice() {
   const [invoices, setInvoices] = useState([]);
@@ -36,22 +37,61 @@ function SalesInvoice() {
     fetchInvoices();
   }, []);
 
-  // Filter invoices based on invoice ID (name) and posting date
-  const filteredInvoices = invoices.filter((invoice) => {
-    const matchesId = invoice.name.toLowerCase().includes(filterId.toLowerCase());
-    const matchesDate = filterDate
-      ? (invoice.posting_date || "").includes(filterDate)
-      : true; // If no date filter, include all
-    return matchesId && matchesDate;
-  });
+  // Helper function to categorize invoices by date
+  const categorizeInvoices = () => {
+    const today = new Date();
+    const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
+    startOfWeek.setHours(0, 0, 0, 0);
 
-  // Handle filter input changes
-  const handleFilterIdChange = (e) => {
-    setFilterId(e.target.value);
+    const todayInvoices = [];
+    const weekInvoices = [];
+    const olderInvoices = [];
+
+    invoices.forEach((invoice) => {
+      const invoiceDate = invoice.posting_date ? new Date(invoice.posting_date) : null;
+      if (!invoiceDate) {
+        olderInvoices.push(invoice); // No date, push to older
+        return;
+      }
+
+      if (invoiceDate >= startOfToday) {
+        todayInvoices.push(invoice);
+      } else if (invoiceDate >= startOfWeek) {
+        weekInvoices.push(invoice);
+      } else {
+        olderInvoices.push(invoice);
+      }
+    });
+
+    return { todayInvoices, weekInvoices, olderInvoices };
   };
 
-  const handleFilterDateChange = (e) => {
-    setFilterDate(e.target.value);
+  // Filter invoices based on invoice ID and posting date within a tab
+  const filterInvoices = (invoiceList) => {
+    return invoiceList.filter((invoice) => {
+      const matchesId = invoice.name.toLowerCase().includes(filterId.toLowerCase());
+      const matchesDate = filterDate
+        ? (invoice.posting_date || "").includes(filterDate)
+        : true;
+      return matchesId && matchesDate;
+    });
+  };
+
+  // Handle filter input changes
+  const handleFilterIdChange = (e) => setFilterId(e.target.value);
+  const handleFilterDateChange = (e) => setFilterDate(e.target.value);
+
+  // Helper function to format date as "Day Month Year" (e.g., "10 March 2025")
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }); // Outputs "10 March 2025"
   };
 
   // Handle print for a single invoice
@@ -67,9 +107,11 @@ function SalesInvoice() {
             .invoice-header { text-align: center; margin-bottom: 20px; }
             .invoice-details { margin-bottom: 20px; }
             .invoice-details p { margin: 5px 0; }
-            table { width: 100%; border-collapse: collapse; }
+            .customer-details { border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
             th { background-color: #f2f2f2; }
+            .footer { text-align: right; margin-top: 20px; }
             @media print {
               .no-print { display: none; }
             }
@@ -81,13 +123,16 @@ function SalesInvoice() {
               <h2>POS Invoice</h2>
               <h4>Invoice ID: ${invoice.name}</h4>
             </div>
+            <div class="customer-details">
+              <p><strong>Customer Name:</strong> ${invoice.customer || "N/A"}</p>
+              <p><strong>Email:</strong> ${invoice.customer_email || "N/A"}</p>
+              <p><strong>Phone Number:</strong> ${invoice.customer_phone || "N/A"}</p>
+            </div>
             <div class="invoice-details">
-              <p><strong>Customer:</strong> ${invoice.customer || "N/A"}</p>
-              <p><strong>Posting Date:</strong> ${invoice.posting_date || "N/A"}</p>
+              <p><strong>Posting Date:</strong> ${formatDate(invoice.posting_date)}</p>
               <p><strong>Grand Total:</strong> ₹${invoice.grand_total || 0}</p>
               <p><strong>Total Taxes:</strong> ₹${invoice.total_taxes_and_charges || 0}</p>
               <p><strong>Currency:</strong> ${invoice.currency || "INR"}</p>
-              <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>
             </div>
             <h5>Items</h5>
             <table>
@@ -120,6 +165,9 @@ function SalesInvoice() {
                 }
               </tbody>
             </table>
+            <div class="footer">
+              <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>
+            </div>
           </div>
           <script>
             window.print();
@@ -131,7 +179,69 @@ function SalesInvoice() {
     printWindow.document.close();
   };
 
-  // Render function with table, filters, and print buttons
+  // Render table for a given invoice list
+  const renderInvoiceTable = (invoiceList) => {
+    const filtered = filterInvoices(invoiceList);
+    if (filtered.length === 0) {
+      return <p className="text-center">No invoices match the filter</p>;
+    }
+
+    return (
+      <div className="table-responsive">
+        <table className="table table-bordered table-hover">
+          <thead className="thead-dark">
+            <tr>
+              <th>Invoice ID</th>
+              <th>Customer</th>
+              <th>Posting Date</th>
+              <th>Grand Total (₹)</th>
+              <th>Total Taxes (₹)</th>
+              <th>Currency</th>
+              <th>Paid Amount (₹)</th>
+              <th>Items</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((invoice) => (
+              <tr key={invoice.name}>
+                <td>{invoice.name}</td>
+                <td>{invoice.customer || "N/A"}</td>
+                <td>{invoice.posting_date || "N/A"}</td>
+                <td>₹{invoice.grand_total || 0}</td>
+                <td>₹{invoice.total_taxes_and_charges || 0}</td>
+                <td>{invoice.currency || "INR"}</td>
+                <td>₹{invoice.paid_amount || 0}</td>
+                <td>
+                  {invoice.pos_invoice_items && invoice.pos_invoice_items.length > 0 ? (
+                    <ul className="list-unstyled">
+                      {invoice.pos_invoice_items.map((item, idx) => (
+                        <li key={idx}>
+                          {item.item_name || "N/A"} (Qty: {item.qty || 0}, ₹{item.amount || 0})
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    "No items"
+                  )}
+                </td>
+                <td>
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={() => handlePrintInvoice(invoice)}
+                  >
+                    Print
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // Render function with tabs
   const renderContent = () => {
     if (loading) {
       return <p className="text-center">Loading invoices...</p>;
@@ -144,6 +254,8 @@ function SalesInvoice() {
     if (!invoices || invoices.length === 0) {
       return <p className="text-center">No POS Invoices Found</p>;
     }
+
+    const { todayInvoices, weekInvoices, olderInvoices } = categorizeInvoices();
 
     return (
       <>
@@ -177,67 +289,78 @@ function SalesInvoice() {
           </div>
         </div>
 
-        {/* Invoices Table */}
-        <div className="table-responsive">
-          <table className="table table-bordered table-hover">
-            <thead className="thead-dark">
-              <tr>
-                <th>Invoice ID</th>
-                <th>Customer</th>
-                <th>Posting Date</th>
-                <th>Grand Total (₹)</th>
-                <th>Total Taxes (₹)</th>
-                <th>Currency</th>
-                <th>Paid Amount (₹)</th>
-                <th>Items</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredInvoices.length > 0 ? (
-                filteredInvoices.map((invoice) => (
-                  <tr key={invoice.name}>
-                    <td>{invoice.name}</td>
-                    <td>{invoice.customer || "N/A"}</td>
-                    <td>{invoice.posting_date || "N/A"}</td>
-                    <td>₹{invoice.grand_total || 0}</td>
-                    <td>₹{invoice.total_taxes_and_charges || 0}</td>
-                    <td>{invoice.currency || "INR"}</td>
-                    <td>₹{invoice.paid_amount || 0}</td>
-                    <td>
-                      {invoice.pos_invoice_items &&
-                      invoice.pos_invoice_items.length > 0 ? (
-                        <ul className="list-unstyled">
-                          {invoice.pos_invoice_items.map((item, idx) => (
-                            <li key={idx}>
-                              {item.item_name || "N/A"} (Qty: {item.qty || 0}, ₹
-                              {item.amount || 0})
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        "No items"
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-sm btn-success"
-                        onClick={() => handlePrintInvoice(invoice)}
-                      >
-                        Print
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="9" className="text-center">
-                    No invoices match the filter
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        {/* Tabs */}
+        <ul className="nav nav-tabs" id="invoiceTabs" role="tablist">
+          <li className="nav-item" role="presentation">
+            <button
+              className="nav-link active"
+              id="today-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#today"
+              type="button"
+              role="tab"
+              aria-controls="today"
+              aria-selected="true"
+            >
+              Today ({todayInvoices.length})
+            </button>
+          </li>
+          <li className="nav-item" role="presentation">
+            <button
+              className="nav-link"
+              id="week-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#week"
+              type="button"
+              role="tab"
+              aria-controls="week"
+              aria-selected="false"
+            >
+              This Week ({weekInvoices.length})
+            </button>
+          </li>
+          <li className="nav-item" role="presentation">
+            <button
+              className="nav-link"
+              id="older-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#older"
+              type="button"
+              role="tab"
+              aria-controls="older"
+              aria-selected="false"
+            >
+              Older ({olderInvoices.length})
+            </button>
+          </li>
+        </ul>
+
+        {/* Tab Content */}
+        <div className="tab-content" id="invoiceTabContent">
+          <div
+            className="tab-pane fade show active"
+            id="today"
+            role="tabpanel"
+            aria-labelledby="today-tab"
+          >
+            {renderInvoiceTable(todayInvoices)}
+          </div>
+          <div
+            className="tab-pane fade"
+            id="week"
+            role="tabpanel"
+            aria-labelledby="week-tab"
+          >
+            {renderInvoiceTable(weekInvoices)}
+          </div>
+          <div
+            className="tab-pane fade"
+            id="older"
+            role="tabpanel"
+            aria-labelledby="older-tab"
+          >
+            {renderInvoiceTable(olderInvoices)}
+          </div>
         </div>
       </>
     );

@@ -6,17 +6,40 @@
 
 .table-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(4, 150px); /* Default: 4 tables per row */
   gap: 20px;
   margin-top: 20px;
-  justify-items: center;
+  justify-content: center; /* Center the grid within the container */
+}
+
+/* Large screens (≥992px): 4 tables per row (already set above) */
+
+/* Medium screens (≥768px to <992px): 3 tables per row */
+@media (max-width: 991px) {
+  .table-grid {
+    grid-template-columns: repeat(3, 150px);
+  }
+}
+
+/* Small screens (≥576px to <768px): 2 tables per row */
+@media (max-width: 767px) {
+  .table-grid {
+    grid-template-columns: repeat(2, 150px);
+  }
+}
+
+/* Extra small screens (<576px): 1 table per row */
+@media (max-width: 575px) {
+  .table-grid {
+    grid-template-columns: 150px; /* Single column */
+  }
 }
 
 .table-card {
   width: 150px;
   height: 150px;
   display: flex;
-  flex-direction: column;  /* Stack elements vertically */
+  flex-direction: column; /* Stack elements vertically */
   align-items: center;
   justify-content: center;
   text-align: center;

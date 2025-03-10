@@ -20,17 +20,16 @@ function Table() {
     const existingOrder = savedOrders.find(order => order.tableNumber === tableNumber);
 
     if (existingOrder) {
-      // Ensure cartItems structure matches FoodDetails output
       const formattedCartItems = existingOrder.cartItems.map(item => ({
         ...item,
         basePrice: item.basePrice || 0,
-        quantity: item.quantity || 1, // Main item quantity
-        addonCounts: item.addonCounts || {}, // Static add-on quantities
+        quantity: item.quantity || 1,
+        addonCounts: item.addonCounts || {},
         selectedCombos: item.selectedCombos || [],
       }));
       setCartItems(formattedCartItems);
     } else {
-      setCartItems([]); // Reset cart for new table
+      setCartItems([]);
     }
     setActiveOrders(prevOrders => [...new Set([...prevOrders, tableNumber])]);
 
@@ -71,7 +70,7 @@ function Table() {
       <i className="fi fi-rs-angle-small-left back-button1" onClick={() => navigate('/firsttab')}></i>
       <div className="table-page container">
         <h1>Restaurant Table Layout</h1>
-        <div className="table-grid row">
+        <div className="table-grid">
           {tables.length > 0 ? (
             tables.map((table, index) => (
               <div
