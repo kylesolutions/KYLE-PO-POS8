@@ -11,7 +11,7 @@ function Navbar() {
     const user = useSelector((state) => state.user.user);
     const posProfile = useSelector((state) => state.user.posProfile);
 
-    console.log("Redux User State in Navbar:", useSelector((state) => state.user));
+    // console.log("Redux User State in Navbar:", useSelector((state) => state.user));
 
     // State for current date and time
     const [currentTime, setCurrentTime] = useState(new Date());

@@ -73,6 +73,9 @@ function Front() {
                         category: item.item_group,
                         image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
                         price: item.price_list_rate || 0,
+                        item_code: item.item_code, // For filtering size variants
+                        variants: item.variants || [], // Size variants (S, M, L)
+                        customVariants: item.custom_variant_applicable ? ['Spicy', 'Non-Spicy'] : [], // Custom variants (assumption)
                         addons: (item.addons || []).map((addon) => ({
                             name: addon.name || addon.item_name || "Unnamed Addon",
                             price: addon.price || addon.price_list_rate || 0,
@@ -84,20 +87,24 @@ function Front() {
                             kitchen: combo.kitchen || combo.custom_kitchen || "Unknown",
                             variants: combo.variants || [],
                         })),
-                        variants: item.variants || [],
                         ingredients: item.ingredients || [],
                         kitchen: item.custom_kitchen || "Unknown",
                         type: item.type || "regular",
                     }));
 
                     setMenuItems(formattedItems);
-                    const initialFilteredMenu = formattedItems.filter(
-                        (item) =>
-                            (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) &&
-                            item.type !== "addon" &&
-                            item.type !== "combo"
-                    );
+
+                    // Filter to show only main items (exclude size variants like -S, -M, -L)
+                    const initialFilteredMenu = formattedItems.filter((item) => {
+                        const isMainItem = (item.variants.length > 0) || 
+                                          !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
+                        return isMainItem && 
+                               (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) && 
+                               item.type !== "addon" && 
+                               item.type !== "combo";
+                    });
                     setFilteredItems(initialFilteredMenu);
+
                     const uniqueCategories = [...new Set(formattedItems.map((item) => item.category.toLowerCase()))];
                     setCategories(uniqueCategories);
                 } else {
@@ -131,11 +138,14 @@ function Front() {
     }, []);
 
     const handleFilter = (category) => {
-        const filtered = menuItems.filter(item =>
-            (category === "All" || item.category.toLowerCase() === category.toLowerCase()) &&
-            item.type !== "addon" &&
-            item.type !== "combo"
-        );
+        const filtered = menuItems.filter(item => {
+            const isMainItem = (item.variants.length > 0) || 
+                              !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
+            return isMainItem && 
+                   (category === "All" || item.category.toLowerCase() === category.toLowerCase()) && 
+                   item.type !== "addon" && 
+                   item.type !== "combo";
+        });
         setFilteredItems(filtered);
         setSelectedCategory(category);
     };
@@ -570,11 +580,9 @@ function Front() {
                             {categories.map((category, index) => (
                                 <div key={index} className="col-lg-12 mb-2">
                                     <button
-                                        className={`category-btn w-100 rounded d-flex align-items-center justify-content-start ${selectedCategory === category ? 'active' : ''
-                                            }`}
+                                        className={`category-btn w-100 rounded d-flex align-items-center justify-content-start ${selectedCategory === category ? 'active' : ''}`}
                                         onClick={() => handleFilter(category)}
                                     >
-                                        {/* Optional: Add an icon (e.g., using Bootstrap Icons) */}
                                         <i className="bi bi-list me-2"></i>
                                         <span>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
                                     </button>
@@ -895,6 +903,7 @@ function Front() {
                                                             <td className='text-start'>{tableNumber}</td>
                                                             <td className='text-start'>
                                                                 {item.name}
+                                                                {item.customVariant && ` (${item.customVariant})`}
                                                                 {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                     <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                         {Object.entries(item.addonCounts).map(([addonName, { price, quantity, kitchen }]) => (
@@ -1065,6 +1074,7 @@ function Front() {
                                                                                     <tr key={index}>
                                                                                         <td>
                                                                                             {item.name}
+                                                                                            {item.customVariant && ` (${item.customVariant})`}
                                                                                             {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
@@ -1194,6 +1204,7 @@ function Front() {
                     <FoodDetails
                         item={selectedItem}
                         combos={menuItems.filter((combo) => combo.type === 'combo')}
+                        allItems={menuItems} // Pass all items for size variant lookup
                         onClose={() => setSelectedItem(null)}
                         onUpdate={handleItemUpdate}
                     />

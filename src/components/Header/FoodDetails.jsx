@@ -52,7 +52,8 @@ const FoodDetails = ({ item, onClose }) => {
                     variants: item.variants ? item.variants.map(v => ({
                         type_of_variants: v.type_of_variants,
                         variant_price: parseFloat(v.variants_price) || 0
-                    })) : []
+                    })) : [],
+                    image: item.image ? `${baseUrl}${item.image}` : "default-image.jpg"
                 })));
                 const selectedItem = itemList.find((i) => i.name === item.name);
 
@@ -66,6 +67,7 @@ const FoodDetails = ({ item, onClose }) => {
                     const formattedIngredientsData = selectedItem.ingredients || [];
 
                     setFetchedItem({
+                        item_code: selectedItem.item_code, // Ensure item_code is included
                         name: selectedItem.item_name,
                         category: selectedItem.item_group,
                         kitchen: selectedItem.kitchen,
@@ -90,12 +92,13 @@ const FoodDetails = ({ item, onClose }) => {
 
     useEffect(() => {
         if (fetchedItem) {
-            const basePrice = fetchedItem.price * mainQuantity; // Main item price scales with mainQuantity
+            const sizePrices = getSizePrices();
+            const basePrice = (sizePrices[selectedSize] || fetchedItem.price) * mainQuantity; // Use size-specific price if available
             const addonsPrice = Object.entries(addonCounts).reduce((sum, [_, { price, quantity }]) => 
                 sum + (price * quantity), 0); // Add-on price based on their own quantities
             const comboPrice = selectedCombos.reduce((sum, combo) => {
                 const comboDetail = fetchedItem.combos.find(c => c.name1 === combo.name1);
-                const comboBasePrice = comboDetail ? comboDetail.combo_price : 0;
+                const comboBasePrice = comboDetail ? parseFloat(comboDetail.combo_price) || 0 : 0;
                 const variantPrice = combo.selectedVariant 
                     ? (allItems.find(i => i.name === combo.name1)?.variants.find(v => v.type_of_variants === combo.selectedVariant)?.variant_price || 0) 
                     : 0;
@@ -104,7 +107,24 @@ const FoodDetails = ({ item, onClose }) => {
             const finalPrice = basePrice + addonsPrice + comboPrice;
             setItemTotal(finalPrice);
         }
-    }, [addonCounts, selectedCombos, fetchedItem, mainQuantity]);
+    }, [addonCounts, selectedCombos, fetchedItem, mainQuantity, selectedSize]);
+
+    const getSizePrices = () => {
+        if (!fetchedItem || !fetchedItem.item_code) {
+            return { S: 0, M: 0, L: 0 }; // Default prices if fetchedItem or item_code is not available
+        }
+        const sizePrices = { S: fetchedItem.price || 0, M: fetchedItem.price || 0, L: fetchedItem.price || 0 };
+        const baseItemCode = fetchedItem.item_code.replace(/-[SML]$/, ''); // Remove size suffix if present
+        const sizeItems = allItems.filter(i => 
+            i.item_code.startsWith(baseItemCode) && ['-S', '-M', '-L'].some(suffix => i.item_code.endsWith(suffix))
+        );
+        sizeItems.forEach(sizeItem => {
+            if (sizeItem.item_code.endsWith('-S')) sizePrices.S = sizeItem.price_list_rate || sizePrices.S;
+            if (sizeItem.item_code.endsWith('-M')) sizePrices.M = sizeItem.price_list_rate || sizePrices.M;
+            if (sizeItem.item_code.endsWith('-L')) sizePrices.L = sizeItem.price_list_rate || sizePrices.L;
+        });
+        return sizePrices;
+    };
 
     const handleSizeChange = (size) => setSelectedSize(size);
 
@@ -115,7 +135,7 @@ const FoodDetails = ({ item, onClose }) => {
             return {
                 ...prev,
                 [addon.name1]: {
-                    price: addon.addon_price,
+                    price: addon.addon_price || 0,
                     quantity: newQuantity
                 }
             };
@@ -171,12 +191,13 @@ const FoodDetails = ({ item, onClose }) => {
     };
 
     const handleAddToCart = () => {
+        const sizePrices = getSizePrices();
         const customizedItem = {
             id: item.id,
             name: item.name,
             image: item.image,
             category: item.category,
-            basePrice: item.price,
+            basePrice: sizePrices[selectedSize] || item.price, // Use size-specific price
             selectedSize,
             addonCounts: Object.fromEntries(
                 Object.entries(addonCounts).filter(([_, { quantity }]) => quantity > 0)
@@ -202,6 +223,12 @@ const FoodDetails = ({ item, onClose }) => {
             setMainQuantity(prevQuantity => prevQuantity - 1);
         }
     };
+
+    const sizePrices = getSizePrices();
+    const hasSizeVariants = fetchedItem && typeof fetchedItem.item_code === 'string' && allItems.some(i => 
+        i.item_code.startsWith(fetchedItem.item_code.replace(/-[SML]$/, '')) && 
+        ['-S', '-M', '-L'].some(suffix => i.item_code.endsWith(suffix))
+    );
 
     return (
         <div className="food-detail bg-dark">
@@ -239,7 +266,24 @@ const FoodDetails = ({ item, onClose }) => {
                             </div>
 
                             <div>
-                                {fetchedItem?.variants?.length > 0 && (
+                                {hasSizeVariants && (
+                                    <div className="mt-3">
+                                        <strong>Size:</strong>
+                                        <div className="btn-group w-100" role="group">
+                                            {['S', 'M', 'L'].map(size => (
+                                                <button
+                                                    key={size}
+                                                    type="button"
+                                                    className={`btn ${selectedSize === size ? 'btn-primary' : 'btn-outline-primary'}`}
+                                                    onClick={() => handleSizeChange(size)}
+                                                >
+                                                    {size} (${sizePrices[size].toFixed(2)})
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {fetchedItem?.variants?.length > 0 && !hasSizeVariants && (
                                     <div className="mt-3">
                                         <strong>Variants:</strong>
                                         <div className="radio-inputs" role="group" aria-label="Variant selection">
@@ -264,7 +308,7 @@ const FoodDetails = ({ item, onClose }) => {
                                         <ul className="addons-list d-flex justify-content-evenly flex-wrap">
                                             {fetchedItem.addons.map((addon) => {
                                                 const baseUrl = 'http://109.199.100.136:6060/';
-                                                const addonData = addonCounts[addon.name1] || { price: addon.addon_price, quantity: 0 };
+                                                const addonData = addonCounts[addon.name1] || { price: addon.addon_price || 0, quantity: 0 };
                                                 const isSelected = addonData.quantity > 0;
                                                 return (
                                                     <li
@@ -283,7 +327,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                             }}
                                                         />
                                                         <span>{addon.name1}</span>
-                                                        <span>${addon.addon_price}</span>
+                                                        <span>${(addon.addon_price || 0).toFixed(2)}</span>
                                                         <div className="quantity-container mt-2">
                                                             <button
                                                                 className="quantity-btn minus"
@@ -340,7 +384,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                                         className="rounded mb-2"
                                                                     />
                                                                     <p>{combo.name1}</p>
-                                                                    <p>${combo.combo_price}</p>
+                                                                    <p>${(combo.combo_price || 0).toFixed(2)}</p>
                                                                     {isSelected && (
                                                                         <div className="quantity-container mt-2">
                                                                             <button
@@ -389,7 +433,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                         className={`btn ${comboVariants[selectedCombo.name1]?.variant === variant.type_of_variants ? 'btn-primary' : 'btn-outline-secondary'} m-2`}
                                                         onClick={() => toggleComboSelection(selectedCombo, variant.type_of_variants)}
                                                     >
-                                                        {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price})` : ''}
+                                                        {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price.toFixed(2)})` : ''}
                                                     </button>
                                                 ))}
                                             </div>
