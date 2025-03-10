@@ -1,7 +1,60 @@
-.category-name{
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* Category Sidebar */
+.category-sidebar {
+    background: linear-gradient(135deg, #2c3e50, #34495e); /* Dark gradient background */
+    height: 90vh; /* Match the height of other sections */
+    padding: 10px 5px; /* Reduced padding for a slimmer look */
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2); /* Subtle shadow on the right */
+    border-radius: 10px 0 0 10px; /* Rounded corners on the left */
+    overflow-y: auto; /* Scroll if there are too many categories */
+}
+
+/* Category Button */
+.category-btn {
+    background: #ecf0f1; /* Light gray base color */
+    color: #2c3e50; /* Dark text color */
+    border: none; /* Remove default border */
+    padding: 12px 10px; /* Increased padding for better touch area */
+    font-size: 14px; /* Slightly larger text */
+    font-weight: 600; /* Bold text */
+    text-transform: capitalize; /* Consistent capitalization */
+    transition: all 0.3s ease; /* Smooth transitions for hover/active */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    border-radius: 8px; /* Rounded corners */
+}
+
+/* Hover Effect */
+.category-btn:hover {
+    background: #3498db; /* Blue on hover */
+    color: #fff; /* White text */
+    transform: translateY(-2px); /* Slight lift effect */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Enhanced shadow */
+}
+
+/* Active/Selected Category */
+.category-btn.active {
+    background: #2980b9; /* Darker blue for active state */
+    color: #fff; /* White text */
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2); /* Inset shadow for pressed look */
+}
+
+/* Icon Styling */
+.category-btn i {
+    font-size: 16px; /* Slightly larger icon */
+    color: inherit; /* Match button text color */
+}
+
+/* Scrollbar Styling (Optional) */
+.category-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.category-sidebar::-webkit-scrollbar-thumb {
+    background: #222d35; /* Blue scrollbar thumb */
+    border-radius: 10px;
+}
+
+.category-sidebar::-webkit-scrollbar-track {
+    background: #34495e; /* Match sidebar background */
 }
 .card-img-top{
     height: 200px;
