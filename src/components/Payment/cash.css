@@ -1,0 +1,79 @@
+/* cash.css */
+.cash-container {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+    padding: 20px 0;
+}
+
+.back-button {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 2rem;
+    color: #007bff;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.back-button:hover {
+    color: #0056b3;
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #007bff, #00b4db);
+    border-bottom: none;
+}
+
+.items-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.item-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+}
+
+.item-card .item-total {
+    color: #28a745;
+}
+
+.addon-list, .combo-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.totals-section {
+    border: 1px solid #dee2e6;
+}
+
+.payment-section .form-control {
+    font-size: 1.1rem;
+    padding: 10px;
+}
+
+.payment-section .btn-success {
+    font-weight: bold;
+    font-size: 1.1rem;
+    transition: background-color 0.3s ease;
+}
+
+.payment-section .btn-success:hover {
+    background-color: #218838;
+}
+
+.payment-section .text-success {
+    color: #28a745 !important;
+}
+
+.payment-section .text-danger {
+    color: #dc3545 !important;
+}

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import './cash.css';
 
 function Cash() {
     const location = useLocation();
+    const navigate = useNavigate();
     const [billDetails, setBillDetails] = useState(null);
     const [cashGiven, setCashGiven] = useState("");
     const [change, setChange] = useState(0);
-    const navigate = useNavigate();
 
     useEffect(() => {
         if (location.state && location.state.billDetails) {
@@ -18,39 +19,56 @@ function Cash() {
         const givenAmount = parseFloat(e.target.value) || 0;
         setCashGiven(e.target.value);
 
-        if (billDetails && givenAmount >= parseFloat(billDetails.totalAmount)) {
-            setChange(givenAmount - parseFloat(billDetails.totalAmount));
-        } else {
-            setChange(0);
+        if (billDetails) {
+            const totalAmount = parseFloat(billDetails.totalAmount);
+            setChange(givenAmount - totalAmount); // Change can be negative if insufficient
         }
     };
 
+    const handleConfirmPayment = () => {
+        alert('Payment confirmed!');
+        navigate("/frontpage");
+    };
+
     return (
-        <>
-            <i className="fi fi-rs-angle-small-left back-button" onClick={() => navigate("/frontpage")}></i>
+        <div className="cash-container">
+            <i 
+                className="bi bi-arrow-left-circle-fill back-button" 
+                onClick={() => navigate("/frontpage")} 
+                title="Back to Frontpage"
+            ></i>
             <div className="container mt-5">
                 <div className="row justify-content-center">
                     <div className="col-lg-6 col-md-8 col-sm-10">
-                        <div className="card shadow-sm border-0 rounded">
+                        <div className="card shadow-lg border-0 rounded-3">
+                            <div className="card-header bg-primary text-white text-center py-3">
+                                <h3 className="mb-0">Cash Payment</h3>
+                            </div>
                             <div className="card-body p-4">
-                                <h3 className="text-center mb-4">Cash Payment Bill</h3>
-
                                 {billDetails ? (
                                     <div>
-                                        <h5>
-                                            Customer: <strong>{billDetails.customerName}</strong>
-                                        </h5>
-                                        <p>
-                                            <strong>Phone Number:</strong> {billDetails.phoneNumber}
-                                        </p>
+                                        <div className="customer-info mb-4">
+                                            <h5 className="fw-bold">
+                                                Customer: <span className="text-primary">{billDetails.customerName}</span>
+                                            </h5>
+                                            <p className="mb-0">
+                                                <strong>Phone:</strong> {billDetails.phoneNumber || "N/A"}
+                                            </p>
+                                        </div>
 
-                                        <h6>Items Ordered:</h6>
-                                        <ul className="list-group mb-4">
+                                        <h6 className="fw-bold mb-3">Items Ordered:</h6>
+                                        <div className="items-list mb-4">
                                             {billDetails.items.map((item, index) => (
-                                                <li key={index} className="list-group-item">
-                                                    <strong>{item.name}</strong> - ₹{item.price} x {item.quantity} = ₹{(item.price * item.quantity).toFixed(2)}
+                                                <div key={index} className="item-card p-3 mb-2 rounded shadow-sm">
+                                                    <div className="d-flex justify-content-between">
+                                                        <strong>{item.name}</strong>
+                                                        <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                                                    </div>
+                                                    <small className="text-muted">
+                                                        ₹{item.price} x {item.quantity}
+                                                    </small>
                                                     {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                        <ul className="addon-list mt-2">
                                                             {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
                                                                 <li key={addonName}>
                                                                     + {addonName} x{quantity} (₹{(price * quantity).toFixed(2)})
@@ -59,69 +77,70 @@ function Cash() {
                                                         </ul>
                                                     )}
                                                     {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                        <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                        <ul className="combo-list mt-2">
                                                             {item.selectedCombos.map((combo, idx) => (
                                                                 <li key={idx}>
-                                                                    + {combo.name1} x{combo.quantity || 1} 
+                                                                    + {combo.name1} x{combo.quantity || 1}
                                                                     {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} 
                                                                     - ₹{(((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1)).toFixed(2)}
                                                                 </li>
                                                             ))}
                                                         </ul>
                                                     )}
-                                                    <div style={{ marginTop: "5px", fontWeight: "bold" }}>
-                                                        Total: ₹{(item.totalPrice).toFixed(2)}
+                                                    <div className="item-total mt-2 fw-bold">
+                                                        Total: ₹{item.totalPrice.toFixed(2)}
                                                     </div>
-                                                </li>
+                                                </div>
                                             ))}
-                                        </ul>
+                                        </div>
 
-                                        <div className="tax-section">
+                                        <div className="totals-section mb-4 p-3 bg-light rounded">
                                             <div className="row">
-                                                <div className="col-6 text-start"><strong>Subtotal:</strong></div>
+                                                <div className="col-6 text-start">Subtotal:</div>
                                                 <div className="col-6 text-end">₹{parseFloat(billDetails.subTotal).toFixed(2)}</div>
-                                                <div className="col-6 text-start"><strong>VAT ({billDetails.vatRate}%):</strong></div>
+                                                <div className="col-6 text-start">VAT ({billDetails.vatRate}%):</div>
                                                 <div className="col-6 text-end">₹{parseFloat(billDetails.vatAmount).toFixed(2)}</div>
-                                                <div className="col-6 text-start"><strong>Grand Total:</strong></div>
-                                                <div className="col-6 text-end"><strong>₹{parseFloat(billDetails.totalAmount).toFixed(2)}</strong></div>
+                                                <div className="col-6 text-start fw-bold">Grand Total:</div>
+                                                <div className="col-6 text-end fw-bold">₹{parseFloat(billDetails.totalAmount).toFixed(2)}</div>
                                             </div>
                                         </div>
 
-                                        <div className="mb-3 mt-3">
-                                            <label className="form-label">Enter Cash Given by Customer:</label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                placeholder="Enter amount"
-                                                value={cashGiven}
-                                                onChange={handleCashChange}
-                                            />
-                                        </div>
+                                        <div className="payment-section">
+                                            <div className="mb-3">
+                                                <label className="form-label fw-bold">Cash Given by Customer:</label>
+                                                <input
+                                                    type="number"
+                                                    className="form-control"
+                                                    placeholder="Enter amount (₹)"
+                                                    value={cashGiven}
+                                                    onChange={handleCashChange}
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            </div>
 
-                                        <div className="mb-3">
-                                            <label className="form-label">Return Change:</label>
-                                            <h5 className="text-danger">₹ {change.toFixed(2)}</h5>
-                                        </div>
+                                            <div className="mb-4">
+                                                <label className="form-label fw-bold">Return Change:</label>
+                                                <h5 className={`fw-bold ${change >= 0 ? 'text-success' : 'text-danger'}`}>
+                                                    ₹ {change.toFixed(2)}
+                                                </h5>
+                                            </div>
 
-                                        <div className="text-center">
                                             <button
-                                                className="btn btn-success w-100"
-                                                onClick={() => {
-                                                    if (parseFloat(cashGiven) >= parseFloat(billDetails.totalAmount)) {
-                                                        alert("Payment confirmed!");
-                                                        navigate("/frontpage");
-                                                    } else {
-                                                        alert("Insufficient cash amount!");
-                                                    }
-                                                }}
+                                                className="btn btn-success w-100 py-2"
+                                                onClick={handleConfirmPayment}
                                             >
-                                                Confirm Cash Payment
+                                                Confirm Payment
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="text-center">
-                                        <p>No bill details available.</p>
+                                    <div className="text-center py-5">
+                                        <i className="bi bi-exclamation-circle text-warning fs-1"></i>
+                                        <p className="mt-3">No bill details available.</p>
+                                        <button className="btn btn-outline-primary" onClick={() => navigate("/frontpage")}>
+                                            Back to Frontpage
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -129,7 +148,7 @@ function Cash() {
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
 
