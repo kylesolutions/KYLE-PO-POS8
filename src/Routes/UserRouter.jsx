@@ -10,6 +10,7 @@ import FirstTab from '../components/FirstTab/FirstTab'
 import SavedOrderPage from '../Pages/SavedOrderPage'
 import BearerLoginPage from '../Pages/BearerLoginPage'
 import SalesInvoicePage from '../Pages/SalesInvoicePage'
+import OpeningEntryPage from '../Pages/OpeningEntryPage'
 
 function UserRouter() {
   return (
@@ -25,6 +26,7 @@ function UserRouter() {
         <Route path='card' element={<CardPage/>}/>
         <Route path='savedorders' element={<SavedOrderPage/>}/>
         <Route path='salesinvoice' element={<SalesInvoicePage/>}/>
+        <Route path='openingentry' element={<OpeningEntryPage/>}/>
     </Routes>
     </>
   )

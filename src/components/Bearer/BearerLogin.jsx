@@ -26,29 +26,26 @@ function BearerLogin() {
         body: JSON.stringify({ username, password }),
       });
 
-      // Check if the response is OK before parsing
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log("Raw API Response:", data); // Log the full response
+      console.log("Raw API Response:", data);
 
-      // Handle possible nested response (Frappe convention)
-      const responseData = data.message || data; // Use data.message if it exists, else data
-
-      // Destructure from the correct level
-      const { user, session, pos_profile, allowed_item_groups, allowed_customer_groups, filtered_items, filtered_customers } = responseData;
+      const responseData = data.message || data;
+      const { user, session, pos_profile, company, allowed_item_groups, allowed_customer_groups, filtered_items, filtered_customers } = responseData;
 
       if (!user) {
         throw new Error("User field missing in API response");
       }
 
       const payload = {
-        user, // Should be "bearer1@gmail.com"
+        user,
         session,
         pos_profile,
+        company,  // Add company to Redux payload
         message: {
           allowed_item_groups: allowed_item_groups || [],
           allowed_customer_groups: allowed_customer_groups || [],
@@ -60,15 +57,24 @@ function BearerLogin() {
 
       dispatch(loginSuccess(payload));
 
+      // Store in localStorage
       localStorage.setItem("session", session || "");
+      localStorage.setItem("user", user || "");
       localStorage.setItem("pos_profile", pos_profile || "");
+      localStorage.setItem("company", company || "");  // Store company
       localStorage.setItem("allowed_item_groups", JSON.stringify(allowed_item_groups || []));
       localStorage.setItem("allowed_customer_groups", JSON.stringify(allowed_customer_groups || []));
       localStorage.setItem("filtered_items", JSON.stringify(filtered_items || []));
       localStorage.setItem("filtered_customers", JSON.stringify(filtered_customers || []));
 
       alert("Login Successful!");
-      navigate("/firsttab");
+      navigate("/openingentry", {
+        state: {
+          user,
+          pos_profile,
+          company,  // Pass company via navigation state
+        },
+      });
 
     } catch (err) {
       setErrorMessage(err.message);
