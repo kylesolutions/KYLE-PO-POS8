@@ -6,16 +6,16 @@ const FoodDetails = ({ item, onClose }) => {
     if (!item) return null;
 
     const { addToCart } = useContext(UserContext);
-    const [selectedSize, setSelectedSize] = useState("M");
+    const [selectedSize, setSelectedSize] = useState(null); // Default to null instead of "M"
     const [addonCounts, setAddonCounts] = useState({});
     const [selectedCombo, setSelectedCombo] = useState(null);
     const [comboVariants, setComboVariants] = useState({});
-    const [selectedCombos, setSelectedCombos] = useState([]); // Now includes quantity
+    const [selectedCombos, setSelectedCombos] = useState([]);
     const [showCombos, setShowCombos] = useState(false);
     const [fetchedItem, setFetchedItem] = useState(null);
     const [allItems, setAllItems] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [mainQuantity, setMainQuantity] = useState(1); // Main item quantity
+    const [mainQuantity, setMainQuantity] = useState(1);
     const [itemTotal, setItemTotal] = useState(0);
 
     useEffect(() => {
@@ -67,7 +67,7 @@ const FoodDetails = ({ item, onClose }) => {
                     const formattedIngredientsData = selectedItem.ingredients || [];
 
                     setFetchedItem({
-                        item_code: selectedItem.item_code, // Ensure item_code is included
+                        item_code: selectedItem.item_code,
                         name: selectedItem.item_name,
                         category: selectedItem.item_group,
                         kitchen: selectedItem.kitchen,
@@ -82,6 +82,15 @@ const FoodDetails = ({ item, onClose }) => {
                         calories: selectedItem.custom_total_calories,
                         protein: selectedItem.custom_total_protein,
                     });
+
+                    // Set default size only if the item has size variants
+                    const hasSizeVariants = itemList.some(i => 
+                        i.item_code.startsWith(selectedItem.item_code.replace(/-[SML]$/, '')) && 
+                        ['-S', '-M', '-L'].some(suffix => i.item_code.endsWith(suffix))
+                    );
+                    if (hasSizeVariants) {
+                        setSelectedSize("M"); // Default to "M" only for items with variants
+                    }
                 }
             } catch (error) {
                 console.error("Error fetching item details:", error);
@@ -93,28 +102,30 @@ const FoodDetails = ({ item, onClose }) => {
     useEffect(() => {
         if (fetchedItem) {
             const sizePrices = getSizePrices();
-            const basePrice = (sizePrices[selectedSize] || fetchedItem.price) * mainQuantity; // Use size-specific price if available
+            const selectedItemCode = getItemCodeForSize(selectedSize);
+            const selectedItem = allItems.find(i => i.item_code === selectedItemCode) || fetchedItem;
+            const basePrice = (selectedSize ? sizePrices[selectedSize] : fetchedItem.price) * mainQuantity;
             const addonsPrice = Object.entries(addonCounts).reduce((sum, [_, { price, quantity }]) => 
-                sum + (price * quantity), 0); // Add-on price based on their own quantities
+                sum + (price * quantity), 0);
             const comboPrice = selectedCombos.reduce((sum, combo) => {
                 const comboDetail = fetchedItem.combos.find(c => c.name1 === combo.name1);
                 const comboBasePrice = comboDetail ? parseFloat(comboDetail.combo_price) || 0 : 0;
                 const variantPrice = combo.selectedVariant 
                     ? (allItems.find(i => i.name === combo.name1)?.variants.find(v => v.type_of_variants === combo.selectedVariant)?.variant_price || 0) 
                     : 0;
-                return sum + (comboBasePrice + variantPrice) * combo.quantity; // Multiply by combo-specific quantity
+                return sum + (comboBasePrice + variantPrice) * combo.quantity;
             }, 0);
             const finalPrice = basePrice + addonsPrice + comboPrice;
             setItemTotal(finalPrice);
         }
-    }, [addonCounts, selectedCombos, fetchedItem, mainQuantity, selectedSize]);
+    }, [addonCounts, selectedCombos, fetchedItem, mainQuantity, selectedSize, allItems]);
 
     const getSizePrices = () => {
         if (!fetchedItem || !fetchedItem.item_code) {
-            return { S: 0, M: 0, L: 0 }; // Default prices if fetchedItem or item_code is not available
+            return { S: 0, M: 0, L: 0 };
         }
+        const baseItemCode = fetchedItem.item_code.replace(/-[SML]$/, '');
         const sizePrices = { S: fetchedItem.price || 0, M: fetchedItem.price || 0, L: fetchedItem.price || 0 };
-        const baseItemCode = fetchedItem.item_code.replace(/-[SML]$/, ''); // Remove size suffix if present
         const sizeItems = allItems.filter(i => 
             i.item_code.startsWith(baseItemCode) && ['-S', '-M', '-L'].some(suffix => i.item_code.endsWith(suffix))
         );
@@ -124,6 +135,20 @@ const FoodDetails = ({ item, onClose }) => {
             if (sizeItem.item_code.endsWith('-L')) sizePrices.L = sizeItem.price_list_rate || sizePrices.L;
         });
         return sizePrices;
+    };
+
+    const getItemCodeForSize = (size) => {
+        if (!fetchedItem || !fetchedItem.item_code || !size) return fetchedItem.item_code;
+        const baseItemCode = fetchedItem.item_code.replace(/-[SML]$/, '');
+        const sizeItem = allItems.find(i => i.item_code === `${baseItemCode}-${size}`);
+        return sizeItem ? sizeItem.item_code : fetchedItem.item_code; // Fallback to base item_code if size not found
+    };
+
+    const getItemNameForSize = (size) => {
+        if (!fetchedItem || !fetchedItem.item_code || !size) return fetchedItem.name;
+        const baseItemCode = fetchedItem.item_code.replace(/-[SML]$/, '');
+        const sizeItem = allItems.find(i => i.item_code === `${baseItemCode}-${size}`);
+        return sizeItem ? sizeItem.item_name : fetchedItem.name; // Fallback to base name if size not found
     };
 
     const handleSizeChange = (size) => setSelectedSize(size);
@@ -157,7 +182,7 @@ const FoodDetails = ({ item, onClose }) => {
             if (isAlreadySelected) {
                 return prevCombos.filter((selected) => selected.name1 !== combo.name1);
             } else {
-                return [...prevCombos, { ...combo, selectedVariant: variant, quantity: 1 }]; // Default quantity 1
+                return [...prevCombos, { ...combo, selectedVariant: variant, quantity: 1 }];
             }
         });
         if (variant) {
@@ -182,7 +207,7 @@ const FoodDetails = ({ item, onClose }) => {
         setSelectedCombos((prevCombos) =>
             prevCombos.map((combo) => {
                 if (combo.name1 === comboName) {
-                    const newQuantity = Math.max(1, combo.quantity + qtyChange); // Minimum 1
+                    const newQuantity = Math.max(1, combo.quantity + qtyChange);
                     return { ...combo, quantity: newQuantity };
                 }
                 return combo;
@@ -192,13 +217,17 @@ const FoodDetails = ({ item, onClose }) => {
 
     const handleAddToCart = () => {
         const sizePrices = getSizePrices();
+        const selectedItemCode = getItemCodeForSize(selectedSize);
+        const selectedItemName = getItemNameForSize(selectedSize);
+        const selectedItem = allItems.find(i => i.item_code === selectedItemCode) || fetchedItem;
+
         const customizedItem = {
-            id: item.id,
-            name: item.name,
-            image: item.image,
-            category: item.category,
-            basePrice: sizePrices[selectedSize] || item.price, // Use size-specific price
-            selectedSize,
+            id: selectedItemCode,
+            name: selectedItemName,
+            image: selectedItem.image || item.image,
+            category: selectedItem.item_group || item.category,
+            basePrice: selectedSize ? sizePrices[selectedSize] : selectedItem.price || item.price,
+            selectedSize: selectedSize || null, // Null if no variants
             addonCounts: Object.fromEntries(
                 Object.entries(addonCounts).filter(([_, { quantity }]) => quantity > 0)
             ),
@@ -206,10 +235,10 @@ const FoodDetails = ({ item, onClose }) => {
                 ...combo,
                 selectedVariant: combo.selectedVariant || null,
                 variantPrice: allItems.find(i => i.name === combo.name1)?.variants.find(v => v.type_of_variants === combo.selectedVariant)?.variant_price || 0,
-                quantity: combo.quantity, // Include combo-specific quantity
+                quantity: combo.quantity,
             })),
-            kitchen: item.kitchen,
-            quantity: mainQuantity, // Main item quantity
+            kitchen: selectedItem.kitchen || item.kitchen,
+            quantity: mainQuantity,
         };
         console.log("Adding to cart:", customizedItem);
         addToCart(customizedItem);
