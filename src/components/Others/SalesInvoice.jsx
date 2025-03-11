@@ -1,25 +1,27 @@
 import React, { useEffect, useState } from "react";
-import "bootstrap/dist/css/bootstrap.min.css"; // Ensure Bootstrap CSS is imported
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function SalesInvoice() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filterId, setFilterId] = useState(""); // State for filtering by invoice ID
-  const [filterDate, setFilterDate] = useState(""); // State for filtering by posting date
+  const [filterId, setFilterId] = useState("");
+  const [filterDate, setFilterDate] = useState("");
 
   const fetchInvoices = async () => {
     setLoading(true);
     setError("");
-
     try {
       const response = await fetch(
-        "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoice"
+        "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoice",
+        {
+          headers: {
+            "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+          },
+        }
       );
       const data = await response.json();
-
       console.log("Full API Response:", data);
-
       if (data.message && Array.isArray(data.message.invoice)) {
         setInvoices(data.message.invoice);
       } else {
@@ -37,12 +39,11 @@ function SalesInvoice() {
     fetchInvoices();
   }, []);
 
-  // Helper function to categorize invoices by date
   const categorizeInvoices = () => {
     const today = new Date();
     const startOfToday = new Date(today.setHours(0, 0, 0, 0));
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
+    startOfWeek.setDate(today.getDate() - today.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
 
     const todayInvoices = [];
@@ -52,10 +53,9 @@ function SalesInvoice() {
     invoices.forEach((invoice) => {
       const invoiceDate = invoice.posting_date ? new Date(invoice.posting_date) : null;
       if (!invoiceDate) {
-        olderInvoices.push(invoice); // No date, push to older
+        olderInvoices.push(invoice);
         return;
       }
-
       if (invoiceDate >= startOfToday) {
         todayInvoices.push(invoice);
       } else if (invoiceDate >= startOfWeek) {
@@ -68,7 +68,6 @@ function SalesInvoice() {
     return { todayInvoices, weekInvoices, olderInvoices };
   };
 
-  // Filter invoices based on invoice ID and posting date within a tab
   const filterInvoices = (invoiceList) => {
     return invoiceList.filter((invoice) => {
       const matchesId = invoice.name.toLowerCase().includes(filterId.toLowerCase());
@@ -79,11 +78,9 @@ function SalesInvoice() {
     });
   };
 
-  // Handle filter input changes
   const handleFilterIdChange = (e) => setFilterId(e.target.value);
   const handleFilterDateChange = (e) => setFilterDate(e.target.value);
 
-  // Helper function to format date as "Day Month Year" (e.g., "10 March 2025")
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -91,13 +88,11 @@ function SalesInvoice() {
       day: "numeric",
       month: "long",
       year: "numeric",
-    }); // Outputs "10 March 2025"
+    });
   };
 
-  // Handle print for a single invoice
-  const handlePrintInvoice = (invoice) => {
-    const printWindow = window.open("", "_blank");
-    printWindow.document.write(`
+  const generateInvoiceHTML = (invoice) => {
+    return `
       <html>
         <head>
           <title>Invoice ${invoice.name}</title>
@@ -112,9 +107,6 @@ function SalesInvoice() {
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
             th { background-color: #f2f2f2; }
             .footer { text-align: right; margin-top: 20px; }
-            @media print {
-              .no-print { display: none; }
-            }
           </style>
         </head>
         <body>
@@ -124,9 +116,9 @@ function SalesInvoice() {
               <h4>Invoice ID: ${invoice.name}</h4>
             </div>
             <div class="customer-details">
-              <p><strong>Customer Name:</strong> ${invoice.customer || "N/A"}</p>
-              <p><strong>Email:</strong> ${invoice.customer_email || "N/A"}</p>
-              <p><strong>Phone Number:</strong> ${invoice.customer_phone || "N/A"}</p>
+              <p><strong>Customer Name:</strong> ${invoice.customer_details?.customer_name || "N/A"}</p>
+              <p><strong>Email:</strong> ${invoice.customer_details?.email_id || "N/A"}</p>
+              <p><strong>Phone Number:</strong> ${invoice.customer_details?.mobile_no || "N/A"}</p>
             </div>
             <div class="invoice-details">
               <p><strong>Posting Date:</strong> ${formatDate(invoice.posting_date)}</p>
@@ -169,17 +161,73 @@ function SalesInvoice() {
               <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>
             </div>
           </div>
-          <script>
-            window.print();
-            window.onafterprint = function() { window.close(); };
-          </script>
         </body>
       </html>
+    `;
+  };
+
+  const handlePrintInvoice = (invoice) => {
+    const printWindow = window.open("", "_blank");
+    const invoiceHTML = generateInvoiceHTML(invoice);
+    printWindow.document.write(invoiceHTML);
+    printWindow.document.write(`
+      <script>
+        window.print();
+        window.onafterprint = function() { window.close(); };
+      </script>
     `);
     printWindow.document.close();
   };
 
-  // Render table for a given invoice list
+  const handleSendEmail = async (invoice) => {
+    const email = invoice.customer_details?.email_id;
+    if (!email || email === "N/A") {
+      alert("No valid email address available for this customer.");
+      return;
+    }
+
+    const invoiceHTML = generateInvoiceHTML(invoice);
+    const subject = `Invoice ${invoice.name} - Your Receipt`;
+
+    try {
+      const response = await fetch(
+        "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.send_email",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Expect": "", // Suppress Expect header to avoid 417
+          },
+          body: JSON.stringify({
+            recipient: email,
+            subject: subject,
+            content: invoiceHTML,
+          }),
+        }
+      );
+
+      const responseText = await response.text(); // Get raw response for debugging
+      console.log("Raw response:", responseText);
+
+      if (!response.ok) {
+        throw new Error(`Failed to send email: ${response.status} - ${responseText}`);
+      }
+
+      const result = JSON.parse(responseText); // Parse JSON manually
+      if (result.status === "success") {
+        alert(`Invoice successfully sent to ${email}`);
+      } else {
+        alert(`Failed to send email: ${result.message || "Unknown error"}`);
+      }
+    } catch (err) {
+      console.error("Email send error:", err);
+      // Convert error to a readable string, handling both message and full object
+      const errorMessage = err.message || JSON.stringify(err);
+      alert(`Error sending email: ${errorMessage}`);
+    }
+  };
+
   const renderInvoiceTable = (invoiceList) => {
     const filtered = filterInvoices(invoiceList);
     if (filtered.length === 0) {
@@ -206,7 +254,7 @@ function SalesInvoice() {
             {filtered.map((invoice) => (
               <tr key={invoice.name}>
                 <td>{invoice.name}</td>
-                <td>{invoice.customer || "N/A"}</td>
+                <td>{invoice.customer_details?.customer_name || "N/A"}</td>
                 <td>{invoice.posting_date || "N/A"}</td>
                 <td>₹{invoice.grand_total || 0}</td>
                 <td>₹{invoice.total_taxes_and_charges || 0}</td>
@@ -227,10 +275,16 @@ function SalesInvoice() {
                 </td>
                 <td>
                   <button
-                    className="btn btn-sm btn-success"
+                    className="btn btn-sm btn-success me-2"
                     onClick={() => handlePrintInvoice(invoice)}
                   >
                     Print
+                  </button>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={() => handleSendEmail(invoice)}
+                  >
+                    Send Email
                   </button>
                 </td>
               </tr>
@@ -241,16 +295,13 @@ function SalesInvoice() {
     );
   };
 
-  // Render function with tabs
   const renderContent = () => {
     if (loading) {
       return <p className="text-center">Loading invoices...</p>;
     }
-
     if (error) {
       return <div className="alert alert-danger">{error}</div>;
     }
-
     if (!invoices || invoices.length === 0) {
       return <p className="text-center">No POS Invoices Found</p>;
     }
@@ -259,7 +310,6 @@ function SalesInvoice() {
 
     return (
       <>
-        {/* Filter Inputs */}
         <div className="row mb-4">
           <div className="col-md-6">
             <label htmlFor="filterId" className="form-label">
@@ -289,7 +339,6 @@ function SalesInvoice() {
           </div>
         </div>
 
-        {/* Tabs */}
         <ul className="nav nav-tabs" id="invoiceTabs" role="tablist">
           <li className="nav-item" role="presentation">
             <button
@@ -335,7 +384,6 @@ function SalesInvoice() {
           </li>
         </ul>
 
-        {/* Tab Content */}
         <div className="tab-content" id="invoiceTabContent">
           <div
             className="tab-pane fade show active"

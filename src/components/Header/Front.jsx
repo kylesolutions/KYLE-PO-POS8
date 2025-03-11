@@ -73,9 +73,9 @@ function Front() {
                         category: item.item_group,
                         image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
                         price: item.price_list_rate || 0,
-                        item_code: item.item_code, // For filtering size variants
-                        variants: item.variants || [], // Size variants (S, M, L)
-                        customVariants: item.custom_variant_applicable ? ['Spicy', 'Non-Spicy'] : [], // Custom variants (assumption)
+                        item_code: item.item_code,
+                        variants: item.variants || [],
+                        customVariants: item.custom_variant_applicable ? ['Spicy', 'Non-Spicy'] : [],
                         addons: (item.addons || []).map((addon) => ({
                             name: addon.name || addon.item_name || "Unnamed Addon",
                             price: addon.price || addon.price_list_rate || 0,
@@ -94,7 +94,6 @@ function Front() {
 
                     setMenuItems(formattedItems);
 
-                    // Filter to show only main items (exclude size variants like -S, -M, -L)
                     const initialFilteredMenu = formattedItems.filter((item) => {
                         const isMainItem = (item.variants.length > 0) || 
                                           !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
@@ -198,13 +197,14 @@ function Front() {
 
     const handleCheckoutClick = () => setShowButtons(true);
 
-    const increaseQuantity = (item) => {
-        updateCartItem({ ...item, quantity: item.quantity + 1 });
-    };
-
-    const decreaseQuantity = (item) => {
-        if (item.quantity > 1) {
-            updateCartItem({ ...item, quantity: item.quantity - 1 });
+    // New handler for quantity input
+    const handleQuantityChange = (item, value) => {
+        const quantity = parseInt(value, 10);
+        if (isNaN(quantity) || quantity < 1) {
+            // Optionally reset to 1 or leave as is; here we set to 1
+            updateCartItem({ ...item, quantity: 1 });
+        } else {
+            updateCartItem({ ...item, quantity });
         }
     };
 
@@ -580,10 +580,10 @@ function Front() {
                             {categories.map((category, index) => (
                                 <div key={index} className="col-lg-12 mb-2">
                                     <button
-                                        className={`category-btn w-100 rounded d-flex align-items-center justify-content-start ${selectedCategory === category ? 'active' : ''}`}
+                                        className={`category-btn w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active' : ''}`}
                                         onClick={() => handleFilter(category)}
                                     >
-                                        <i className="bi bi-list me-2"></i>
+                                        
                                         <span>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
                                     </button>
                                 </div>
@@ -594,14 +594,14 @@ function Front() {
                     <div className="col-lg-7 row2">
                         <div className="row" style={{ height: '90vh', overflowY: 'auto' }}>
                             {filteredItems.map((item, index) => (
-                                <div className="col-lg-3 col-md-4 col-6 align-items-center my-2" key={index}>
-                                    <div className="card" onClick={() => handleItemClick(item)}>
-                                        <img className="card-img-top" src={item.image} alt={item.name} width={100} height={100} />
-                                        <div className="card-body p-2 mb-0 category-name">
-                                            <h4 className="card-title fs-6 text-center mb-0">{item.name}</h4>
-                                        </div>
+                                <div className="col-xl-3 col-lg-4 col-md-4 col-6 align-items-center my-2" key={index}>
+                                <div className="card" onClick={() => handleItemClick(item)}>
+                                    <img className="card-img-top" src={item.image} alt={item.name} />
+                                    <div className="card-body p-2 mb-0 category-name">
+                                        <h4 className="card-title text-center mb-0" style={{fontSize:"14px"}}>{item.name}</h4>
                                     </div>
                                 </div>
+                            </div>
                             ))}
                         </div>
                         <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} />
@@ -616,7 +616,7 @@ function Front() {
                                         <div className='row'>
                                             {tableNumber ? (
                                                 <>
-                                                    <div className='col-lg-1 text-start' style={{ position: "relative" }}>
+                                                    <div className='col-lg-2 text-start' style={{ position: "relative" }}>
                                                         <h1
                                                             className="display-4 fs-2"
                                                             style={{
@@ -644,7 +644,7 @@ function Front() {
                                                             {tableNumber}
                                                         </h1>
                                                     </div>
-                                                    <div className='col-10 col-lg-5 mb-2 position-relative'>
+                                                    <div className='col-10 col-lg-4 mb-2 position-relative'>
                                                         <input
                                                             type="text"
                                                             className="form-control"
@@ -765,8 +765,8 @@ function Front() {
                                                                     border: "1px solid #ccc",
                                                                     borderRadius: "5px",
                                                                     listStyleType: "none",
-                                                                    padding: 0,
-                                                                    margin: 0,
+                                                                    padding: "0",
+                                                                    margin: "0",
                                                                     zIndex: 1000,
                                                                 }}
                                                             >
@@ -886,7 +886,7 @@ function Front() {
                                         </div>
 
                                         <div className="table-responsive mt-3">
-                                            <table className="table border text-start">
+                                            <table className="table border text-start" style={{ fontSize: "13px" }}>
                                                 <thead className="text-start">
                                                     <tr>
                                                         <th>T.No.</th>
@@ -926,20 +926,14 @@ function Front() {
                                                                 )}
                                                             </td>
                                                             <td>
-                                                                <button
-                                                                    className="btn btn-secondary btn-sm me-2"
-                                                                    onClick={() => decreaseQuantity(item)}
-                                                                    disabled={item.quantity <= 1}
-                                                                >
-                                                                    -
-                                                                </button>
-                                                                {item.quantity}
-                                                                <button
-                                                                    className="btn btn-secondary btn-sm ms-2"
-                                                                    onClick={() => increaseQuantity(item)}
-                                                                >
-                                                                    +
-                                                                </button>
+                                                                <input
+                                                                    type="number"
+                                                                    className="form-control form-control-sm"
+                                                                    value={item.quantity}
+                                                                    onChange={(e) => handleQuantityChange(item, e.target.value)}
+                                                                    min="1"
+                                                                    style={{ width: "60px", padding: "2px", textAlign: "center" }}
+                                                                />
                                                             </td>
                                                             <td className='text-start'>${item.basePrice}</td>
                                                             <td className='text-start'>
@@ -973,25 +967,25 @@ function Front() {
                                         <div className="col-12 col-lg-6">
                                             <div className="row">
                                                 <div className="col-md-6 mb-2 col-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "12px" }}>Total Quantity</h5>
-                                                    <div className='grand-tot-div justify-content-end'>
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
+                                                    <div className='grand-tot-div justify-content-end' >
                                                         <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "12px" }}>Subtotal</h5>
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
                                                     <div className='grand-tot-div'>
                                                         <span>$</span><span>{getSubTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "12px" }}>Tax</h5>
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
                                                     <div className='grand-tot-div justify-content-end'>
                                                         <span>${getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "12px" }}>Grand Total</h5>
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
                                                     <div className='grand-tot-div justify-content-end'>
                                                         <span>${getGrandTotal().toFixed(2)}</span>
                                                     </div>
@@ -999,11 +993,11 @@ function Front() {
                                             </div>
                                         </div>
                                         <div className="col-12 col-lg-6">
-                                            <div className="row">
+                                            <div className="row mt-3">
                                                 <div className="col-md-6 mb-2 col-6">
                                                     <button
                                                         type="button"
-                                                        className="btn mt-3 w-100"
+                                                        className="btn w-100"
                                                         onClick={saveOrder}
                                                         style={{
                                                             padding: "10px 12px",
@@ -1013,7 +1007,7 @@ function Front() {
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
-                                                            fontSize: "12px"
+                                                            fontSize: "10px"
                                                         }}
                                                     >
                                                         Save/New
@@ -1022,7 +1016,7 @@ function Front() {
                                                 <div className="col-md-6 mb-2 col-6">
                                                     <button
                                                         type="button"
-                                                        className="btn mt-3 w-100"
+                                                        className="btn w-100"
                                                         onClick={() => setShowBillModal(true)}
                                                         style={{
                                                             padding: "10px 12px",
@@ -1032,7 +1026,7 @@ function Front() {
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
-                                                            fontSize: "12px"
+                                                            fontSize: "10px"
                                                         }}
                                                     >
                                                         Print
@@ -1108,13 +1102,13 @@ function Front() {
                                                                         </table>
                                                                         <div className="row mt-3">
                                                                             <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
-                                                                            <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
+                                                                            <div className="col-6 text-end" >{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
                                                                             <div className="col-6 text-start"><strong>Subtotal:</strong></div>
-                                                                            <div className="col-6 text-end">${getSubTotal().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end"  >${getSubTotal().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
-                                                                            <div className="col-6 text-end">${getTaxAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end"  >${getTaxAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Grand Total:</strong></div>
-                                                                            <div className="col-6 text-end"><strong>${getGrandTotal().toFixed(2)}</strong></div>
+                                                                            <div className="col-6 text-end"  ><strong>${getGrandTotal().toFixed(2)}</strong></div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1129,10 +1123,10 @@ function Front() {
                                                     </div>
                                                 )}
 
-                                                <div className="col-md-6 mb-2 col-6">
+                                                <div className="col-md-6 mb-2 col-6 mt-1">
                                                     <button
                                                         type="button"
-                                                        className="btn mt-3 w-100"
+                                                        className="btn w-100"
                                                         onClick={cancelCart}
                                                         style={{
                                                             padding: "10px 12px",
@@ -1142,21 +1136,21 @@ function Front() {
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
-                                                            fontSize: "12px"
+                                                            fontSize: "10px"
                                                         }}
                                                     >
                                                         Cancel
                                                     </button>
                                                 </div>
-                                                <div className="col-md-6 mb-2 col-6">
+                                                <div className="col-md-6 mb-2 col-6 mt-1">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-success mt-3 w-100"
+                                                        className="btn btn-success w-100"
                                                         onClick={() => {
                                                             handleCheckoutClick();
                                                             handleShow();
                                                         }}
-                                                        style={{ padding: "10px 12px", fontSize: "12px", fontWeight: "bold" }}
+                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold" }}
                                                     >
                                                         Pay
                                                     </button>
@@ -1204,7 +1198,7 @@ function Front() {
                     <FoodDetails
                         item={selectedItem}
                         combos={menuItems.filter((combo) => combo.type === 'combo')}
-                        allItems={menuItems} // Pass all items for size variant lookup
+                        allItems={menuItems}
                         onClose={() => setSelectedItem(null)}
                         onUpdate={handleItemUpdate}
                     />
