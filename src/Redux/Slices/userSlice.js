@@ -1,34 +1,41 @@
-import { createSlice } from "@reduxjs/toolkit";
-
-const initialState = {
-    user: null,
-    session: null,
-    posProfile: null,
-    allowedItemGroups: [],
-    allowedCustomerGroups: [],
-    filteredItems: [],
-    filteredCustomers: []
-};
+import { createSlice } from '@reduxjs/toolkit';
 
 const userSlice = createSlice({
-  name: "user",
-  initialState,
+  name: 'user',
+  initialState: {
+    user: null,
+    session: null,
+    posProfile: null,  // camelCase
+    company: null,
+    message: {
+      allowed_item_groups: [],
+      allowed_customer_groups: [],
+      filtered_items: [],
+      filtered_customers: [],
+    },
+  },
   reducers: {
     loginSuccess: (state, action) => {
-      const { user, session, pos_profile, message } = action.payload;
-      state.user = user;
-      state.session = session;
-      state.posProfile = pos_profile;
-      state.allowedItemGroups = message?.allowed_item_groups || [];
-      state.allowedCustomerGroups = message?.allowed_customer_groups || [];
-      state.filteredItems = message?.filtered_items || [];
-      state.filteredCustomers = message?.filtered_customers || [];
+      state.user = action.payload.user;
+      state.session = action.payload.session;
+      state.posProfile = action.payload.pos_profile;
+      state.company = action.payload.company;
+      state.message = action.payload.message;
     },
     logout: (state) => {
-      return initialState;
+      state.user = null;
+      state.session = null;
+      state.posProfile = null;
+      state.company = null;
+      state.message = {
+        allowed_item_groups: [],
+        allowed_customer_groups: [],
+        filtered_items: [],
+        filtered_customers: [],
+      };
     },
   },
 });
 
 export const { loginSuccess, logout } = userSlice.actions;
-export default userSlice.reducer; // Export raw reducer
+export default userSlice.reducer;

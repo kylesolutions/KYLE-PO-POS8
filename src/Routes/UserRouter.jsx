@@ -11,6 +11,7 @@ import SavedOrderPage from '../Pages/SavedOrderPage'
 import BearerLoginPage from '../Pages/BearerLoginPage'
 import SalesInvoicePage from '../Pages/SalesInvoicePage'
 import OpeningEntryPage from '../Pages/OpeningEntryPage'
+import ClosingEntryPage from '../Pages/ClosingEntryPage'
 
 function UserRouter() {
   return (
@@ -27,6 +28,7 @@ function UserRouter() {
         <Route path='savedorders' element={<SavedOrderPage/>}/>
         <Route path='salesinvoice' element={<SalesInvoicePage/>}/>
         <Route path='openingentry' element={<OpeningEntryPage/>}/>
+        <Route path='closingentry' element={<ClosingEntryPage/>}/>
     </Routes>
     </>
   )

@@ -20,12 +20,13 @@ function OpeningEntry() {
   useEffect(() => {
     const { user: navUser, pos_profile: navPosProfile, company: navCompany } = location.state || {};
     const reduxUser = userData?.user || localStorage.getItem('user') || '';
-    const reduxPosProfile = userData?.pos_profile || localStorage.getItem('pos_profile') || '';
+    const reduxPosProfile = userData?.posProfile || localStorage.getItem('pos_profile') || '';
     const reduxCompany = userData?.company || localStorage.getItem('company') || '';
 
     setUser(navUser || reduxUser);
     setPosProfile(navPosProfile || reduxPosProfile);
     setCompany(navCompany || reduxCompany);
+    console.log('OpeningEntry - posProfile:', reduxPosProfile);
   }, [location.state, userData]);
 
   const handleAddBalanceDetail = () => {
@@ -66,7 +67,10 @@ function OpeningEntry() {
       user,
       pos_profile: posProfile,
       balance_details: balanceDetails,
+      status: 'Draft', // Explicitly set as draft
+      docstatus: 0,    // Ensure Frappe recognizes it as draft
     };
+    console.log('OpeningEntry - Payload:', payload);
 
     try {
       const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_opening_entry', {
@@ -79,26 +83,22 @@ function OpeningEntry() {
       });
 
       const result = await response.json();
-      console.log("API Response:", { status: response.status, result }); // Debug full response
+      console.log("OpeningEntry API Response:", { status: response.status, result });
 
-      // Handle Frappe's nested response structure if present
       const responseData = result.message || result;
 
       if (response.status >= 200 && response.status < 300 && responseData.status === 'success') {
-        alert('Opening Entry created successfully!');
-        navigate('/');
+        const posOpeningEntry = responseData.name;
+        localStorage.setItem('posOpeningEntry', posOpeningEntry);
+        alert(`Opening Entry created successfully: ${posOpeningEntry}`);
+        navigate('/firsttab', { state: { posOpeningEntry } });
       } else {
-        // Improved error message handling
-        const errorMessage = responseData.message
-          ? typeof responseData.message === 'object'
-            ? JSON.stringify(responseData.message)
-            : responseData.message
-          : 'Unknown error occurred';
+        const errorMessage = responseData.message || 'Unknown error occurred';
         alert(`Failed: ${errorMessage}`);
       }
     } catch (error) {
-      console.error('Network Error:', error);
-      alert('Network error occurred. Please check your connection.');
+      console.error('OpeningEntry Network Error:', error);
+      alert('Network error occurred.');
     } finally {
       setLoading(false);
     }
@@ -137,7 +137,6 @@ function OpeningEntry() {
                 id="company"
                 className="form-control"
                 value={company}
-                onChange={(e) => setCompany(e.target.value)}
                 disabled
               />
             </div>

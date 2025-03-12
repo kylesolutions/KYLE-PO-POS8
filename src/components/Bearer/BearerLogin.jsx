@@ -32,20 +32,18 @@ function BearerLogin() {
       }
 
       const data = await response.json();
-      console.log("Raw API Response:", data);
+      console.log("Login Raw API Response:", data);
 
       const responseData = data.message || data;
       const { user, session, pos_profile, company, allowed_item_groups, allowed_customer_groups, filtered_items, filtered_customers } = responseData;
 
-      if (!user) {
-        throw new Error("User field missing in API response");
-      }
+      if (!user) throw new Error("User field missing in API response");
 
       const payload = {
         user,
         session,
         pos_profile,
-        company,  // Add company to Redux payload
+        company,
         message: {
           allowed_item_groups: allowed_item_groups || [],
           allowed_customer_groups: allowed_customer_groups || [],
@@ -57,25 +55,17 @@ function BearerLogin() {
 
       dispatch(loginSuccess(payload));
 
-      // Store in localStorage
       localStorage.setItem("session", session || "");
       localStorage.setItem("user", user || "");
       localStorage.setItem("pos_profile", pos_profile || "");
-      localStorage.setItem("company", company || "");  // Store company
+      localStorage.setItem("company", company || "");
       localStorage.setItem("allowed_item_groups", JSON.stringify(allowed_item_groups || []));
       localStorage.setItem("allowed_customer_groups", JSON.stringify(allowed_customer_groups || []));
       localStorage.setItem("filtered_items", JSON.stringify(filtered_items || []));
       localStorage.setItem("filtered_customers", JSON.stringify(filtered_customers || []));
 
       alert("Login Successful!");
-      navigate("/openingentry", {
-        state: {
-          user,
-          pos_profile,
-          company,  // Pass company via navigation state
-        },
-      });
-
+      navigate("/openingentry", { state: { user, pos_profile, company } });
     } catch (err) {
       setErrorMessage(err.message);
       console.error("Login Error:", err);

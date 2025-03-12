@@ -570,7 +570,6 @@ function Front() {
     };
 
     const cancelCart = () => setCartItems([]);
-
     return (
         <>
             <div className="container-fluid">
