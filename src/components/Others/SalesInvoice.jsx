@@ -13,7 +13,7 @@ function SalesInvoice() {
     setError("");
     try {
       const response = await fetch(
-        "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoice",
+        "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoice_list",
         {
           headers: {
             "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
