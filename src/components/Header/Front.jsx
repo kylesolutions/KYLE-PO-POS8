@@ -16,13 +16,13 @@ function Front() {
     const [selectedItem, setSelectedItem] = useState(null);
     const [categories, setCategories] = useState([]);
     const [showButtons, setShowButtons] = useState(false);
-    const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems, totalPrice } = useContext(UserContext);
+    const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
     const { tableNumber, existingOrder, deliveryType } = state || {};
 
     const userData = useSelector((state) => state.user);
-    const company = userData.company || "POS8"; // Dynamic company from Redux
+    const company = userData.company || "POS8";
     const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount || "Sales - P");
 
     useEffect(() => {
@@ -52,7 +52,6 @@ function Front() {
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-    // Fetch company default income account if not in Redux
     useEffect(() => {
         const fetchCompanyDetails = async () => {
             try {
@@ -210,13 +209,14 @@ function Front() {
     const getSubTotal = () => {
         return cartItems.reduce((sum, item) => {
             const mainPrice = item.basePrice * item.quantity;
+            const customVariantPrice = (item.customVariantPrice || 0) * item.quantity;
             const addonPrice = Object.entries(item.addonCounts || {}).reduce(
                 (sum, [_, { price, quantity }]) => sum + (price * quantity), 0
             );
             const comboPrice = (item.selectedCombos || []).reduce(
                 (sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0
             );
-            return sum + mainPrice + addonPrice + comboPrice;
+            return sum + mainPrice + customVariantPrice + addonPrice + comboPrice;
         }, 0);
     };
 
@@ -272,9 +272,11 @@ function Front() {
                 name: item.name,
                 price: item.basePrice,
                 quantity: item.quantity,
-                totalPrice: (item.basePrice * item.quantity) +
+                totalPrice: ((item.basePrice + (item.customVariantPrice || 0)) * item.quantity) +
                     Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
                     (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0),
+                selectedSize: item.selectedSize || null,
+                selectedCustomVariant: item.selectedCustomVariant || null,
                 addonCounts: item.addonCounts || {},
                 selectedCombos: item.selectedCombos || [],
             })),
@@ -330,15 +332,18 @@ function Front() {
         }
 
         const allItems = cartItems.flatMap((item) => {
+            const variantPrice = item.customVariantPrice || 0;
             const mainItem = {
                 item_name: item.name,
                 item_code: item.item_code || "",
-                description: item.description && item.description.trim() !== "" ? item.description : `Order for ${item.name}`,
+                description: item.selectedCustomVariant 
+                    ? `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''} (${item.selectedCustomVariant})`
+                    : `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''}`,
                 qty: item.quantity,
-                rate: item.basePrice,
-                amount: item.basePrice * item.quantity,
+                rate: item.basePrice + variantPrice,
+                amount: (item.basePrice + variantPrice) * item.quantity,
                 kitchen: item.kitchen || "Unknown",
-                income_account: defaultIncomeAccount, // Dynamic income account
+                income_account: defaultIncomeAccount,
             };
 
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
@@ -348,7 +353,7 @@ function Front() {
                 rate: price,
                 amount: price * quantity,
                 kitchen: kitchen || "Unknown",
-                income_account: defaultIncomeAccount, // Dynamic income account
+                income_account: defaultIncomeAccount,
             }));
 
             const comboItems = (item.selectedCombos || []).map((combo) => ({
@@ -358,7 +363,7 @@ function Front() {
                 rate: (combo.combo_price || 0) + (combo.variantPrice || 0),
                 amount: ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1),
                 kitchen: combo.kitchen || "Unknown",
-                income_account: defaultIncomeAccount, // Dynamic income account
+                income_account: defaultIncomeAccount,
             }));
 
             return [mainItem, ...addonItems, ...comboItems];
@@ -375,7 +380,7 @@ function Front() {
             posting_date: new Date().toISOString().split("T")[0],
             due_date: new Date().toISOString().split("T")[0],
             is_pos: 1,
-            company: company, // Dynamic company
+            company: company,
             currency: "INR",
             conversion_rate: 1,
             selling_price_list: "Standard Selling",
@@ -933,10 +938,11 @@ function Front() {
                                                             <td className='text-start'>{tableNumber}</td>
                                                             <td className='text-start'>
                                                                 {item.name}
-                                                                {item.customVariant && ` (${item.customVariant})`}
+                                                                {item.selectedSize && ` (${item.selectedSize})`}
+                                                                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
                                                                 {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                     <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity, kitchen }]) => (
+                                                                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
                                                                             <li key={addonName}>
                                                                                 + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
                                                                             </li>
@@ -949,7 +955,7 @@ function Front() {
                                                                             <li key={idx}>
                                                                                 + {combo.name1} x{combo.quantity || 1}
                                                                                 {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}
-                                                                                - ${(combo.selectedVariant ? (combo.variantPrice || 0) : (combo.combo_price || 0)) * (combo.quantity || 1).toFixed(2)}
+                                                                                - ${((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1).toFixed(2)}
                                                                             </li>
                                                                         ))}
                                                                     </ul>
@@ -965,9 +971,11 @@ function Front() {
                                                                     style={{ width: "60px", padding: "2px", textAlign: "center" }}
                                                                 />
                                                             </td>
-                                                            <td className='text-start'>${item.basePrice}</td>
                                                             <td className='text-start'>
-                                                                ${((item.basePrice * item.quantity) +
+                                                                ${(item.basePrice + (item.customVariantPrice || 0)).toFixed(2)}
+                                                            </td>
+                                                            <td className='text-start'>
+                                                                ${((item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
                                                                     Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
                                                                     (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0)
                                                                 ).toFixed(2)}
@@ -1098,7 +1106,8 @@ function Front() {
                                                                                     <tr key={index}>
                                                                                         <td>
                                                                                             {item.name}
-                                                                                            {item.customVariant && ` (${item.customVariant})`}
+                                                                                            {item.selectedSize && ` (${item.selectedSize})`}
+                                                                                            {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
                                                                                             {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
@@ -1112,16 +1121,16 @@ function Front() {
                                                                                                         <li key={idx}>
                                                                                                             + {combo.name1} x{combo.quantity || 1}
                                                                                                             {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}
-                                                                                                            - ${(combo.selectedVariant ? (combo.variantPrice || 0) : (combo.combo_price || 0)) * (combo.quantity || 1).toFixed(2)}
+                                                                                                            - ${((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1).toFixed(2)}
                                                                                                         </li>
                                                                                                     ))}
                                                                                                 </ul>
                                                                                             )}
                                                                                         </td>
                                                                                         <td>{item.quantity || 1}</td>
-                                                                                        <td>${item.basePrice}</td>
+                                                                                        <td>${(item.basePrice + (item.customVariantPrice || 0)).toFixed(2)}</td>
                                                                                         <td>
-                                                                                            ${((item.basePrice * item.quantity) +
+                                                                                            ${((item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
                                                                                                 Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
                                                                                                 (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0)
                                                                                             ).toFixed(2)}

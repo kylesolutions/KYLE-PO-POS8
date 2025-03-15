@@ -6,7 +6,8 @@ const FoodDetails = ({ item, onClose }) => {
     if (!item) return null;
 
     const { addToCart } = useContext(UserContext);
-    const [selectedSize, setSelectedSize] = useState(null); // Default to null instead of "M"
+    const [selectedSize, setSelectedSize] = useState(null);
+    const [selectedCustomVariant, setSelectedCustomVariant] = useState(null);
     const [addonCounts, setAddonCounts] = useState({});
     const [selectedCombo, setSelectedCombo] = useState(null);
     const [comboVariants, setComboVariants] = useState({});
@@ -82,14 +83,15 @@ const FoodDetails = ({ item, onClose }) => {
                         calories: selectedItem.custom_total_calories,
                         protein: selectedItem.custom_total_protein,
                     });
-
-                    // Set default size only if the item has size variants
                     const hasSizeVariants = itemList.some(i => 
                         i.item_code.startsWith(selectedItem.item_code.replace(/-[SML]$/, '')) && 
                         ['-S', '-M', '-L'].some(suffix => i.item_code.endsWith(suffix))
                     );
                     if (hasSizeVariants) {
-                        setSelectedSize("M"); // Default to "M" only for items with variants
+                        setSelectedSize("M"); 
+                    }
+                    if (formattedVariantData.length > 0) {
+                        setSelectedCustomVariant(formattedVariantData[0].type_of_variants);
                     }
                 }
             } catch (error) {
@@ -105,6 +107,9 @@ const FoodDetails = ({ item, onClose }) => {
             const selectedItemCode = getItemCodeForSize(selectedSize);
             const selectedItem = allItems.find(i => i.item_code === selectedItemCode) || fetchedItem;
             const basePrice = (selectedSize ? sizePrices[selectedSize] : fetchedItem.price) * mainQuantity;
+            const customVariantPrice = selectedCustomVariant 
+                ? (fetchedItem.variants.find(v => v.type_of_variants === selectedCustomVariant)?.variant_price || 0) * mainQuantity 
+                : 0;
             const addonsPrice = Object.entries(addonCounts).reduce((sum, [_, { price, quantity }]) => 
                 sum + (price * quantity), 0);
             const comboPrice = selectedCombos.reduce((sum, combo) => {
@@ -115,10 +120,11 @@ const FoodDetails = ({ item, onClose }) => {
                     : 0;
                 return sum + (comboBasePrice + variantPrice) * combo.quantity;
             }, 0);
-            const finalPrice = basePrice + addonsPrice + comboPrice;
+            const finalPrice = basePrice + customVariantPrice + addonsPrice + comboPrice;
+            console.log("Price Breakdown:", { basePrice, customVariantPrice, addonsPrice, comboPrice, finalPrice });
             setItemTotal(finalPrice);
         }
-    }, [addonCounts, selectedCombos, fetchedItem, mainQuantity, selectedSize, allItems]);
+    }, [addonCounts, selectedCombos, fetchedItem, mainQuantity, selectedSize, selectedCustomVariant, allItems]);
 
     const getSizePrices = () => {
         if (!fetchedItem || !fetchedItem.item_code) {
@@ -141,17 +147,19 @@ const FoodDetails = ({ item, onClose }) => {
         if (!fetchedItem || !fetchedItem.item_code || !size) return fetchedItem.item_code;
         const baseItemCode = fetchedItem.item_code.replace(/-[SML]$/, '');
         const sizeItem = allItems.find(i => i.item_code === `${baseItemCode}-${size}`);
-        return sizeItem ? sizeItem.item_code : fetchedItem.item_code; // Fallback to base item_code if size not found
+        return sizeItem ? sizeItem.item_code : fetchedItem.item_code; 
     };
 
     const getItemNameForSize = (size) => {
         if (!fetchedItem || !fetchedItem.item_code || !size) return fetchedItem.name;
         const baseItemCode = fetchedItem.item_code.replace(/-[SML]$/, '');
         const sizeItem = allItems.find(i => i.item_code === `${baseItemCode}-${size}`);
-        return sizeItem ? sizeItem.item_name : fetchedItem.name; // Fallback to base name if size not found
+        return sizeItem ? sizeItem.item_name : fetchedItem.name; 
     };
 
     const handleSizeChange = (size) => setSelectedSize(size);
+
+    const handleCustomVariantChange = (variant) => setSelectedCustomVariant(variant);
 
     const toggleAddonSelection = (addon, qtyChange = 0) => {
         setAddonCounts((prev) => {
@@ -220,6 +228,11 @@ const FoodDetails = ({ item, onClose }) => {
         const selectedItemCode = getItemCodeForSize(selectedSize);
         const selectedItemName = getItemNameForSize(selectedSize);
         const selectedItem = allItems.find(i => i.item_code === selectedItemCode) || fetchedItem;
+        
+        // Calculate custom variant price explicitly
+        const customVariantPrice = selectedCustomVariant 
+            ? (fetchedItem.variants.find(v => v.type_of_variants === selectedCustomVariant)?.variant_price || 0) 
+            : 0;
 
         const customizedItem = {
             id: selectedItemCode,
@@ -227,7 +240,9 @@ const FoodDetails = ({ item, onClose }) => {
             image: selectedItem.image || item.image,
             category: selectedItem.item_group || item.category,
             basePrice: selectedSize ? sizePrices[selectedSize] : selectedItem.price || item.price,
-            selectedSize: selectedSize || null, // Null if no variants
+            customVariantPrice: customVariantPrice, // Explicitly include custom variant price
+            selectedSize: selectedSize || null,
+            selectedCustomVariant: selectedCustomVariant || null,
             addonCounts: Object.fromEntries(
                 Object.entries(addonCounts).filter(([_, { quantity }]) => quantity > 0)
             ),
@@ -312,18 +327,18 @@ const FoodDetails = ({ item, onClose }) => {
                                         </div>
                                     </div>
                                 )}
-                                {fetchedItem?.variants?.length > 0 && !hasSizeVariants && (
+                                {fetchedItem?.variants?.length > 0 && (
                                     <div className="mt-3">
-                                        <strong>Variants:</strong>
-                                        <div className="radio-inputs" role="group" aria-label="Variant selection">
+                                        <strong>Custom Variants:</strong>
+                                        <div className="radio-inputs" role="group" aria-label="Custom variant selection">
                                             {fetchedItem.variants.map((variant, index) => (
                                                 <label key={index} className="radio">
                                                     <input
                                                         type="radio"
-                                                        name="variant"
+                                                        name="customVariant"
                                                         value={variant.type_of_variants}
-                                                        checked={selectedSize === variant.type_of_variants}
-                                                        onChange={() => handleSizeChange(variant.type_of_variants)}
+                                                        checked={selectedCustomVariant === variant.type_of_variants}
+                                                        onChange={() => handleCustomVariantChange(variant.type_of_variants)}
                                                     />
                                                     <span className="name">{variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price})` : ''}</span>
                                                 </label>

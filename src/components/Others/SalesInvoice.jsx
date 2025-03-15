@@ -7,6 +7,7 @@ function SalesInvoice() {
   const [error, setError] = useState("");
   const [filterId, setFilterId] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [filterTime, setFilterTime] = useState("");
 
   const fetchInvoices = async () => {
     setLoading(true);
@@ -16,7 +17,7 @@ function SalesInvoice() {
         "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoice_list",
         {
           headers: {
-            "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
           },
         }
       );
@@ -39,55 +40,32 @@ function SalesInvoice() {
     fetchInvoices();
   }, []);
 
-  const categorizeInvoices = () => {
-    const today = new Date();
-    const startOfToday = new Date(today.setHours(0, 0, 0, 0));
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const todayInvoices = [];
-    const weekInvoices = [];
-    const olderInvoices = [];
-
-    invoices.forEach((invoice) => {
-      const invoiceDate = invoice.posting_date ? new Date(invoice.posting_date) : null;
-      if (!invoiceDate) {
-        olderInvoices.push(invoice);
-        return;
-      }
-      if (invoiceDate >= startOfToday) {
-        todayInvoices.push(invoice);
-      } else if (invoiceDate >= startOfWeek) {
-        weekInvoices.push(invoice);
-      } else {
-        olderInvoices.push(invoice);
-      }
-    });
-
-    return { todayInvoices, weekInvoices, olderInvoices };
-  };
-
   const filterInvoices = (invoiceList) => {
     return invoiceList.filter((invoice) => {
       const matchesId = invoice.name.toLowerCase().includes(filterId.toLowerCase());
       const matchesDate = filterDate
         ? (invoice.posting_date || "").includes(filterDate)
         : true;
-      return matchesId && matchesDate;
+      const matchesTime = filterTime
+        ? (invoice.posting_date || "").includes(filterTime)
+        : true;
+      return matchesId && matchesDate && matchesTime;
     });
   };
 
   const handleFilterIdChange = (e) => setFilterId(e.target.value);
   const handleFilterDateChange = (e) => setFilterDate(e.target.value);
+  const handleFilterTimeChange = (e) => setFilterTime(e.target.value);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
+    return date.toLocaleString("en-GB", {
       day: "numeric",
       month: "long",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -95,38 +73,68 @@ function SalesInvoice() {
     return `
       <html>
         <head>
-          <title>Invoice ${invoice.name}</title>
+          <title>Invoice</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .invoice-container { max-width: 800px; margin: auto; }
-            .invoice-header { text-align: center; margin-bottom: 20px; }
-            .invoice-details { margin-bottom: 20px; }
-            .invoice-details p { margin: 5px 0; }
-            .customer-details { border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-            .footer { text-align: right; margin-top: 20px; }
+            @page { margin: 0; }
+            body { 
+              font-family: Arial, sans-serif; 
+              padding: 20px; 
+              margin: 0; 
+              font-size: 12px; 
+            }
+            .invoice-container { 
+              max-width: 800px; 
+              margin: 0 auto; 
+            }
+            .invoice-details { 
+              margin-bottom: 15px; 
+            }
+            .invoice-details p, .customer-details p { 
+              margin: 5px 0; 
+            }
+            .customer-details { 
+              margin-bottom: 15px; 
+              border-bottom: 1px solid #000; 
+              padding-bottom: 10px; 
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-bottom: 15px; 
+            }
+            th, td { 
+              border: 1px solid #000; 
+              padding: 8px; 
+              text-align: left; 
+            }
+            th { 
+              font-weight: bold; 
+            }
+            .footer p { 
+              margin: 5px 0; 
+            }
+            @media print {
+              @page { margin: 0; }
+              body { padding-top: 0; }
+              header, footer { display: none !important; }
+            }
           </style>
         </head>
         <body>
           <div class="invoice-container">
-            <div class="invoice-header">
-              <h2>POS Invoice</h2>
-              <h4>Invoice ID: ${invoice.name}</h4>
+            <div class="invoice-details">
+              <p><strong>Invoice ID:</strong> ${invoice.name}</p>
+              <p><strong>Posting Date:</strong> ${formatDate(invoice.posting_date)}</p>
             </div>
             <div class="customer-details">
               <p><strong>Customer Name:</strong> ${invoice.customer_details?.customer_name || "N/A"}</p>
-              <p><strong>Email:</strong> ${invoice.customer_details?.email_id || "N/A"}</p>
+              ${
+                invoice.customer_details?.address
+                  ? `<p><strong>Address:</strong> ${invoice.customer_details.address}</p>`
+                  : ""
+              }
               <p><strong>Phone Number:</strong> ${invoice.customer_details?.mobile_no || "N/A"}</p>
             </div>
-            <div class="invoice-details">
-              <p><strong>Posting Date:</strong> ${formatDate(invoice.posting_date)}</p>
-              <p><strong>Grand Total:</strong> ₹${invoice.grand_total || 0}</p>
-              <p><strong>Total Taxes:</strong> ₹${invoice.total_taxes_and_charges || 0}</p>
-              <p><strong>Currency:</strong> ${invoice.currency || "INR"}</p>
-            </div>
-            <h5>Items</h5>
             <table>
               <thead>
                 <tr>
@@ -158,7 +166,9 @@ function SalesInvoice() {
               </tbody>
             </table>
             <div class="footer">
-              <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>
+              <p><strong>Total Taxes:</strong> ₹${invoice.total_taxes_and_charges || 0}</p>
+              <p><strong>Currency:</strong> ${invoice.currency || "INR"}</p>
+              <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>  
             </div>
           </div>
         </body>
@@ -196,8 +206,8 @@ function SalesInvoice() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Expect": "", // Suppress Expect header to avoid 417
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Expect": "",
           },
           body: JSON.stringify({
             recipient: email,
@@ -207,14 +217,7 @@ function SalesInvoice() {
         }
       );
 
-      const responseText = await response.text(); // Get raw response for debugging
-      console.log("Raw response:", responseText);
-
-      if (!response.ok) {
-        throw new Error(`Failed to send email: ${response.status} - ${responseText}`);
-      }
-
-      const result = JSON.parse(responseText); // Parse JSON manually
+      const result = await response.json();
       if (result.status === "success") {
         alert(`Invoice successfully sent to ${email}`);
       } else {
@@ -222,77 +225,96 @@ function SalesInvoice() {
       }
     } catch (err) {
       console.error("Email send error:", err);
-      // Convert error to a readable string, handling both message and full object
-      const errorMessage = err.message || JSON.stringify(err);
-      alert(`Error sending email: ${errorMessage}`);
+      alert(`Error sending email: ${err.message || "Unknown error"}`);
     }
   };
 
-  const renderInvoiceTable = (invoiceList) => {
-    const filtered = filterInvoices(invoiceList);
-    if (filtered.length === 0) {
-      return <p className="text-center">No invoices match the filter</p>;
+  const renderInvoiceTable = (invoiceList, title) => {
+    if (invoiceList.length === 0) {
+      return (
+        <div className="mb-4">
+          <h5 className="text-center mb-3">{title}</h5>
+          <p className="text-center">No invoices in this section</p>
+        </div>
+      );
     }
 
     return (
-      <div className="table-responsive">
-        <table className="table table-bordered table-hover">
-          <thead className="thead-dark">
-            <tr>
-              <th>Invoice ID</th>
-              <th>Customer</th>
-              <th>Posting Date</th>
-              <th>Grand Total (₹)</th>
-              <th>Total Taxes (₹)</th>
-              <th>Currency</th>
-              <th>Paid Amount (₹)</th>
-              <th>Items</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((invoice) => (
-              <tr key={invoice.name}>
-                <td>{invoice.name}</td>
-                <td>{invoice.customer_details?.customer_name || "N/A"}</td>
-                <td>{invoice.posting_date || "N/A"}</td>
-                <td>₹{invoice.grand_total || 0}</td>
-                <td>₹{invoice.total_taxes_and_charges || 0}</td>
-                <td>{invoice.currency || "INR"}</td>
-                <td>₹{invoice.paid_amount || 0}</td>
-                <td>
-                  {invoice.pos_invoice_items && invoice.pos_invoice_items.length > 0 ? (
-                    <ul className="list-unstyled">
-                      {invoice.pos_invoice_items.map((item, idx) => (
-                        <li key={idx}>
-                          {item.item_name || "N/A"} (Qty: {item.qty || 0}, ₹{item.amount || 0})
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    "No items"
-                  )}
-                </td>
-                <td>
-                  <button
-                    className="btn btn-sm btn-success me-2"
-                    onClick={() => handlePrintInvoice(invoice)}
-                  >
-                    Print
-                  </button>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => handleSendEmail(invoice)}
-                  >
-                    Send Email
-                  </button>
-                </td>
+      <div className="mb-4">
+        <h5 className="text-center mb-3">{title}</h5>
+        <div className="table-responsive" style={{ maxHeight: "400px", overflowY: "auto" }}>
+          <table className="table table-bordered table-hover" style={{ fontSize: "14px" }}>
+            <thead className="thead-dark">
+              <tr>
+                <th style={{ width: "33%" }}>Invoice Details</th>
+                <th style={{ width: "33%" }}>Payment Summary</th>
+                <th style={{ width: "34%" }}>Items & Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {invoiceList.map((invoice) => (
+                <tr key={invoice.name}>
+                  <td>
+                    <div>
+                      <strong>Invoice ID:</strong> {invoice.name}<br />
+                      <strong>Customer:</strong> {invoice.customer_details?.customer_name || "N/A"}<br />
+                      <strong>Posting Date:</strong> {formatDate(invoice.posting_date)}
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <strong>Grand Total:</strong> ₹{invoice.grand_total || 0}<br />
+                      <strong>Total Taxes:</strong> ₹{invoice.total_taxes_and_charges || 0}<br />
+                      <strong>Currency:</strong> {invoice.currency || "INR"}<br />
+                      <strong>Paid Amount:</strong> ₹{invoice.paid_amount || 0}
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <strong>Items:</strong>
+                      {invoice.pos_invoice_items && invoice.pos_invoice_items.length > 0 ? (
+                        <ul className="list-unstyled mb-2" style={{ maxHeight: "100px", overflowY: "auto" }}>
+                          {invoice.pos_invoice_items.map((item, idx) => (
+                            <li key={idx}>
+                              {item.item_name || "N/A"} (Qty: {item.qty || 0}, ₹{item.amount || 0})
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span> No items</span>
+                      )}
+                      <div className="d-flex justify-content-center gap-2">
+                        <button
+                          className="btn btn-sm btn-success"
+                          onClick={() => handlePrintInvoice(invoice)}
+                        >
+                          Print
+                        </button>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleSendEmail(invoice)}
+                        >
+                          Send Email
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
+  };
+
+  const splitInvoicesIntoThree = () => {
+    const filteredInvoices = filterInvoices(invoices);
+    const third = Math.ceil(filteredInvoices.length / 3);
+    const part1 = filteredInvoices.slice(0, third);
+    const part2 = filteredInvoices.slice(third, third * 2);
+    const part3 = filteredInvoices.slice(third * 2);
+    return { part1, part2, part3 };
   };
 
   const renderContent = () => {
@@ -306,12 +328,12 @@ function SalesInvoice() {
       return <p className="text-center">No POS Invoices Found</p>;
     }
 
-    const { todayInvoices, weekInvoices, olderInvoices } = categorizeInvoices();
+    const { part1, part2, part3 } = splitInvoicesIntoThree();
 
     return (
       <>
-        <div className="row mb-4">
-          <div className="col-md-6">
+        <div className="row mb-4 justify-content-center">
+          <div className="col-md-4">
             <label htmlFor="filterId" className="form-label">
               Filter by Invoice ID:
             </label>
@@ -324,7 +346,7 @@ function SalesInvoice() {
               placeholder="Enter Invoice ID (e.g., POSINV-001)"
             />
           </div>
-          <div className="col-md-6">
+          <div className="col-md-4">
             <label htmlFor="filterDate" className="form-label">
               Filter by Posting Date:
             </label>
@@ -337,77 +359,29 @@ function SalesInvoice() {
               placeholder="Enter Date (e.g., 2025-03-01)"
             />
           </div>
+          <div className="col-md-4">
+            <label htmlFor="filterTime" className="form-label">
+              Filter by Time:
+            </label>
+            <input
+              type="text"
+              id="filterTime"
+              className="form-control"
+              value={filterTime}
+              onChange={handleFilterTimeChange}
+              placeholder="Enter Time (e.g., 14:30)"
+            />
+          </div>
         </div>
-
-        <ul className="nav nav-tabs" id="invoiceTabs" role="tablist">
-          <li className="nav-item" role="presentation">
-            <button
-              className="nav-link active"
-              id="today-tab"
-              data-bs-toggle="tab"
-              data-bs-target="#today"
-              type="button"
-              role="tab"
-              aria-controls="today"
-              aria-selected="true"
-            >
-              Today ({todayInvoices.length})
-            </button>
-          </li>
-          <li className="nav-item" role="presentation">
-            <button
-              className="nav-link"
-              id="week-tab"
-              data-bs-toggle="tab"
-              data-bs-target="#week"
-              type="button"
-              role="tab"
-              aria-controls="week"
-              aria-selected="false"
-            >
-              This Week ({weekInvoices.length})
-            </button>
-          </li>
-          <li className="nav-item" role="presentation">
-            <button
-              className="nav-link"
-              id="older-tab"
-              data-bs-toggle="tab"
-              data-bs-target="#older"
-              type="button"
-              role="tab"
-              aria-controls="older"
-              aria-selected="false"
-            >
-              Older ({olderInvoices.length})
-            </button>
-          </li>
-        </ul>
-
-        <div className="tab-content" id="invoiceTabContent">
-          <div
-            className="tab-pane fade show active"
-            id="today"
-            role="tabpanel"
-            aria-labelledby="today-tab"
-          >
-            {renderInvoiceTable(todayInvoices)}
+        <div className="row">
+          <div className="col-md-4 px-2">
+            {renderInvoiceTable(part1, "Part 1")}
           </div>
-          <div
-            className="tab-pane fade"
-            id="week"
-            role="tabpanel"
-            aria-labelledby="week-tab"
-          >
-            {renderInvoiceTable(weekInvoices)}
+          <div className="col-md-4 px-2">
+            {renderInvoiceTable(part2, "Part 2")}
           </div>
-          <div
-            className="tab-pane fade"
-            id="older"
-            role="tabpanel"
-            aria-labelledby="older-tab"
-          >
-            {renderInvoiceTable(olderInvoices)}
+          <div className="col-md-4 px-2">
+            {renderInvoiceTable(part3, "Part 3")}
           </div>
         </div>
       </>
@@ -416,7 +390,7 @@ function SalesInvoice() {
 
   return (
     <div className="container mt-4">
-      <h3 className="mb-4">POS Invoices</h3>
+      <h3 className="mb-4 text-center">POS Invoices</h3>
       {renderContent()}
     </div>
   );
