@@ -21,6 +21,10 @@ function Front() {
     const { state } = useLocation();
     const { tableNumber, existingOrder, deliveryType } = state || {};
 
+    const userData = useSelector((state) => state.user);
+    const company = userData.company || "POS8"; // Dynamic company from Redux
+    const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount || "Sales - P");
+
     useEffect(() => {
         if (location.state) {
             setPhoneNumber(location.state.phoneNumber || existingOrder?.phoneNumber || "");
@@ -38,18 +42,49 @@ function Front() {
     const [showModal, setShowModal] = useState(false);
     const navigate = useNavigate();
     const [bookedTables, setBookedTables] = useState([]);
-    const user = useSelector((state) => state.user.user);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
     const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
     const [taxTemplates, setTaxTemplates] = useState([]);
     const [selectedTaxTemplate, setSelectedTaxTemplate] = useState("VAT - P");
-
     const [address, setAddress] = useState("");
     const [whatsappNumber, setWhatsappNumber] = useState("");
     const [email, setEmail] = useState("");
-
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+    // Fetch company default income account if not in Redux
+    useEffect(() => {
+        const fetchCompanyDetails = async () => {
+            try {
+                const response = await fetch('/api/method/frappe.client.get_value', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                    },
+                    body: JSON.stringify({
+                        doctype: "Company",
+                        name: company,
+                        fieldname: "default_income_account"
+                    }),
+                });
+                const data = await response.json();
+                if (data.message && data.message.default_income_account) {
+                    setDefaultIncomeAccount(data.message.default_income_account);
+                } else {
+                    console.warn(`No default income account found for company ${company}. Using fallback "Sales - P".`);
+                }
+            } catch (error) {
+                console.error("Error fetching company details:", error);
+            }
+        };
+
+        if (!userData.defaultIncomeAccount) {
+            fetchCompanyDetails();
+        } else {
+            setDefaultIncomeAccount(userData.defaultIncomeAccount);
+        }
+    }, [company, userData.defaultIncomeAccount]);
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -197,11 +232,9 @@ function Front() {
 
     const handleCheckoutClick = () => setShowButtons(true);
 
-    // New handler for quantity input
     const handleQuantityChange = (item, value) => {
         const quantity = parseInt(value, 10);
         if (isNaN(quantity) || quantity < 1) {
-            // Optionally reset to 1 or leave as is; here we set to 1
             updateCartItem({ ...item, quantity: 1 });
         } else {
             updateCartItem({ ...item, quantity });
@@ -290,15 +323,9 @@ function Front() {
         console.log("Inside handleSaveToBackend | Payment Details:", paymentDetails);
         console.log("Cart Items:", cartItems);
 
-        if (!paymentDetails || typeof paymentDetails !== "object") {
-            console.error("handleSaveToBackend received invalid paymentDetails:", paymentDetails);
+        if (!paymentDetails || typeof paymentDetails !== "object" || !paymentDetails.mode_of_payment) {
+            console.error("Invalid paymentDetails:", paymentDetails);
             alert("Error: Invalid payment details. Please try again.");
-            return;
-        }
-
-        if (!paymentDetails.mode_of_payment) {
-            console.error("Error: mode_of_payment is missing in paymentDetails!", paymentDetails);
-            alert("Error: Payment method is missing. Please try again.");
             return;
         }
 
@@ -311,6 +338,7 @@ function Front() {
                 rate: item.basePrice,
                 amount: item.basePrice * item.quantity,
                 kitchen: item.kitchen || "Unknown",
+                income_account: defaultIncomeAccount, // Dynamic income account
             };
 
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
@@ -320,6 +348,7 @@ function Front() {
                 rate: price,
                 amount: price * quantity,
                 kitchen: kitchen || "Unknown",
+                income_account: defaultIncomeAccount, // Dynamic income account
             }));
 
             const comboItems = (item.selectedCombos || []).map((combo) => ({
@@ -329,6 +358,7 @@ function Front() {
                 rate: (combo.combo_price || 0) + (combo.variantPrice || 0),
                 amount: ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1),
                 kitchen: combo.kitchen || "Unknown",
+                income_account: defaultIncomeAccount, // Dynamic income account
             }));
 
             return [mainItem, ...addonItems, ...comboItems];
@@ -345,6 +375,7 @@ function Front() {
             posting_date: new Date().toISOString().split("T")[0],
             due_date: new Date().toISOString().split("T")[0],
             is_pos: 1,
+            company: company, // Dynamic company
             currency: "INR",
             conversion_rate: 1,
             selling_price_list: "Standard Selling",
@@ -570,6 +601,7 @@ function Front() {
     };
 
     const cancelCart = () => setCartItems([]);
+
     return (
         <>
             <div className="container-fluid">
@@ -582,7 +614,6 @@ function Front() {
                                         className={`category-btn w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active' : ''}`}
                                         onClick={() => handleFilter(category)}
                                     >
-                                        
                                         <span>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
                                     </button>
                                 </div>
@@ -594,13 +625,13 @@ function Front() {
                         <div className="row" style={{ height: '90vh', overflowY: 'auto' }}>
                             {filteredItems.map((item, index) => (
                                 <div className="col-xl-3 col-lg-4 col-md-4 col-6 align-items-center my-2" key={index}>
-                                <div className="card" onClick={() => handleItemClick(item)}>
-                                    <img className="card-img-top" src={item.image} alt={item.name} />
-                                    <div className="card-body p-2 mb-0 category-name">
-                                        <h4 className="card-title text-center mb-0" style={{fontSize:"14px"}}>{item.name}</h4>
+                                    <div className="card" onClick={() => handleItemClick(item)}>
+                                        <img className="card-img-top" src={item.image} alt={item.name} />
+                                        <div className="card-body p-2 mb-0 category-name">
+                                            <h4 className="card-title text-center mb-0" style={{fontSize:"14px"}}>{item.name}</h4>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
                             ))}
                         </div>
                         <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} />

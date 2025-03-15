@@ -14,8 +14,9 @@ function ClosingEntry() {
   const [postingDate, setPostingDate] = useState(new Date().toISOString().split('T')[0]);
   const [periodEndDate, setPeriodEndDate] = useState(() => {
     const now = new Date();
-    return now.toLocaleString('sv', { timeZone: 'Asia/Kolkata' }).replace(' ', 'T').slice(0, 16); // e.g., "2025-03-13T14:30"
-  });  const [company, setCompany] = useState('');
+    return now.toLocaleString('sv', { timeZone: 'Asia/Kolkata' }).replace(' ', 'T').slice(0, 16);
+  });
+  const [company, setCompany] = useState('');
   const [user, setUser] = useState('');
   const [posProfile, setPosProfile] = useState('');
   const [posTransactions, setPosTransactions] = useState([]);
@@ -35,6 +36,7 @@ function ClosingEntry() {
     setUser(reduxUser);
     setCompany(reduxCompany);
     console.log('ClosingEntry - posProfile:', reduxPosProfile);
+    console.log('ClosingEntry - company:', reduxCompany);
   }, [userData]);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ function ClosingEntry() {
           headers: {
             'Content-Type': 'application/json',
             Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+            'Expect': '', // Prevent 417 error
           },
           body: JSON.stringify({ pos_profile: posProfile }),
         });
@@ -62,9 +65,8 @@ function ClosingEntry() {
     if (posProfile) fetchOpeningEntries();
   }, [posProfile]);
 
-// Only showing relevant useEffect for brevity
-useEffect(() => {
-  const fetchPosInvoices = async () => {
+  useEffect(() => {
+    const fetchPosInvoices = async () => {
       if (!posOpeningEntry || !openingEntries.length) return;
 
       const selectedEntry = openingEntries.find(entry => entry.name === posOpeningEntry);
@@ -80,75 +82,75 @@ useEffect(() => {
       console.log('Opening Payment Details:', openingPayment);
 
       try {
-          console.log('Fetching POS Invoices for:', { pos_opening_entry: posOpeningEntry });
-          const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-              },
-              body: JSON.stringify({ pos_opening_entry: posOpeningEntry }),
+        console.log('Fetching POS Invoices for:', { pos_opening_entry: posOpeningEntry });
+        const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+            'Expect': '', // Prevent 417 error
+          },
+          body: JSON.stringify({ pos_opening_entry: posOpeningEntry }),
+        });
+        const result = await response.json();
+        console.log('POS Invoices Response:', result);
+
+        if (result.message && result.message.status === 'success') {
+          const { invoices, payment_totals, grand_total, net_total, total_quantity } = result.message;
+
+          setPosTransactions(invoices.map(inv => ({
+            pos_invoice: inv.pos_invoice,
+            grand_total: inv.grand_total,
+            posting_date: inv.posting_date,
+            customer: inv.customer,
+          })));
+
+          const initialPaymentReconciliation = openingPayment.map(detail => {
+            const paymentReceived = parseFloat(payment_totals[detail.mode_of_payment] || 0);
+            const openingAmount = parseFloat(detail.opening_amount);
+            const expectedAmount = openingAmount + paymentReceived;
+            return {
+              mode_of_payment: detail.mode_of_payment,
+              opening_amount: detail.opening_amount.toString(),
+              expected_amount: expectedAmount.toString(),
+              closing_amount: expectedAmount.toString(),
+              difference: '0'
+            };
           });
-          const result = await response.json();
-          console.log('POS Invoices Response:', result);
 
-          if (result.message && result.message.status === 'success') {
-              const { invoices, payment_totals, grand_total, net_total, total_quantity } = result.message;
-
-              setPosTransactions(invoices.map(inv => ({
-                  pos_invoice: inv.pos_invoice,
-                  grand_total: inv.grand_total,
-                  posting_date: inv.posting_date,
-                  customer: inv.customer,
-              })));
-
-              const initialPaymentReconciliation = openingPayment.map(detail => {
-                  const paymentReceived = parseFloat(payment_totals[detail.mode_of_payment] || 0);
-                  const openingAmount = parseFloat(detail.opening_amount);
-                  const expectedAmount = openingAmount + paymentReceived;
-                  return {
-                      mode_of_payment: detail.mode_of_payment,
-                      opening_amount: detail.opening_amount.toString(),
-                      expected_amount: expectedAmount.toString(),
-                      closing_amount: expectedAmount.toString(),
-                      difference: '0'
-                  };
+          Object.keys(payment_totals).forEach(mode => {
+            if (!initialPaymentReconciliation.some(pr => pr.mode_of_payment === mode)) {
+              const paymentReceived = parseFloat(payment_totals[mode] || 0);
+              initialPaymentReconciliation.push({
+                mode_of_payment: mode,
+                opening_amount: '0',
+                expected_amount: paymentReceived.toString(),
+                closing_amount: paymentReceived.toString(),
+                difference: '0'
               });
+            }
+          });
 
-              Object.keys(payment_totals).forEach(mode => {
-                  if (!initialPaymentReconciliation.some(pr => pr.mode_of_payment === mode)) {
-                      const paymentReceived = parseFloat(payment_totals[mode] || 0);
-                      initialPaymentReconciliation.push({
-                          mode_of_payment: mode,
-                          opening_amount: '0',
-                          expected_amount: paymentReceived.toString(),
-                          closing_amount: paymentReceived.toString(),
-                          difference: '0'
-                      });
-                  }
-              });
+          console.log('Updated Payment Reconciliation:', initialPaymentReconciliation);
+          setPaymentReconciliation(initialPaymentReconciliation);
+          setTaxes(invoices.flatMap(inv => inv.taxes || []).map(tax => ({
+            account_head: tax.account_head,
+            rate: tax.rate,
+            amount: tax.amount,
+          })) || []);
 
-              console.log('Updated Payment Reconciliation:', initialPaymentReconciliation);
-              setPaymentReconciliation(initialPaymentReconciliation);
-
-              setTaxes(invoices.flatMap(inv => inv.taxes || []).map(tax => ({
-                  account_head: tax.account_head,
-                  rate: tax.rate,
-                  amount: tax.amount,
-              })) || []);
-
-              setGrandTotal(grand_total.toString());
-              setNetTotal(net_total.toString());  // Now reflects subtotal without tax
-              setTotalQuantity(total_quantity.toString());
-          } else {
-              console.log('No success status in POS Invoices response:', result);
-          }
+          setGrandTotal(grand_total.toString());
+          setNetTotal(net_total.toString());
+          setTotalQuantity(total_quantity.toString());
+        } else {
+          console.log('No success status in POS Invoices response:', result);
+        }
       } catch (error) {
-          console.error('Error fetching POS Invoices:', error);
+        console.error('Error fetching POS Invoices:', error);
       }
-  };
-  fetchPosInvoices();
-}, [posOpeningEntry, openingEntries]);
+    };
+    fetchPosInvoices();
+  }, [posOpeningEntry, openingEntries]);
 
   const handlePaymentReconciliationChange = (index, field, value) => {
     setPaymentReconciliation(prev =>
@@ -170,13 +172,16 @@ useEffect(() => {
       pos_opening_entry: posOpeningEntry,
       posting_date: postingDate,
       period_end_date: periodEndDate,
+      company: company, // Explicitly include company
       pos_transactions: posTransactions,
       payment_reconciliation: paymentReconciliation,
-      taxes,
+      taxes: taxes,
       grand_total: grandTotal,
       net_total: netTotal,
       total_quantity: totalQuantity,
     };
+
+    console.log('Submitting Payload:', payload);
 
     try {
       setLoading(true);
@@ -185,19 +190,25 @@ useEffect(() => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+          'Expect': '', // Prevent 417 error
         },
         body: JSON.stringify(payload),
       });
+
       const result = await response.json();
+      console.log('Closing Entry Response:', result);
+
       if (result.message && result.message.status === 'success') {
         alert('POS Closing Entry created successfully!');
+        setCartItems([]); // Clear cart on success
         navigate('/');
       } else {
-        alert(`Failed: ${result.message.message || 'Unknown error'}`);
+        console.error('Closing Entry Submission Failed:', result.message);
+        alert(`Failed: ${result.message?.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('ClosingEntry Network Error:', error);
-      alert('Network error occurred.');
+      alert('Network error occurred. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -356,7 +367,7 @@ useEffect(() => {
           </div>
 
           <div className="row">
-            <div className="col-md-6 text-end">
+            <div className="col-md-12 text-end">
               <button className="btn btn-success" onClick={handleSubmit} disabled={loading}>
                 {loading ? 'Submitting...' : 'Submit Closing Entry'}
               </button>
