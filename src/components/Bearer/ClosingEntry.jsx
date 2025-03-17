@@ -371,7 +371,7 @@ function ClosingEntry() {
               <button className="btn btn-success" onClick={handleSubmit} disabled={loading}>
                 {loading ? 'Submitting...' : 'Submit Closing Entry'}
               </button>
-              <button className="btn btn-secondary ms-2" onClick={() => navigate('/')}>
+              <button className="btn btn-secondary ms-2" onClick={() => navigate('/frontpage')}>
                 Cancel
               </button>
             </div>

@@ -1,6 +1,6 @@
 /* Category Sidebar */
 .category-sidebar {
-    background: linear-gradient(135deg, #2c3e50, #34495e);
+    background: rgb(255, 255, 255);
     height: 90vh;
     padding: 10px 5px;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
@@ -11,10 +11,10 @@
 /* Category Button */
 .category-btn {
     background: #ecf0f1;
-    color: #2c3e50;
+    color: #2d83b6;
     border: none;
     padding: 12px 10px;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     text-transform: capitalize;
     transition: all 0.3s ease;
@@ -69,6 +69,18 @@
     object-fit: cover; /* Ensures image fills the square */
     border-radius: 4px; /* Matches your existing style */
     display: block; /* Removes bottom gap */
+    background-color:#e7e7e7;
+}
+.image-box{
+    height: 220px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #ecf0f1;;
+}
+.image-box img {
+    width: 120px;
+    height: 120px;
 }
 
 /* Card Body */

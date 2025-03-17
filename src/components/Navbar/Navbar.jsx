@@ -71,14 +71,14 @@ function Navbar() {
           </button>
 
           <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul className="navbar-nav mx-auto mb-2 mb-lg-0">
+            <ul className="navbar-nav mb-2 mb-lg-0">
               <li className="nav-item">
                 <a
                   className={`nav-link ${location.pathname === '/frontpage' ? 'active text-primary' : 'text-black'} cursor-pointer`}
                   onClick={() => navigate('/frontpage')}
                   title="Home"
                 >
-                  <i className="bi bi-house-fill fs-2"></i>
+                  <img src="/menuIcons/home.svg" alt="" className='menuicon' />
                 </a>
               </li>
               <li className="nav-item">
@@ -87,7 +87,7 @@ function Navbar() {
                   onClick={() => navigate('/firsttab')}
                   title="Type Of Delivery"
                 >
-                  <i className="bi bi-menu-button-wide fs-2"></i>
+                  <img src="/menuIcons/delivery.svg" alt="" style={{ width:"45px" }}/>
                 </a>
               </li>
               <li className="nav-item">
@@ -96,7 +96,7 @@ function Navbar() {
                   onClick={() => navigate('/table')}
                   title="Table"
                 >
-                  <i className="bi bi-border-all fs-2"></i>
+                  <img src="/menuIcons/table1.svg" alt="" style={{ width:"45px" }} />
                 </a>
               </li>
               <li className="nav-item">
@@ -105,7 +105,7 @@ function Navbar() {
                   onClick={() => navigate('/kitchen')}
                   title="Kitchen"
                 >
-                  <i className="bi bi-cup-hot fs-2"></i>
+                  <img src="/menuIcons/kitchen.svg" alt="" className='menuicon' />
                 </a>
               </li>
               <li className="nav-item">
@@ -114,7 +114,7 @@ function Navbar() {
                   onClick={() => navigate('/salesinvoice')}
                   title="Sales Invoice"
                 >
-                  <i className="bi bi-save fs-2"></i>
+                  <img src="\menuIcons\save.svg" alt="" className='menuicon' />
                 </a>
               </li>
               <li className="nav-item">
@@ -123,24 +123,16 @@ function Navbar() {
                   onClick={handleClosingEntryNavigation}
                   title="Closing Entry"
                 >
-                  <i className="bi bi-journal-check fs-2"></i> {/* Changed icon */}
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/logout' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={handleLogout}
-                  title="Logout"
-                >
-                  <i className="bi bi-power fs-2"></i>
+                   <img src="\menuIcons\closingentry.svg" alt="" className='menuicon' />
                 </a>
               </li>
             </ul>
 
             <div className="user-info ms-auto pe-3">
               <div className="d-flex align-items-center">
-                <i className="bi bi-person-circle fs-4 me-2"></i>
-                <span className="fw-bold text-black mb-0">{user || "Guest"}</span>
+                <img src="\menuIcons\poweroff.svg" alt="" style={{width:"18px"}} className={`nav-link ${location.pathname === '/logout' ? 'active text-primary' : 'text-black'} cursor-pointer`}
+                  onClick={handleLogout}/>
+                <span className="ms-2 text-black mb-0">{user || "Guest"}</span>
               </div>
               <small className="d-block text-muted text-end mt-1">{formattedDate}</small>
               <small className="d-block text-muted text-end">{formattedTime}</small>

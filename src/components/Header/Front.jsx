@@ -235,7 +235,7 @@ function Front() {
     const handleQuantityChange = (item, value) => {
         const quantity = parseInt(value, 10);
         if (isNaN(quantity) || quantity < 1) {
-            updateCartItem({ ...item, quantity: 1 });
+            updateCartItem({ ...item  , quantity: 1 });
         } else {
             updateCartItem({ ...item, quantity });
         }
@@ -247,6 +247,17 @@ function Front() {
         } else {
             alert("No table selected.");
         }
+    };
+
+    const handlePaymentCompletion = (tableNumber) => {
+        const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
+        const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
+        localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
+        const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
+        setBookedTables(updatedBookedTables);
+        localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
+        setCartItems([]);
+        alert(`Payment for Table ${tableNumber || "Order"} is completed.`);
     };
 
     const handlePaymentSelection = async (method) => {
@@ -310,27 +321,18 @@ function Front() {
         }
     };
 
-    const handlePaymentCompletion = (tableNumber) => {
-        const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
-        const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
-        localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
-        const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
-        setBookedTables(updatedBookedTables);
-        localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
-        setCartItems([]);
-        alert(`Payment for Table ${tableNumber || "Order"} is completed.`);
-    };
-
     const handleSaveToBackend = async (paymentDetails, subTotal) => {
         console.log("Inside handleSaveToBackend | Payment Details:", paymentDetails);
         console.log("Cart Items:", cartItems);
-
+        console.log("Current customerName:", customerName); // Log customerName
+        console.log("Customers array:", customers); // Log customers
+    
         if (!paymentDetails || typeof paymentDetails !== "object" || !paymentDetails.mode_of_payment) {
             console.error("Invalid paymentDetails:", paymentDetails);
             alert("Error: Invalid payment details. Please try again.");
             return;
         }
-
+    
         const allItems = cartItems.flatMap((item) => {
             const variantPrice = item.customVariantPrice || 0;
             const mainItem = {
@@ -345,7 +347,7 @@ function Front() {
                 kitchen: item.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             };
-
+    
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
                 item_name: addonName,
                 description: `Addon: ${addonName}`,
@@ -355,7 +357,7 @@ function Front() {
                 kitchen: kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
-
+    
             const comboItems = (item.selectedCombos || []).map((combo) => ({
                 item_name: combo.name1,
                 description: `Combo: ${combo.name1}${combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}`,
@@ -365,18 +367,23 @@ function Front() {
                 kitchen: combo.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
-
+    
             return [mainItem, ...addonItems, ...comboItems];
         });
-
+    
         if (allItems.length === 0) {
             console.error("Error: No items in the cart.");
             alert("Error: Cannot create an order with no items.");
             return;
         }
-
+    
+        const selectedCustomer = customers.find(c => c.customer_name === customerName);
+        const customerId = selectedCustomer ? selectedCustomer.name : "CUST-2025-00001";
+        console.log("Selected Customer:", selectedCustomer); // Log selected customer
+        console.log("Customer ID to be sent:", customerId); // Log final customerId
+    
         const payload = {
-            customer: customerName,
+            customer: customerId,
             posting_date: new Date().toISOString().split("T")[0],
             due_date: new Date().toISOString().split("T")[0],
             is_pos: 1,
@@ -392,18 +399,18 @@ function Front() {
             taxes_and_charges: selectedTaxTemplate,
             payments: [{
                 mode_of_payment: paymentDetails.mode_of_payment,
-                amount: paymentDetails.amount,
+                amount: parseFloat(paymentDetails.amount) || subTotal,
             }],
             items: allItems,
             ...(deliveryType !== "DINE IN" && {
-                custom_address: address,
-                custom_whatsapp_number: whatsappNumber,
-                custom_email: email,
+                custom_address: address || "",
+                custom_whatsapp_number: whatsappNumber || "",
+                custom_email: email || "",
             }),
         };
-
+    
         console.log("Final Payload before sending to backend:", payload);
-
+    
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
                 method: "POST",
@@ -413,10 +420,10 @@ function Front() {
                 },
                 body: JSON.stringify(payload),
             });
-
+    
             const result = await response.json();
             console.log("Raw Backend Response:", result);
-
+    
             if (response.ok && result.message?.status === "success") {
                 alert(`POS Invoice saved successfully! Grand Total: ₹${result.message.grand_total}`);
                 setCartItems([]);
@@ -462,6 +469,7 @@ function Front() {
                     customerList = data.message;
                 }
                 const formattedCustomers = customerList.map(customer => ({
+                    name: customer.name, // Customer ID (e.g., "CUST-2025-00001")
                     customer_name: customer.customer_name || "",
                     mobile_no: customer.mobile_no || "",
                     primary_address: customer.primary_address || "",
@@ -515,11 +523,11 @@ function Front() {
             alert("Customer name is required.");
             return;
         }
-
+    
         const customerExists = customers.some(
             (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
         );
-
+    
         if (!customerExists) {
             try {
                 const customerData = {
@@ -529,7 +537,7 @@ function Front() {
                     ...(email && { email: email }),
                     ...(whatsappNumber && { whatsapp_number: whatsappNumber }),
                 };
-
+    
                 const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer', {
                     method: 'POST',
                     headers: {
@@ -538,11 +546,12 @@ function Front() {
                     },
                     body: JSON.stringify(customerData),
                 });
-
+    
                 const data = await response.json();
                 if (data.status === "success") {
                     alert("Customer created successfully!");
                     const newCustomer = {
+                        name: data.customer_id || trimmedInput, // Use returned ID or fallback
                         customer_name: trimmedInput,
                         mobile_no: phoneNumber || "",
                         primary_address: address || "",
@@ -631,7 +640,10 @@ function Front() {
                             {filteredItems.map((item, index) => (
                                 <div className="col-xl-3 col-lg-4 col-md-4 col-6 align-items-center my-2" key={index}>
                                     <div className="card" onClick={() => handleItemClick(item)}>
-                                        <img className="card-img-top" src={item.image} alt={item.name} />
+                                        <div className='image-box'>
+                                        <img src={item.image} alt={item.name} />
+                                        </div>
+                                        
                                         <div className="card-body p-2 mb-0 category-name">
                                             <h4 className="card-title text-center mb-0" style={{fontSize:"14px"}}>{item.name}</h4>
                                         </div>
