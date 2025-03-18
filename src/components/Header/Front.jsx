@@ -23,10 +23,9 @@ function Front() {
 
     const userData = useSelector((state) => state.user);
     const company = userData.company || "POS8";
-    const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount || "Sales - P");
-    const [taxTemplateName, setTaxTemplateName] = useState(""); // Store the fetched custom_tax_type
-    const [taxRate, setTaxRate] = useState(null); // Store the tax rate from the template
-
+    const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount );
+    const [taxTemplateName, setTaxTemplateName] = useState(""); 
+    const [taxRate, setTaxRate] = useState(null); 
     useEffect(() => {
         if (location.state) {
             setPhoneNumber(location.state.phoneNumber || existingOrder?.phoneNumber || "");
@@ -52,7 +51,6 @@ function Front() {
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-    // Fetch company details including custom_tax_type
     useEffect(() => {
         const fetchCompanyDetails = async () => {
             try {
@@ -369,18 +367,18 @@ function Front() {
         console.log("Cart Items:", cartItems);
         console.log("Current customerName:", customerName);
         console.log("Customers array:", customers);
-
+    
         if (!paymentDetails || typeof paymentDetails !== "object" || !paymentDetails.mode_of_payment) {
             console.error("Invalid paymentDetails:", paymentDetails);
             alert("Error: Invalid payment details. Please try again.");
             return;
         }
-
+    
         const allItems = cartItems.flatMap((item) => {
             const variantPrice = item.customVariantPrice || 0;
             const mainItem = {
+                item_code: item.id, // Corrected to use 'id' consistently with FoodDetails
                 item_name: item.name,
-                item_code: item.item_code || "",
                 description: item.selectedCustomVariant 
                     ? `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''} (${item.selectedCustomVariant})`
                     : `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''}`,
@@ -390,8 +388,9 @@ function Front() {
                 kitchen: item.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             };
-
+    
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
+                item_code: addonName, // Assuming addonName is the item_code; adjust if needed
                 item_name: addonName,
                 description: `Addon: ${addonName}`,
                 qty: quantity,
@@ -400,61 +399,62 @@ function Front() {
                 kitchen: kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
-
+    
             const comboItems = (item.selectedCombos || []).map((combo) => ({
+                item_code: combo.item_code, // Use the variant-specific item_code from FoodDetails
                 item_name: combo.name1,
                 description: `Combo: ${combo.name1}${combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}`,
                 qty: combo.quantity || 1,
-                rate: (combo.combo_price || 0) + (combo.variantPrice || 0),
-                amount: ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1),
+                rate: (parseFloat(combo.combo_price || 0) + (combo.variantPrice || 0)),
+                amount: ((parseFloat(combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1)),
                 kitchen: combo.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
-
+    
             return [mainItem, ...addonItems, ...comboItems];
         });
-
+    
         if (allItems.length === 0) {
             console.error("Error: No items in the cart.");
             alert("Error: Cannot create an order with no items.");
             return;
         }
-
-        const selectedCustomer = customers.find(c => c.customer_name === customerName);
+    
+        const selectedCustomer = customers.find((c) => c.customer_name === customerName);
         const customerId = selectedCustomer ? selectedCustomer.name : "CUST-2025-00001";
         console.log("Selected Customer:", selectedCustomer);
         console.log("Customer ID to be sent:", customerId);
-
+    
         const grandTotal = getGrandTotal();
-    const payload = {
-        customer: customerId,
-        posting_date: new Date().toISOString().split("T")[0],
-        due_date: new Date().toISOString().split("T")[0],
-        is_pos: 1,
-        company: company,
-        currency: "INR",
-        conversion_rate: 1,
-        selling_price_list: "Standard Selling",
-        price_list_currency: "INR",
-        plc_conversion_rate: 1,
-        total: subTotal.toFixed(2),
-        net_total: subTotal.toFixed(2),
-        base_net_total: subTotal.toFixed(2),
-        taxes_and_charges: taxTemplateName,
-        payments: [{
-            mode_of_payment: paymentDetails.mode_of_payment,
-            amount: grandTotal.toFixed(2),
-        }],
-        items: allItems,
-        ...(deliveryType !== "DINE IN" && {
-            custom_address: address || "",
-            custom_whatsapp_number: whatsappNumber || "",
-            custom_email: email || "",
-        }),
-    };
-
-    console.log("Final Payload before sending to backend:", JSON.stringify(payload, null, 2));
-
+        const payload = {
+            customer: customerId,
+            posting_date: new Date().toISOString().split("T")[0],
+            due_date: new Date().toISOString().split("T")[0],
+            is_pos: 1,
+            company: company,
+            currency: "INR",
+            conversion_rate: 1,
+            selling_price_list: "Standard Selling",
+            price_list_currency: "INR",
+            plc_conversion_rate: 1,
+            total: subTotal.toFixed(2),
+            net_total: subTotal.toFixed(2),
+            base_net_total: subTotal.toFixed(2),
+            taxes_and_charges: taxTemplateName,
+            payments: [{
+                mode_of_payment: paymentDetails.mode_of_payment,
+                amount: grandTotal.toFixed(2),
+            }],
+            items: allItems,
+            ...(deliveryType !== "DINE IN" && {
+                custom_address: address || "",
+                custom_whatsapp_number: whatsappNumber || "",
+                custom_email: email || "",
+            }),
+        };
+    
+        console.log("Final Payload before sending to backend:", JSON.stringify(payload, null, 2));
+    
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
                 method: "POST",
@@ -464,10 +464,10 @@ function Front() {
                 },
                 body: JSON.stringify(payload),
             });
-
+    
             const result = await response.json();
             console.log("Raw Backend Response:", result);
-
+    
             if (response.ok && result.message?.status === "success") {
                 alert(`POS Invoice saved successfully! Grand Total: ₹${result.message.grand_total}`);
                 setCartItems([]);
