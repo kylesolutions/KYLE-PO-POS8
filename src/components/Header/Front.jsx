@@ -667,7 +667,7 @@ function Front() {
                                                         <h1
                                                             className="display-4 fs-2"
                                                             style={{
-                                                                background: tableNumber ? "black" : "transparent",
+                                                                background: tableNumber ? "rgb(58 56 56)" : "transparent",
                                                                 color: tableNumber ? "white" : "inherit",
                                                                 borderRadius: tableNumber ? "5px" : "0",
                                                                 padding: tableNumber ? "4px 20px" : "0",
@@ -744,7 +744,7 @@ function Front() {
                                                             </ul>
                                                         )}
                                                     </div>
-                                                    <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <div className='col-2 col-lg-1 mb-2' style={{ background: "rgb(58 56 56)", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                         <span
                                                             onClick={handleCustomerSubmit}
                                                             style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
@@ -765,7 +765,7 @@ function Front() {
                                                                     style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                                 />
                                                             </div>
-                                                            <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                            <div className='col-2 col-lg-1 mb-2' style={{ background: "rgb(58 56 56)", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                                 <span
                                                                     onClick={handleSetPhoneNumber}
                                                                     style={{ fontWeight: "bold", cursor: "pointer" }}

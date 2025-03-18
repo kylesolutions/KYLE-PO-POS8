@@ -34,7 +34,7 @@
     font-weight: bold;
     text-transform: uppercase; /* Consistent with your design */
     color: white;
-    background-color: #007bff; /* Bootstrap primary color */
+    background-color:#3498db; /* Bootstrap primary color */
     border: none;
     border-radius: 8px; /* Rounded corners */
     cursor: pointer;
@@ -42,7 +42,7 @@
 }
 
 .main-button:hover {
-    background-color: #0056b3; /* Darker shade on hover */
+    background-color: #2f84bd; /* Darker shade on hover */
     transform: scale(1.05); /* Slight scale-up effect */
 }
 
