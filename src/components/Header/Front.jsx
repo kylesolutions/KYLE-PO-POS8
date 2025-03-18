@@ -620,7 +620,7 @@ function Front() {
         <>
             <div className="container-fluid">
                 <div className="row">
-                    <div className="col-lg-1 category-sidebar">
+                    <div className="col-lg-2 col-xl-1 category-sidebar">
                         <div className="row p-2">
                             {categories.map((category, index) => (
                                 <div key={index} className="col-lg-12 mb-2">
@@ -635,10 +635,10 @@ function Front() {
                         </div>
                     </div>
 
-                    <div className="col-lg-7 row2">
+                    <div className="col-lg-5 col-xl-7 row2">
                         <div className="row" style={{ height: '90vh', overflowY: 'auto' }}>
                             {filteredItems.map((item, index) => (
-                                <div className="col-xl-3 col-lg-4 col-md-4 col-6 align-items-center my-2" key={index}>
+                                <div className="col-xl-3 col-lg-6 col-md-4 col-6 align-items-center my-2" key={index}>
                                     <div className="card" onClick={() => handleItemClick(item)}>
                                         <div className='image-box'>
                                         <img src={item.image} alt={item.name} />
@@ -654,7 +654,7 @@ function Front() {
                         <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} />
                     </div>
 
-                    <div className="col-lg-4 row1 px-4">
+                    <div className="col-lg-5 col-xl-4 row1 px-4">
                         <div className="d-flex flex-column" style={{ height: '90vh' }}>
                             {/* Scrollable Section */}
                             <div className="row p-2 mt-2 border shadow rounded flex-grow-1" style={{ overflowY: 'auto' }}>
@@ -1016,25 +1016,25 @@ function Front() {
                                     <div className="row">
                                         <div className="col-12 col-lg-6">
                                             <div className="row">
-                                                <div className="col-md-6 mb-2 col-6">
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
                                                     <div className='grand-tot-div justify-content-end' >
                                                         <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                     </div>
                                                 </div>
-                                                <div className="col-md-6 mb-2 col-6">
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
                                                     <div className='grand-tot-div'>
                                                         <span>$</span><span>{getSubTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
-                                                <div className="col-md-6 mb-2 col-6">
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
                                                     <div className='grand-tot-div justify-content-end'>
                                                         <span>${getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
                                                     </div>
                                                 </div>
-                                                <div className="col-md-6 mb-2 col-6">
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
                                                     <div className='grand-tot-div justify-content-end'>
                                                         <span>${getGrandTotal().toFixed(2)}</span>
@@ -1044,35 +1044,36 @@ function Front() {
                                         </div>
                                         <div className="col-12 col-lg-6">
                                             <div className="row mt-3">
-                                                <div className="col-md-6 mb-2 col-6">
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <button
                                                         type="button"
                                                         className="btn w-100"
                                                         onClick={saveOrder}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            backgroundColor: "black",
-                                                            color: "white",
-                                                            border: "none",
+                                                            backgroundColor: "#white",
+                                                            color: "black",
+                                                            border: "1px solid #3498db",
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
-                                                            fontSize: "10px"
+                                                            fontSize: "10px",
+                                                    
                                                         }}
                                                     >
                                                         Save/New
                                                     </button>
                                                 </div>
-                                                <div className="col-md-6 mb-2 col-6">
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <button
                                                         type="button"
                                                         className="btn w-100"
                                                         onClick={() => setShowBillModal(true)}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            background: "blue",
-                                                            color: "white",
-                                                            border: "none",
+                                                            background: "white",
+                                                            color: "black",
+                                                            border: "1px solid #3498db",
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
@@ -1174,14 +1175,14 @@ function Front() {
                                                     </div>
                                                 )}
 
-                                                <div className="col-md-6 mb-2 col-6 mt-1">
+                                                <div className="col-md-6 mb-2 col-6 mt-1 col-lg-12 col-xl-6">
                                                     <button
                                                         type="button"
                                                         className="btn w-100"
                                                         onClick={cancelCart}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            backgroundColor: "red",
+                                                            backgroundColor:" #3498db",
                                                             color: "white",
                                                             border: "none",
                                                             borderRadius: "5px",
@@ -1193,15 +1194,15 @@ function Front() {
                                                         Cancel
                                                     </button>
                                                 </div>
-                                                <div className="col-md-6 mb-2 col-6 mt-1">
+                                                <div className="col-md-6 mb-2 col-6 mt-1 col-lg-12 col-xl-6">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-success w-100"
+                                                        className="btn w-100"
                                                         onClick={() => {
                                                             handleCheckoutClick();
                                                             handleShow();
                                                         }}
-                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold" }}
+                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold" ,background:" #3498db", color:"white"}}
                                                     >
                                                         Pay
                                                     </button>

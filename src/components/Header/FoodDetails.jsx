@@ -542,15 +542,17 @@ const FoodDetails = ({ item, onClose }) => {
                         <div className="modal-footer">
                             <button
                                 type="button"
-                                className="btn btn-secondary"
+                                className="btn"
                                 onClick={onClose}
+                                style={{backgroundColor:"#ecf0f1"}}
                             >
                                 Close
                             </button>
                             <button
                                 type="button"
-                                className="btn btn-primary"
+                                className="btn"
                                 onClick={handleAddToCart}
+                                style={{backgroundColor:" #358ac2",color:"white"}}
                             >
                                 Add To Cart
                             </button>

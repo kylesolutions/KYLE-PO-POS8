@@ -223,7 +223,7 @@
   font-size: 22px;
   font-weight: bold;
   border: none;
-  background-color: #396ea7;
+  background-color:  #3498db;
   color: white;
   border-radius: 8px;
   cursor: pointer;
@@ -231,7 +231,7 @@
 }
 
 .quantity-btn:hover {
-  background-color: #326dac;
+  background-color:  #358ac2;
   transform: scale(1.1);
 }
 
@@ -240,11 +240,11 @@
 }
 
 .quantity-btn.minus {
-  background-color: #bd4f5a;
+  background-color:  #3498db;
 }
 
 .quantity-btn.minus:hover {
-  background-color: #b02a37;
+  background-color:  #358ac2;
 }
 
 .quantity-value {
