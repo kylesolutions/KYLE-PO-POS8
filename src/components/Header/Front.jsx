@@ -440,7 +440,7 @@ function Front() {
         total: subTotal.toFixed(2),
         net_total: subTotal.toFixed(2),
         base_net_total: subTotal.toFixed(2),
-        taxes_and_charges: taxTemplateName, // Should now be "GST - P"
+        taxes_and_charges: taxTemplateName,
         payments: [{
             mode_of_payment: paymentDetails.mode_of_payment,
             amount: grandTotal.toFixed(2),
