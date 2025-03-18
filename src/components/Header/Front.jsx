@@ -24,6 +24,8 @@ function Front() {
     const userData = useSelector((state) => state.user);
     const company = userData.company || "POS8";
     const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount || "Sales - P");
+    const [taxTemplateName, setTaxTemplateName] = useState(""); // Store the fetched custom_tax_type
+    const [taxRate, setTaxRate] = useState(null); // Store the tax rate from the template
 
     useEffect(() => {
         if (location.state) {
@@ -44,14 +46,13 @@ function Front() {
     const [bookedTables, setBookedTables] = useState([]);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
     const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
-    const [taxTemplates, setTaxTemplates] = useState([]);
-    const [selectedTaxTemplate, setSelectedTaxTemplate] = useState("VAT - P");
     const [address, setAddress] = useState("");
     const [whatsappNumber, setWhatsappNumber] = useState("");
     const [email, setEmail] = useState("");
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+    // Fetch company details including custom_tax_type
     useEffect(() => {
         const fetchCompanyDetails = async () => {
             try {
@@ -64,26 +65,81 @@ function Front() {
                     body: JSON.stringify({
                         doctype: "Company",
                         name: company,
-                        fieldname: "default_income_account"
+                        fieldname: ["default_income_account", "custom_tax_type"]
                     }),
                 });
                 const data = await response.json();
-                if (data.message && data.message.default_income_account) {
-                    setDefaultIncomeAccount(data.message.default_income_account);
+                if (data.message) {
+                    setDefaultIncomeAccount(data.message.default_income_account || "Sales - P");
+                    const taxTemplate = data.message.custom_tax_type;
+                    if (taxTemplate) {
+                        setTaxTemplateName(taxTemplate);
+                        fetchTaxRate(taxTemplate);
+                    } else {
+                        console.warn(`No custom_tax_type found for company ${company}. Fetching available tax templates.`);
+                        fetchTaxRate(null); // Fetch default from API
+                    }
                 } else {
-                    console.warn(`No default income account found for company ${company}. Using fallback "Sales - P".`);
+                    console.warn(`No data for company ${company}. Fetching available tax templates.`);
+                    fetchTaxRate(null); // Fetch default from API
                 }
             } catch (error) {
                 console.error("Error fetching company details:", error);
+                fetchTaxRate(null); // Fetch default from API on error
             }
         };
-
-        if (!userData.defaultIncomeAccount) {
-            fetchCompanyDetails();
-        } else {
-            setDefaultIncomeAccount(userData.defaultIncomeAccount);
-        }
-    }, [company, userData.defaultIncomeAccount]);
+    
+        const fetchTaxRate = async (templateName) => {
+            try {
+                const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                    },
+                });
+                const data = await response.json();
+                console.log("Full Tax API Response:", JSON.stringify(data, null, 2));
+                if (data.message && Array.isArray(data.message)) {
+                    if (templateName) {
+                        const tax = data.message.find(t => t.name === templateName);
+                        if (tax && tax.sales_tax && tax.sales_tax.length > 0) {
+                            const rate = parseFloat(tax.sales_tax[0].rate) || 0;
+                            setTaxRate(rate);
+                            setTaxTemplateName(templateName);
+                            console.log(`Tax rate for ${templateName}: ${rate}%`);
+                        } else {
+                            console.warn(`No tax rate found for ${templateName}. Using first available template.`);
+                        }
+                    }
+                    // If no specific template or it wasn't found, use the first available template
+                    if (!templateName || !data.message.some(t => t.name === templateName)) {
+                        const defaultTax = data.message[0]; // Use first tax template (e.g., GST - P)
+                        if (defaultTax && defaultTax.sales_tax && defaultTax.sales_tax.length > 0) {
+                            const rate = parseFloat(defaultTax.sales_tax[0].rate) || 0;
+                            setTaxRate(rate);
+                            setTaxTemplateName(defaultTax.name);
+                            console.log(`Using default tax template ${defaultTax.name}: ${rate}%`);
+                        } else {
+                            console.warn("No valid tax templates found. Setting rate to 0%.");
+                            setTaxRate(0);
+                            setTaxTemplateName("");
+                        }
+                    }
+                } else {
+                    console.warn("Invalid tax details response. Setting rate to 0%.");
+                    setTaxRate(0);
+                    setTaxTemplateName("");
+                }
+            } catch (error) {
+                console.error("Error fetching tax rate:", error);
+                setTaxRate(0);
+                setTaxTemplateName("");
+            }
+        };
+    
+        fetchCompanyDetails();
+    }, [company]);
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -151,25 +207,6 @@ function Front() {
         fetchItems();
     }, [allowedItemGroups]);
 
-    useEffect(() => {
-        const fetchTaxes = async () => {
-            try {
-                const response = await fetch(
-                    "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details"
-                );
-                const data = await response.json();
-                if (data.message && Array.isArray(data.message)) {
-                    setTaxTemplates(data.message);
-                    const defaultTax = data.message.find(tax => tax.name === "VAT - P");
-                    if (defaultTax) setSelectedTaxTemplate(defaultTax.name);
-                }
-            } catch (error) {
-                console.error("Error fetching taxes:", error);
-            }
-        };
-        fetchTaxes();
-    }, []);
-
     const handleFilter = (category) => {
         const filtered = menuItems.filter(item => {
             const isMainItem = (item.variants.length > 0) || 
@@ -201,11 +238,7 @@ function Front() {
         setSelectedItem(null);
     };
 
-    const getTaxRate = () => {
-        const tax = taxTemplates.find(t => t.name === selectedTaxTemplate);
-        return tax && tax.sales_tax.length > 0 ? parseFloat(tax.sales_tax[0].rate) : 5;
-    };
-
+    // Return the tax rate, defaulting to 0 if not yet fetched
     const getSubTotal = () => {
         return cartItems.reduce((sum, item) => {
             const mainPrice = item.basePrice * item.quantity;
@@ -220,14 +253,24 @@ function Front() {
         }, 0);
     };
 
+    const getTaxRate = () => {
+        console.log("Current taxRate:", taxRate);
+        return taxRate !== null ? taxRate : 0;
+    };
+    
     const getTaxAmount = () => {
         const subTotal = getSubTotal();
         const taxRate = getTaxRate();
-        return (subTotal * taxRate) / 100;
+        const taxAmount = subTotal > 0 && taxRate > 0 ? (subTotal * taxRate) / 100 : 0;
+        console.log(`Calculating tax: Subtotal = ${subTotal}, Tax Rate = ${taxRate}%, Tax Amount = ${taxAmount}`);
+        return taxAmount;
     };
-
+    
     const getGrandTotal = () => {
-        return getSubTotal() + getTaxAmount();
+        const subTotal = getSubTotal();
+        const taxAmount = getTaxAmount();
+        console.log(`Grand Total: Subtotal = ${subTotal}, Tax = ${taxAmount}, Total = ${subTotal + taxAmount}`);
+        return subTotal + taxAmount;
     };
 
     const handleCheckoutClick = () => setShowButtons(true);
@@ -235,7 +278,7 @@ function Front() {
     const handleQuantityChange = (item, value) => {
         const quantity = parseInt(value, 10);
         if (isNaN(quantity) || quantity < 1) {
-            updateCartItem({ ...item  , quantity: 1 });
+            updateCartItem({ ...item, quantity: 1 });
         } else {
             updateCartItem({ ...item, quantity });
         }
@@ -324,15 +367,15 @@ function Front() {
     const handleSaveToBackend = async (paymentDetails, subTotal) => {
         console.log("Inside handleSaveToBackend | Payment Details:", paymentDetails);
         console.log("Cart Items:", cartItems);
-        console.log("Current customerName:", customerName); // Log customerName
-        console.log("Customers array:", customers); // Log customers
-    
+        console.log("Current customerName:", customerName);
+        console.log("Customers array:", customers);
+
         if (!paymentDetails || typeof paymentDetails !== "object" || !paymentDetails.mode_of_payment) {
             console.error("Invalid paymentDetails:", paymentDetails);
             alert("Error: Invalid payment details. Please try again.");
             return;
         }
-    
+
         const allItems = cartItems.flatMap((item) => {
             const variantPrice = item.customVariantPrice || 0;
             const mainItem = {
@@ -347,7 +390,7 @@ function Front() {
                 kitchen: item.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             };
-    
+
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
                 item_name: addonName,
                 description: `Addon: ${addonName}`,
@@ -357,7 +400,7 @@ function Front() {
                 kitchen: kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
-    
+
             const comboItems = (item.selectedCombos || []).map((combo) => ({
                 item_name: combo.name1,
                 description: `Combo: ${combo.name1}${combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}`,
@@ -367,50 +410,51 @@ function Front() {
                 kitchen: combo.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
-    
+
             return [mainItem, ...addonItems, ...comboItems];
         });
-    
+
         if (allItems.length === 0) {
             console.error("Error: No items in the cart.");
             alert("Error: Cannot create an order with no items.");
             return;
         }
-    
+
         const selectedCustomer = customers.find(c => c.customer_name === customerName);
         const customerId = selectedCustomer ? selectedCustomer.name : "CUST-2025-00001";
-        console.log("Selected Customer:", selectedCustomer); // Log selected customer
-        console.log("Customer ID to be sent:", customerId); // Log final customerId
-    
-        const payload = {
-            customer: customerId,
-            posting_date: new Date().toISOString().split("T")[0],
-            due_date: new Date().toISOString().split("T")[0],
-            is_pos: 1,
-            company: company,
-            currency: "INR",
-            conversion_rate: 1,
-            selling_price_list: "Standard Selling",
-            price_list_currency: "INR",
-            plc_conversion_rate: 1,
-            total: subTotal.toFixed(2),
-            net_total: subTotal.toFixed(2),
-            base_net_total: subTotal.toFixed(2),
-            taxes_and_charges: selectedTaxTemplate,
-            payments: [{
-                mode_of_payment: paymentDetails.mode_of_payment,
-                amount: parseFloat(paymentDetails.amount) || subTotal,
-            }],
-            items: allItems,
-            ...(deliveryType !== "DINE IN" && {
-                custom_address: address || "",
-                custom_whatsapp_number: whatsappNumber || "",
-                custom_email: email || "",
-            }),
-        };
-    
-        console.log("Final Payload before sending to backend:", payload);
-    
+        console.log("Selected Customer:", selectedCustomer);
+        console.log("Customer ID to be sent:", customerId);
+
+        const grandTotal = getGrandTotal();
+    const payload = {
+        customer: customerId,
+        posting_date: new Date().toISOString().split("T")[0],
+        due_date: new Date().toISOString().split("T")[0],
+        is_pos: 1,
+        company: company,
+        currency: "INR",
+        conversion_rate: 1,
+        selling_price_list: "Standard Selling",
+        price_list_currency: "INR",
+        plc_conversion_rate: 1,
+        total: subTotal.toFixed(2),
+        net_total: subTotal.toFixed(2),
+        base_net_total: subTotal.toFixed(2),
+        taxes_and_charges: taxTemplateName, // Should now be "GST - P"
+        payments: [{
+            mode_of_payment: paymentDetails.mode_of_payment,
+            amount: grandTotal.toFixed(2),
+        }],
+        items: allItems,
+        ...(deliveryType !== "DINE IN" && {
+            custom_address: address || "",
+            custom_whatsapp_number: whatsappNumber || "",
+            custom_email: email || "",
+        }),
+    };
+
+    console.log("Final Payload before sending to backend:", JSON.stringify(payload, null, 2));
+
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
                 method: "POST",
@@ -420,10 +464,10 @@ function Front() {
                 },
                 body: JSON.stringify(payload),
             });
-    
+
             const result = await response.json();
             console.log("Raw Backend Response:", result);
-    
+
             if (response.ok && result.message?.status === "success") {
                 alert(`POS Invoice saved successfully! Grand Total: ₹${result.message.grand_total}`);
                 setCartItems([]);
@@ -469,7 +513,7 @@ function Front() {
                     customerList = data.message;
                 }
                 const formattedCustomers = customerList.map(customer => ({
-                    name: customer.name, // Customer ID (e.g., "CUST-2025-00001")
+                    name: customer.name,
                     customer_name: customer.customer_name || "",
                     mobile_no: customer.mobile_no || "",
                     primary_address: customer.primary_address || "",
@@ -551,7 +595,7 @@ function Front() {
                 if (data.status === "success") {
                     alert("Customer created successfully!");
                     const newCustomer = {
-                        name: data.customer_id || trimmedInput, // Use returned ID or fallback
+                        name: data.customer_id || trimmedInput,
                         customer_name: trimmedInput,
                         mobile_no: phoneNumber || "",
                         primary_address: address || "",
@@ -641,9 +685,8 @@ function Front() {
                                 <div className="col-xl-3 col-lg-6 col-md-4 col-6 align-items-center my-2" key={index}>
                                     <div className="card" onClick={() => handleItemClick(item)}>
                                         <div className='image-box'>
-                                        <img src={item.image} alt={item.name} />
+                                            <img src={item.image} alt={item.name} />
                                         </div>
-                                        
                                         <div className="card-body p-2 mb-0 category-name">
                                             <h4 className="card-title text-center mb-0" style={{fontSize:"14px"}}>{item.name}</h4>
                                         </div>
@@ -656,7 +699,6 @@ function Front() {
 
                     <div className="col-lg-5 col-xl-4 row1 px-4">
                         <div className="d-flex flex-column" style={{ height: '90vh' }}>
-                            {/* Scrollable Section */}
                             <div className="row p-2 mt-2 border shadow rounded flex-grow-1" style={{ overflowY: 'auto' }}>
                                 <div className="col-12 p-2 p-md-2 mb-3">
                                     <div className="text-center row">
@@ -909,29 +951,6 @@ function Front() {
                                             )}
                                         </div>
 
-                                        <div className="row mt-2">
-                                            <div className="col-12">
-                                                <label htmlFor="tax-template" className="form-label" style={{ fontSize: "14px" }}>Select Tax Template:</label>
-                                                <select
-                                                    id="tax-template"
-                                                    value={selectedTaxTemplate}
-                                                    onChange={(e) => setSelectedTaxTemplate(e.target.value)}
-                                                    className="form-control"
-                                                    style={{ padding: "8px", fontSize: "14px" }}
-                                                >
-                                                    {taxTemplates.length > 0 ? (
-                                                        taxTemplates.map((tax, index) => (
-                                                            <option key={index} value={tax.name}>
-                                                                {tax.name} ({tax.sales_tax[0]?.rate || 0}%)
-                                                            </option>
-                                                        ))
-                                                    ) : (
-                                                        <option value="VAT - P">VAT - P (5%)</option>
-                                                    )}
-                                                </select>
-                                            </div>
-                                        </div>
-
                                         <div className="table-responsive mt-3">
                                             <table className="table border text-start" style={{ fontSize: "13px" }}>
                                                 <thead className="text-start">
@@ -1010,38 +1029,37 @@ function Front() {
                                 </div>
                             </div>
 
-                            {/* Fixed Totals and Buttons Section */}
                             <div className="row p-2 mt-2 border shadow rounded" style={{ flexShrink: 0 }}>
                                 <div className="col-12">
                                     <div className="row">
-                                        <div className="col-12 col-lg-6">
-                                            <div className="row">
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
-                                                    <div className='grand-tot-div justify-content-end' >
-                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
-                                                    <div className='grand-tot-div'>
-                                                        <span>$</span><span>{getSubTotal().toFixed(2)}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
-                                                    <div className='grand-tot-div justify-content-end'>
-                                                        <span>${getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
-                                                    <div className='grand-tot-div justify-content-end'>
-                                                        <span>${getGrandTotal().toFixed(2)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div className="col-12 col-lg-6">
+                        <div className="row">
+                            <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
+                                <div className='grand-tot-div justify-content-end'>
+                                    <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
+                                </div>
+                            </div>
+                            <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
+                                <div className='grand-tot-div'>
+                                    <span>$</span><span>{getSubTotal().toFixed(2)}</span>
+                                </div>
+                            </div>
+                            <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
+                                <div className='grand-tot-div justify-content-end'>
+                                    <span>${getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
+                                </div>
+                            </div>
+                            <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
+                                <div className='grand-tot-div justify-content-end'>
+                                    <span>${getGrandTotal().toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                                         <div className="col-12 col-lg-6">
                                             <div className="row mt-3">
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
@@ -1058,7 +1076,6 @@ function Front() {
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
                                                             fontSize: "10px",
-                                                    
                                                         }}
                                                     >
                                                         Save/New
@@ -1154,13 +1171,13 @@ function Front() {
                                                                         </table>
                                                                         <div className="row mt-3">
                                                                             <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
-                                                                            <div className="col-6 text-end" >{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
+                                                                            <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
                                                                             <div className="col-6 text-start"><strong>Subtotal:</strong></div>
-                                                                            <div className="col-6 text-end"  >${getSubTotal().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">${getSubTotal().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
-                                                                            <div className="col-6 text-end"  >${getTaxAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">${getTaxAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Grand Total:</strong></div>
-                                                                            <div className="col-6 text-end"  ><strong>${getGrandTotal().toFixed(2)}</strong></div>
+                                                                            <div className="col-6 text-end"><strong>${getGrandTotal().toFixed(2)}</strong></div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1182,7 +1199,7 @@ function Front() {
                                                         onClick={cancelCart}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            backgroundColor:" #3498db",
+                                                            backgroundColor: "#3498db",
                                                             color: "white",
                                                             border: "none",
                                                             borderRadius: "5px",
@@ -1202,7 +1219,7 @@ function Front() {
                                                             handleCheckoutClick();
                                                             handleShow();
                                                         }}
-                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold" ,background:" #3498db", color:"white"}}
+                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#3498db", color: "white" }}
                                                     >
                                                         Pay
                                                     </button>

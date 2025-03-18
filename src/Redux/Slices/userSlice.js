@@ -5,7 +5,7 @@ const userSlice = createSlice({
   initialState: {
     user: null,
     session: null,
-    posProfile: null,  // camelCase
+    posProfile: null,
     company: null,
     message: {
       allowed_item_groups: [],
