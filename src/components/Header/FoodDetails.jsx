@@ -10,7 +10,7 @@ const FoodDetails = ({ item, onClose }) => {
     const [selectedCustomVariant, setSelectedCustomVariant] = useState(null);
     const [addonCounts, setAddonCounts] = useState({});
     const [selectedCombo, setSelectedCombo] = useState(null);
-    const [comboVariants, setComboVariants] = useState({});
+    const [comboVariants, setComboVariants] = useState({}); // { comboName: { size: 'M', custom: 'Spicy' } }
     const [selectedCombos, setSelectedCombos] = useState([]);
     const [showCombos, setShowCombos] = useState(false);
     const [fetchedItem, setFetchedItem] = useState(null);
@@ -93,7 +93,7 @@ const FoodDetails = ({ item, onClose }) => {
                         ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
                     );
                     if (hasSizeVariants) {
-                        setSelectedSize("M");
+                        setSelectedSize("M"); // Default to 'M' for template items
                     }
                     if (formattedVariantData.length > 0) {
                         setSelectedCustomVariant(formattedVariantData[0].type_of_variants);
@@ -111,6 +111,8 @@ const FoodDetails = ({ item, onClose }) => {
             const sizePrices = getSizePrices();
             const selectedItemCode = getItemCodeForSize(selectedSize);
             const selectedItem = allItems.find((i) => i.item_code === selectedItemCode) || fetchedItem;
+
+            // Main item price
             const basePrice = (selectedSize ? sizePrices[selectedSize] : fetchedItem.price) * mainQuantity;
             const customVariantPrice = selectedCustomVariant
                 ? (fetchedItem.variants.find((v) => v.type_of_variants === selectedCustomVariant)?.variant_price || 0) * mainQuantity
@@ -119,16 +121,25 @@ const FoodDetails = ({ item, onClose }) => {
                 (sum, [_, { price, quantity }]) => sum + price * quantity,
                 0
             );
+
+            // Combo price calculation
             const comboPrice = selectedCombos.reduce((sum, combo) => {
                 const comboDetail = fetchedItem.combos.find((c) => c.name1 === combo.name1);
                 const comboBasePrice = comboDetail ? parseFloat(comboDetail.combo_price) || 0 : 0;
-                const variantPrice = combo.selectedVariant
-                    ? (allItems.find((i) => i.item_name === combo.name1)?.variants.find((v) => v.type_of_variants === combo.selectedVariant)?.variant_price || 0)
+                const comboItem = allItems.find((i) => i.item_name === combo.name1);
+                const sizePrice = combo.selectedSize
+                    ? allItems.find((i) => i.item_code === `${comboItem.item_code}-${combo.selectedSize}`)?.price_list_rate || 0
                     : 0;
-                return sum + (comboBasePrice + variantPrice) * combo.quantity;
+                const customPrice = combo.selectedCustomVariant
+                    ? comboItem?.variants.find((v) => v.type_of_variants === combo.selectedCustomVariant)?.variant_price || 0
+                    : 0;
+                const comboTotal = ( sizePrice + customPrice) * combo.quantity;
+                console.log(`Combo ${combo.name1} breakdown: Base: ${comboBasePrice}, Size: ${sizePrice}, Custom: ${customPrice}, Qty: ${combo.quantity}, Total: ${comboTotal}`);
+                return sum + comboTotal;
             }, 0);
+
             const finalPrice = basePrice + customVariantPrice + addonsPrice + comboPrice;
-            console.log("Price Breakdown:", { basePrice, customVariantPrice, addonsPrice, comboPrice, finalPrice });
+            console.log("Total Price Breakdown:", { basePrice, customVariantPrice, addonsPrice, comboPrice, finalPrice });
             setItemTotal(finalPrice);
         }
     }, [addonCounts, selectedCombos, fetchedItem, mainQuantity, selectedSize, selectedCustomVariant, allItems]);
@@ -162,28 +173,23 @@ const FoodDetails = ({ item, onClose }) => {
         return sizeItem ? sizeItem.item_name : fetchedItem.name;
     };
 
-    const getComboVariantItemCode = (comboName, variant, isCustomVariant) => {
+    const getComboVariantItemCode = (comboName, size) => {
         const comboItem = allItems.find((i) => i.item_name === comboName);
         if (!comboItem) {
             console.error(`Combo item ${comboName} not found in allItems`);
             return comboName;
         }
-    
-        if (comboItem.has_variants && variant && !isCustomVariant) {
-            const variantItem = allItems.find((i) =>
-                i.variant_of === comboItem.name &&
-                (i.item_code.includes(variant) || i.item_name.includes(variant))
-            ) || allItems.find((i) => i.item_code === `${comboItem.item_code}-${variant}`);
+        if (comboItem.has_variants && size) {
+            const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${size}`);
             if (variantItem) {
-                console.log(`Resolved size variant ${variant} for ${comboName} to item_code: ${variantItem.item_code}`);
+                console.log(`Resolved size variant ${size} for ${comboName} to item_code: ${variantItem.item_code}`);
                 return variantItem.item_code;
             } else {
-                console.error(`Size variant ${variant} for ${comboName} not found in allItems`);
-                throw new Error(`Size variant ${comboItem.item_code}-${variant} not found`);
+                console.error(`Size variant ${size} for ${comboName} not found in allItems`);
+                throw new Error(`Size variant ${comboItem.item_code}-${size} not found`);
             }
         }
-        // For custom variants, return the template item_code
-        console.log(`Using template item_code ${comboItem.item_code} for custom variant ${variant}`);
+        console.log(`Using template item_code ${comboItem.item_code} for no size variant`);
         return comboItem.item_code;
     };
 
@@ -202,35 +208,51 @@ const FoodDetails = ({ item, onClose }) => {
         });
     };
 
-    const toggleComboSelection = (combo, variant = null, isCustomVariant = false) => {
+    const updateComboSelection = (combo, size = null, customVariant = null, remove = false) => {
         const comboItem = allItems.find((i) => i.item_name === combo.name1);
-        if ((comboItem?.has_variants || comboItem?.variants?.length > 0) && !variant) {
-            console.warn(`Cannot toggle ${combo.name1} without selecting a variant (template item)`);
+        if (!comboItem) {
+            console.error(`Combo item ${combo.name1} not found in allItems`);
             return;
         }
-    
+
+        const hasVariants = comboItem.has_variants || (comboItem.variants && comboItem.variants.length > 0);
+        if (hasVariants && !size && !remove) {
+            console.warn(`Cannot update ${combo.name1} without selecting a size (variant item)`);
+            return;
+        }
+
         setSelectedCombos((prevCombos) => {
-            const isAlreadySelected = prevCombos.some((selected) => selected.name1 === combo.name1);
-            if (isAlreadySelected) {
+            const existingComboIndex = prevCombos.findIndex((selected) => selected.name1 === combo.name1);
+            if (remove || (!hasVariants && existingComboIndex !== -1)) {
+                // Remove the combo (explicitly or toggle for non-variant)
                 return prevCombos.filter((selected) => selected.name1 !== combo.name1);
+            }
+            if (existingComboIndex !== -1) {
+                // Update existing combo (variant items)
+                const updatedCombos = [...prevCombos];
+                updatedCombos[existingComboIndex] = {
+                    ...updatedCombos[existingComboIndex],
+                    selectedSize: size,
+                    selectedCustomVariant: customVariant,
+                };
+                return updatedCombos;
             } else {
-                return [...prevCombos, { ...combo, selectedVariant: variant, isCustomVariant, quantity: 1 }];
+                // Add new combo
+                return [...prevCombos, { ...combo, selectedSize: size, selectedCustomVariant: customVariant, quantity: 1 }];
             }
         });
-    
-        if (variant) {
-            const variantDetail = comboItem?.variants.find((v) => v.type_of_variants === variant);
-            const variantPrice = variantDetail?.variant_price || 0;
-            setComboVariants((prev) => ({
-                ...prev,
-                [combo.name1]: { variant, price: variantPrice, isCustomVariant },
-            }));
-        } else {
+
+        if (remove || (!hasVariants && selectedCombos.some((c) => c.name1 === combo.name1))) {
             setComboVariants((prev) => {
                 const newVariants = { ...prev };
                 delete newVariants[combo.name1];
                 return newVariants;
             });
+        } else if (size || customVariant) {
+            setComboVariants((prev) => ({
+                ...prev,
+                [combo.name1]: { size, custom: customVariant },
+            }));
         }
         setSelectedCombo(null);
     };
@@ -239,43 +261,40 @@ const FoodDetails = ({ item, onClose }) => {
         const comboItem = allItems.find((i) => i.item_name === combo.name1);
         if (!comboItem) {
             console.error(`Combo item ${combo.name1} not found in allItems`);
-            toggleComboSelection(combo);
+            updateComboSelection(combo);
             return;
         }
-    
-        const hasVariants = comboItem.has_variants || comboItem.variants?.length > 0;
+
+        const hasVariants = comboItem.has_variants || (comboItem.variants && comboItem.variants.length > 0);
         if (hasVariants) {
-            // Custom variants from Pos Variants Type
-            let availableVariants = comboItem.variants?.length > 0
-                ? comboItem.variants.map(v => ({ ...v, isCustomVariant: true }))
+            const customVariants = comboItem.variants?.length > 0
+                ? comboItem.variants.map((v) => ({ type: v.type_of_variants, price: v.variant_price }))
                 : [];
-    
-            // Size variants from allItems
             const sizeVariants = allItems
-                .filter((i) => i.item_code.startsWith(comboItem.item_code + '-') && ['-S', '-M', '-L'].some(suffix => i.item_code.endsWith(suffix)))
+                .filter((i) => i.item_code.startsWith(comboItem.item_code + '-') && ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix)))
                 .map((v) => ({
-                    type_of_variants: v.item_code.replace(comboItem.item_code + '-', ''),
-                    variant_price: v.price_list_rate,
-                    isCustomVariant: false
+                    type: v.item_code.replace(comboItem.item_code + '-', ''),
+                    price: v.price_list_rate,
                 }));
-    
-            // Combine and deduplicate
-            availableVariants = [...availableVariants, ...sizeVariants].reduce((unique, v) => {
-                if (!unique.some(u => u.type_of_variants === v.type_of_variants)) {
-                    unique.push(v);
-                }
-                return unique;
-            }, []);
-    
-            if (availableVariants.length > 0) {
-                console.log(`Available variants for ${combo.name1}:`, availableVariants);
-                setSelectedCombo({ ...combo, variants: availableVariants });
+
+            if (sizeVariants.length > 0 || customVariants.length > 0) {
+                console.log(`Combo variants for ${combo.name1} - Sizes:`, sizeVariants, "Custom:", customVariants);
+                const existingCombo = selectedCombos.find((c) => c.name1 === combo.name1);
+                setSelectedCombo({ ...combo, sizeVariants, customVariants });
+                setComboVariants((prev) => ({
+                    ...prev,
+                    [combo.name1]: {
+                        size: existingCombo?.selectedSize || 'M', // Preserve existing size or default to 'M'
+                        custom: existingCombo?.selectedCustomVariant || null, // Preserve existing custom variant
+                    },
+                }));
             } else {
-                console.warn(`No variant items found for ${combo.name1}. Treating as non-variant item.`);
-                toggleComboSelection(combo);
+                console.warn(`No variant items found for ${combo.name1}, but marked as variant. Treating as non-variant.`);
+                updateComboSelection(combo);
             }
         } else {
-            toggleComboSelection(combo);
+            // Toggle non-variant combo directly
+            updateComboSelection(combo);
         }
     };
 
@@ -296,11 +315,15 @@ const FoodDetails = ({ item, onClose }) => {
         const selectedItemCode = getItemCodeForSize(selectedSize);
         const selectedItemName = getItemNameForSize(selectedSize);
         const selectedItem = allItems.find((i) => i.item_code === selectedItemCode) || fetchedItem;
-    
+
+        if (fetchedItem.has_variants && !selectedSize) {
+            throw new Error("Please select a size for this item.");
+        }
+
         const customVariantPrice = selectedCustomVariant
             ? fetchedItem.variants.find((v) => v.type_of_variants === selectedCustomVariant)?.variant_price || 0
             : 0;
-    
+
         try {
             const customizedItem = {
                 id: selectedItemCode,
@@ -316,17 +339,21 @@ const FoodDetails = ({ item, onClose }) => {
                 ),
                 selectedCombos: selectedCombos.map((combo) => {
                     const comboItem = allItems.find((i) => i.item_name === combo.name1);
-                    const isCustomVariant = combo.isCustomVariant || false;
-                    const variantItemCode = getComboVariantItemCode(combo.name1, combo.selectedVariant, isCustomVariant);
-                    const variantPrice = combo.selectedVariant && isCustomVariant
-                        ? comboItem?.variants.find((v) => v.type_of_variants === combo.selectedVariant)?.variant_price || 0
+                    const variantItemCode = getComboVariantItemCode(combo.name1, combo.selectedSize);
+                    const sizePrice = combo.selectedSize
+                        ? allItems.find((i) => i.item_code === `${comboItem.item_code}-${combo.selectedSize}`)?.price_list_rate || 0
                         : 0;
+                    const customPrice = combo.selectedCustomVariant
+                        ? comboItem?.variants.find((v) => v.type_of_variants === combo.selectedCustomVariant)?.variant_price || 0
+                        : 0;
+                    if (comboItem?.has_variants && !combo.selectedSize) {
+                        throw new Error(`Please select a size for combo item ${combo.name1}.`);
+                    }
                     return {
                         ...combo,
                         item_code: variantItemCode,
-                        selectedVariant: combo.selectedVariant || null,
-                        custom_variant: isCustomVariant ? combo.selectedVariant : null, // Pass custom variant separately
-                        variantPrice: variantPrice,
+                        custom_variant: combo.selectedCustomVariant || null,
+                        rate: sizePrice + customPrice,
                         quantity: combo.quantity,
                         kitchen: comboItem?.custom_kitchen || combo.kitchen || "Unknown",
                     };
@@ -334,7 +361,7 @@ const FoodDetails = ({ item, onClose }) => {
                 kitchen: selectedItem.custom_kitchen || item.kitchen,
                 quantity: mainQuantity,
             };
-    
+
             console.log("Adding to cart:", JSON.stringify(customizedItem, null, 2));
             addToCart(customizedItem);
             onClose();
@@ -350,6 +377,22 @@ const FoodDetails = ({ item, onClose }) => {
         if (mainQuantity > 1) {
             setMainQuantity((prevQuantity) => prevQuantity - 1);
         }
+    };
+
+    const getComboSizePrices = (comboName) => {
+        const comboItem = allItems.find((i) => i.item_name === comboName);
+        if (!comboItem || !comboItem.item_code) return { S: 0, M: 0, L: 0 };
+        const baseItemCode = comboItem.item_code.replace(/-[SML]$/, '');
+        const sizePrices = { S: comboItem.price || 0, M: comboItem.price || 0, L: comboItem.price || 0 };
+        const sizeItems = allItems.filter((i) =>
+            i.item_code.startsWith(baseItemCode) && ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
+        );
+        sizeItems.forEach((sizeItem) => {
+            if (sizeItem.item_code.endsWith('-S')) sizePrices.S = sizeItem.price_list_rate || sizePrices.S;
+            if (sizeItem.item_code.endsWith('-M')) sizePrices.M = sizeItem.price_list_rate || sizePrices.M;
+            if (sizeItem.item_code.endsWith('-L')) sizePrices.L = sizeItem.price_list_rate || sizePrices.L;
+        });
+        return sizePrices;
     };
 
     const sizePrices = getSizePrices();
@@ -503,6 +546,8 @@ const FoodDetails = ({ item, onClose }) => {
                                                     {fetchedItem.combos.map((combo) => {
                                                         const isSelected = selectedCombos.some((selected) => selected.name1 === combo.name1);
                                                         const comboData = selectedCombos.find((selected) => selected.name1 === combo.name1) || { quantity: 0 };
+                                                        const comboItem = allItems.find((i) => i.item_name === combo.name1);
+                                                        const hasVariants = comboItem?.has_variants || (comboItem?.variants && comboItem.variants.length > 0);
                                                         return (
                                                             <div
                                                                 key={combo.name1}
@@ -520,27 +565,35 @@ const FoodDetails = ({ item, onClose }) => {
                                                                     <p>{combo.name1}</p>
                                                                     <p>${(combo.combo_price || 0).toFixed(2)}</p>
                                                                     {isSelected && (
-                                                                        <div className="quantity-container mt-2">
-                                                                            <button
-                                                                                className="quantity-btn minus"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    updateComboQuantity(combo.name1, -1);
-                                                                                }}
-                                                                                disabled={comboData.quantity <= 1}
-                                                                            >
-                                                                                −
-                                                                            </button>
-                                                                            <span className="quantity-value">{comboData.quantity}</span>
-                                                                            <button
-                                                                                className="quantity-btn plus"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    updateComboQuantity(combo.name1, 1);
-                                                                                }}
-                                                                            >
-                                                                                +
-                                                                            </button>
+                                                                        <div>
+                                                                            {hasVariants && (
+                                                                                <p>
+                                                                                    {comboData.selectedSize || ''}{' '}
+                                                                                    {comboData.selectedCustomVariant ? ` - ${comboData.selectedCustomVariant}` : ''}
+                                                                                </p>
+                                                                            )}
+                                                                            <div className="quantity-container mt-2">
+                                                                                <button
+                                                                                    className="quantity-btn minus"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        updateComboQuantity(combo.name1, -1);
+                                                                                    }}
+                                                                                    disabled={comboData.quantity <= 1}
+                                                                                >
+                                                                                    −
+                                                                                </button>
+                                                                                <span className="quantity-value">{comboData.quantity}</span>
+                                                                                <button
+                                                                                    className="quantity-btn plus"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        updateComboQuantity(combo.name1, 1);
+                                                                                    }}
+                                                                                >
+                                                                                    +
+                                                                                </button>
+                                                                            </div>
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -556,7 +609,7 @@ const FoodDetails = ({ item, onClose }) => {
                                 {selectedCombo && (
                                     <div className="combo-popup card shadow">
                                         <div className="card-body">
-                                            <h5 className="card-title text-center">Select Variant for {selectedCombo.name1}</h5>
+                                            <h5 className="card-title text-center">Select Options for {selectedCombo.name1}</h5>
                                             <img
                                                 src={selectedCombo.combo_image ? `http://109.199.100.136:6060${selectedCombo.combo_image}` : 'default-combo-image.jpg'}
                                                 alt={selectedCombo.name1}
@@ -564,19 +617,92 @@ const FoodDetails = ({ item, onClose }) => {
                                                 height={80}
                                                 className="mb-3 d-block mx-auto"
                                             />
-                                            <div className="variant-options">
-                                                {selectedCombo.variants.map((variant, index) => (
-                                                    <button
-                                                        key={index}
-                                                        className={`btn ${comboVariants[selectedCombo.name1]?.variant === variant.type_of_variants ? 'btn-primary' : 'btn-outline-secondary'} m-2`}
-                                                        onClick={() => toggleComboSelection(selectedCombo, variant.type_of_variants)}
-                                                    >
-                                                        {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price.toFixed(2)})` : ''}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            {selectedCombo.sizeVariants?.length > 0 && (
+                                                <div className="mt-3">
+                                                    <strong>Size (Required):</strong>
+                                                    <div className="btn-group w-100" role="group">
+                                                        {['S', 'M', 'L'].map((size) => (
+                                                            <button
+                                                                key={size}
+                                                                type="button"
+                                                                className={`btn ${comboVariants[selectedCombo.name1]?.size === size ? 'btn-primary' : 'btn-outline-primary'}`}
+                                                                onClick={() => {
+                                                                    setComboVariants((prev) => ({
+                                                                        ...prev,
+                                                                        [selectedCombo.name1]: { ...prev[selectedCombo.name1], size },
+                                                                    }));
+                                                                }}
+                                                            >
+                                                                {size} (${getComboSizePrices(selectedCombo.name1)[size].toFixed(2)})
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {selectedCombo.customVariants?.length > 0 && (
+                                                <div className="mt-3">
+                                                    <strong>Custom Variants (Optional):</strong>
+                                                    <div className="radio-inputs" role="group">
+                                                        {selectedCombo.customVariants.map((variant, index) => (
+                                                            <label key={index} className="radio">
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`customVariant-${selectedCombo.name1}`}
+                                                                    value={variant.type}
+                                                                    checked={comboVariants[selectedCombo.name1]?.custom === variant.type}
+                                                                    onChange={() => {
+                                                                        setComboVariants((prev) => ({
+                                                                            ...prev,
+                                                                            [selectedCombo.name1]: { ...prev[selectedCombo.name1], custom: variant.type },
+                                                                        }));
+                                                                    }}
+                                                                />
+                                                                <span className="name">
+                                                                    {variant.type} {variant.price ? `($${variant.price.toFixed(2)})` : ''}
+                                                                </span>
+                                                            </label>
+                                                        ))}
+                                                        <label className="radio">
+                                                            <input
+                                                                type="radio"
+                                                                name={`customVariant-${selectedCombo.name1}`}
+                                                                value=""
+                                                                checked={!comboVariants[selectedCombo.name1]?.custom}
+                                                                onChange={() => {
+                                                                    setComboVariants((prev) => ({
+                                                                        ...prev,
+                                                                        [selectedCombo.name1]: { ...prev[selectedCombo.name1], custom: null },
+                                                                    }));
+                                                                }}
+                                                            />
+                                                            <span className="name">None</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            )}
                                             <div className="text-center mt-4">
-                                                <button className="btn btn-secondary" onClick={() => setSelectedCombo(null)}>
+                                                <button
+                                                    className="btn btn-primary"
+                                                    onClick={() => {
+                                                        const comboVariant = comboVariants[selectedCombo.name1];
+                                                        if (selectedCombo.sizeVariants?.length > 0 && !comboVariant?.size) {
+                                                            alert(`Please select a size for ${selectedCombo.name1}.`);
+                                                            return;
+                                                        }
+                                                        updateComboSelection(selectedCombo, comboVariant?.size, comboVariant?.custom);
+                                                    }}
+                                                >
+                                                    Confirm
+                                                </button>
+                                                {selectedCombos.some((c) => c.name1 === selectedCombo.name1) && (
+                                                    <button
+                                                        className="btn btn-danger ml-2"
+                                                        onClick={() => updateComboSelection(selectedCombo, null, null, true)}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
+                                                <button className="btn btn-secondary ml-2" onClick={() => setSelectedCombo(null)}>
                                                     Cancel
                                                 </button>
                                             </div>

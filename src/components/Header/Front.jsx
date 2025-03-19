@@ -245,7 +245,8 @@ function Front() {
                 (sum, [_, { price, quantity }]) => sum + (price * quantity), 0
             );
             const comboPrice = (item.selectedCombos || []).reduce(
-                (sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0
+                (sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), // Use rate from FoodDetails
+                0
             );
             return sum + mainPrice + customVariantPrice + addonPrice + comboPrice;
         }, 0);
@@ -377,7 +378,7 @@ function Front() {
         const allItems = cartItems.flatMap((item) => {
             const variantPrice = item.customVariantPrice || 0;
             const mainItem = {
-                item_code: item.id, // Corrected to use 'id' consistently with FoodDetails
+                item_code: item.item_code, // Use item_code instead of id for consistency
                 item_name: item.name,
                 description: item.selectedCustomVariant 
                     ? `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''} (${item.selectedCustomVariant})`
@@ -401,12 +402,12 @@ function Front() {
             }));
     
             const comboItems = (item.selectedCombos || []).map((combo) => ({
-                item_code: combo.item_code, // Use the variant-specific item_code from FoodDetails
+                item_code: combo.item_code,
                 item_name: combo.name1,
-                description: `Combo: ${combo.name1}${combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}`,
+                description: `Combo: ${combo.name1}${(combo.selectedSize || combo.selectedCustomVariant) ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})` : ''}`,
                 qty: combo.quantity || 1,
-                rate: (parseFloat(combo.combo_price || 0) + (combo.variantPrice || 0)),
-                amount: ((parseFloat(combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1)),
+                rate: combo.rate || 0, // Use pre-calculated rate from FoodDetails
+                amount: (combo.rate || 0) * (combo.quantity || 1),
                 kitchen: combo.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
@@ -964,65 +965,68 @@ function Front() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="text-start">
-                                                    {cartItems.map((item, index) => (
-                                                        <tr key={index}>
-                                                            <td className='text-start'>{tableNumber}</td>
-                                                            <td className='text-start'>
-                                                                {item.name}
-                                                                {item.selectedSize && ` (${item.selectedSize})`}
-                                                                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                                                                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                            <li key={addonName}>
-                                                                                + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                )}
-                                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                                        {item.selectedCombos.map((combo, idx) => (
-                                                                            <li key={idx}>
-                                                                                + {combo.name1} x{combo.quantity || 1}
-                                                                                {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}
-                                                                                - ${((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1).toFixed(2)}
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                )}
-                                                            </td>
-                                                            <td>
-                                                                <input
-                                                                    type="number"
-                                                                    className="form-control form-control-sm"
-                                                                    value={item.quantity}
-                                                                    onChange={(e) => handleQuantityChange(item, e.target.value)}
-                                                                    min="1"
-                                                                    style={{ width: "60px", padding: "2px", textAlign: "center" }}
-                                                                />
-                                                            </td>
-                                                            <td className='text-start'>
-                                                                ${(item.basePrice + (item.customVariantPrice || 0)).toFixed(2)}
-                                                            </td>
-                                                            <td className='text-start'>
-                                                                ${((item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
-                                                                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
-                                                                    (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0)
-                                                                ).toFixed(2)}
-                                                            </td>
-                                                            <td>
-                                                                <button
-                                                                    className="btn btn-sm"
-                                                                    onClick={() => removeFromCart(item)}
-                                                                    title="Remove Item"
-                                                                >
-                                                                    <i className="bi bi-trash"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
+    {cartItems.map((item, index) => (
+        <tr key={index}>
+            <td className='text-start'>{tableNumber}</td>
+            <td className='text-start'>
+                {item.name}
+                {item.selectedSize && ` (${item.selectedSize})`}
+                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                            <li key={addonName}>
+                                + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                {item.selectedCombos && item.selectedCombos.length > 0 && (
+                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                        {item.selectedCombos.map((combo, idx) => (
+                            <li key={idx}>
+                                + {combo.name1} x{combo.quantity || 1}
+                                {(combo.selectedSize || combo.selectedCustomVariant) && (
+                                    ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
+                                )}
+                                - ${(combo.rate || 0) * (combo.quantity || 1).toFixed(2)}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </td>
+            <td>
+                <input
+                    type="number"
+                    className="form-control form-control-sm"
+                    value={item.quantity}
+                    onChange={(e) => handleQuantityChange(item, e.target.value)}
+                    min="1"
+                    style={{ width: "60px", padding: "2px", textAlign: "center" }}
+                />
+            </td>
+            <td className='text-start'>
+                ${(item.basePrice + (item.customVariantPrice || 0)).toFixed(2)}
+            </td>
+            <td className='text-start'>
+                ${(
+                    (item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
+                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
+                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), 0) // Use combo.rate
+                ).toFixed(2)}
+            </td>
+            <td>
+                <button
+                    className="btn btn-sm"
+                    onClick={() => removeFromCart(item)}
+                    title="Remove Item"
+                >
+                    <i className="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+    ))}
+</tbody>
                                             </table>
                                         </div>
                                     </div>
@@ -1132,42 +1136,45 @@ function Front() {
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody>
-                                                                                {cartItems.map((item, index) => (
-                                                                                    <tr key={index}>
-                                                                                        <td>
-                                                                                            {item.name}
-                                                                                            {item.selectedSize && ` (${item.selectedSize})`}
-                                                                                            {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                                                                                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                                                    {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (${(price * quantity).toFixed(2)})</li>
-                                                                                                    ))}
-                                                                                                </ul>
-                                                                                            )}
-                                                                                            {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                                                                    {item.selectedCombos.map((combo, idx) => (
-                                                                                                        <li key={idx}>
-                                                                                                            + {combo.name1} x{combo.quantity || 1}
-                                                                                                            {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''}
-                                                                                                            - ${((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1).toFixed(2)}
-                                                                                                        </li>
-                                                                                                    ))}
-                                                                                                </ul>
-                                                                                            )}
-                                                                                        </td>
-                                                                                        <td>{item.quantity || 1}</td>
-                                                                                        <td>${(item.basePrice + (item.customVariantPrice || 0)).toFixed(2)}</td>
-                                                                                        <td>
-                                                                                            ${((item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
-                                                                                                Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
-                                                                                                (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0)
-                                                                                            ).toFixed(2)}
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                ))}
-                                                                            </tbody>
+    {cartItems.map((item, index) => (
+        <tr key={index}>
+            <td>
+                {item.name}
+                {item.selectedSize && ` (${item.selectedSize})`}
+                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                            <li key={addonName}>+ {addonName} x{quantity} (${(price * quantity).toFixed(2)})</li>
+                        ))}
+                    </ul>
+                )}
+                {item.selectedCombos && item.selectedCombos.length > 0 && (
+                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                        {item.selectedCombos.map((combo, idx) => (
+                            <li key={idx}>
+                                + {combo.name1} x{combo.quantity || 1}
+                                {(combo.selectedSize || combo.selectedCustomVariant) && (
+                                    ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
+                                )}
+                                - ${(combo.rate || 0) * (combo.quantity || 1).toFixed(2)}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </td>
+            <td>{item.quantity || 1}</td>
+            <td>${((item.customVariantPrice || 0)).toFixed(2)}</td>
+            <td>
+                ${(
+                    (item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
+                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
+                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), 0)
+                ).toFixed(2)}
+            </td>
+        </tr>
+    ))}
+</tbody>
                                                                         </table>
                                                                         <div className="row mt-3">
                                                                             <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
@@ -1276,5 +1283,4 @@ function Front() {
         </>
     );
 }
-
 export default Front;
