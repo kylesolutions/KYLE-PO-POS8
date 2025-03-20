@@ -266,7 +266,7 @@ function SalesInvoice() {
     return (
       <div className="mb-4">
         <h5 className="text-center mb-3">{title}</h5>
-        <div className="table-responsive" style={{ maxHeight: "400px", overflowY: "auto" }}>
+        <div className="table-responsive" style={{ maxHeight: "600px", overflowY: "auto" }}>
           <table className="table table-bordered table-hover" style={{ fontSize: "14px" }}>
             <thead className="thead-dark">
               <tr>
@@ -398,7 +398,7 @@ function SalesInvoice() {
       <>
         <div className="row mb-4 justify-content-center">
           <div className="col-md-3">
-            <label htmlFor="filterId" className="form-label">
+            <label htmlFor="filterId" className="form-label mb-0 mt-2 fw-bold">
               Filter by Invoice ID:
             </label>
             <input
@@ -411,7 +411,7 @@ function SalesInvoice() {
             />
           </div>
           <div className="col-md-3">
-            <label htmlFor="filterDate" className="form-label">
+            <label htmlFor="filterDate" className="form-label mb-0 mt-2 fw-bold">
               Filter by Posting Date:
             </label>
             <input
@@ -424,7 +424,7 @@ function SalesInvoice() {
             />
           </div>
           <div className="col-md-3">
-            <label htmlFor="filterTime" className="form-label">
+            <label htmlFor="filterTime" className="form-label mb-0 mt-2 fw-bold">
               Filter by Time:
             </label>
             <input
@@ -437,7 +437,7 @@ function SalesInvoice() {
             />
           </div>
           <div className="col-md-3">
-            <label htmlFor="filterMobile" className="form-label">
+            <label htmlFor="filterMobile" className="form-label mb-0 mt-2 fw-bold">
               Filter by Mobile Number:
             </label>
             <input
@@ -467,7 +467,7 @@ function SalesInvoice() {
   };
 
   return (
-    <div className="container mt-4">
+    <div className="container-fluid mt-4">
       <h3 className="mb-4 text-center">POS Invoices</h3>
       {renderContent()}
     </div>
