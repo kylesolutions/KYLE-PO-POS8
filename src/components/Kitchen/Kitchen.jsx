@@ -24,11 +24,11 @@ function Kitchen() {
         ...new Set(
             savedOrders.flatMap((order) =>
                 [
-                    ...order.cartItems.map((item) => item.kitchen),
-                    ...Object.values(order.cartItems.flatMap((item) => 
+                    ...order.cartItems.map((item) => item.kitchen || "Unknown"),
+                    ...order.cartItems.flatMap((item) =>
                         Object.values(item.addonCounts || {}).map((addon) => addon.kitchen || "Unknown")
-                    )),
-                    ...order.cartItems.flatMap((item) => 
+                    ),
+                    ...order.cartItems.flatMap((item) =>
                         (item.selectedCombos || []).map((combo) => combo.kitchen || "Unknown")
                     ),
                 ].filter((kitchen) => kitchen)
@@ -50,7 +50,7 @@ function Kitchen() {
                 type: "main",
                 customerName: order.customerName,
                 tableNumber: order.tableNumber,
-                id: item.id || `${order.tableNumber}-${item.name}`, // Ensure unique ID
+                id: item.item_code || `${order.tableNumber}-${item.name}`, // Use item_code if available
             })),
             ...order.cartItems.flatMap((item) =>
                 Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
@@ -60,8 +60,8 @@ function Kitchen() {
                     type: "addon",
                     customerName: order.customerName,
                     tableNumber: order.tableNumber,
-                    id: `${order.tableNumber}-${addonName}-${item.name}`, // Unique ID for addon
-                    status: item.status, // Inherit status from main item initially
+                    id: `${order.tableNumber}-${addonName}-${item.name}`,
+                    status: item.status, // Inherit status initially
                 }))
             ),
             ...order.cartItems.flatMap((item) =>
@@ -70,18 +70,18 @@ function Kitchen() {
                     quantity: combo.quantity || 1,
                     kitchen: combo.kitchen || "Unknown",
                     type: "combo",
-                    selectedVariant: combo.selectedVariant,
+                    selectedSize: combo.selectedSize,
+                    selectedCustomVariant: combo.selectedCustomVariant,
                     customerName: order.customerName,
                     tableNumber: order.tableNumber,
-                    id: `${order.tableNumber}-${combo.name1}-${item.name}`, // Unique ID for combo
-                    status: item.status, // Inherit status from main item initially
+                    id: `${order.tableNumber}-${combo.name1}-${item.name}`,
+                    status: combo.status || item.status, // Combo can have its own status
                 }))
             ),
         ]
     ).filter(
         (item) =>
             item.kitchen === selectedKitchen &&
-            item.category !== "Drinks" && // Assuming addons/combos don't have category "Drinks"
             item.status !== "PickedUp"
     );
 
@@ -89,21 +89,30 @@ function Kitchen() {
         const updatedOrders = savedOrders.map((order) => ({
             ...order,
             cartItems: order.cartItems.map((item) => {
-                // Update status for main item, addons, and combos independently
                 const updatedItem = { ...item };
-                if (item.id === id) updatedItem.status = newStatus;
-                if (Object.values(item.addonCounts || {}).some((addon) => `${order.tableNumber}-${addon.name}-${item.name}` === id)) {
+                // Update main item status
+                if ((item.item_code || `${order.tableNumber}-${item.name}`) === id) {
+                    updatedItem.status = newStatus;
+                }
+                // Update addon status
+                if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.tableNumber}-${addonName}-${item.name}` === id)) {
+                    const addonName = Object.keys(item.addonCounts).find(
+                        (key) => `${order.tableNumber}-${key}-${item.name}` === id
+                    );
                     updatedItem.addonCounts = {
                         ...item.addonCounts,
-                        [Object.keys(item.addonCounts).find((key) => `${order.tableNumber}-${key}-${item.name}` === id)]: {
-                            ...item.addonCounts[Object.keys(item.addonCounts).find((key) => `${order.tableNumber}-${key}-${item.name}` === id)],
+                        [addonName]: {
+                            ...item.addonCounts[addonName],
                             status: newStatus,
                         },
                     };
                 }
+                // Update combo status
                 if ((item.selectedCombos || []).some((combo) => `${order.tableNumber}-${combo.name1}-${item.name}` === id)) {
                     updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
-                        `${order.tableNumber}-${combo.name1}-${item.name}` === id ? { ...combo, status: newStatus } : combo
+                        `${order.tableNumber}-${combo.name1}-${item.name}` === id
+                            ? { ...combo, status: newStatus }
+                            : combo
                     );
                 }
                 return updatedItem;
@@ -127,19 +136,29 @@ function Kitchen() {
             ...order,
             cartItems: order.cartItems.map((item) => {
                 const updatedItem = { ...item };
-                if (item.id === id) updatedItem.status = "PickedUp";
-                if (Object.values(item.addonCounts || {}).some((addon) => `${order.tableNumber}-${addon.name}-${item.name}` === id)) {
+                // Update main item status
+                if ((item.item_code || `${order.tableNumber}-${item.name}`) === id) {
+                    updatedItem.status = "PickedUp";
+                }
+                // Update addon status
+                if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.tableNumber}-${addonName}-${item.name}` === id)) {
+                    const addonName = Object.keys(item.addonCounts).find(
+                        (key) => `${order.tableNumber}-${key}-${item.name}` === id
+                    );
                     updatedItem.addonCounts = {
                         ...item.addonCounts,
-                        [Object.keys(item.addonCounts).find((key) => `${order.tableNumber}-${key}-${item.name}` === id)]: {
-                            ...item.addonCounts[Object.keys(item.addonCounts).find((key) => `${order.tableNumber}-${key}-${item.name}` === id)],
+                        [addonName]: {
+                            ...item.addonCounts[addonName],
                             status: "PickedUp",
                         },
                     };
                 }
+                // Update combo status
                 if ((item.selectedCombos || []).some((combo) => `${order.tableNumber}-${combo.name1}-${item.name}` === id)) {
                     updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
-                        `${order.tableNumber}-${combo.name1}-${item.name}` === id ? { ...combo, status: "PickedUp" } : combo
+                        `${order.tableNumber}-${combo.name1}-${item.name}` === id
+                            ? { ...combo, status: "PickedUp" }
+                            : combo
                     );
                 }
                 return updatedItem;
@@ -244,15 +263,20 @@ function Kitchen() {
                         </thead>
                         <tbody>
                             {filteredItems.map((item, index) => (
-                                <tr key={index} style={getRowStyle(item.status)}>
+                                <tr key={item.id} style={getRowStyle(item.status)}>
                                     <td>{item.customerName || "Unknown"}</td>
                                     <td>{item.tableNumber || "N/A"}</td>
                                     <td>
                                         {item.name}
-                                        {item.type === "combo" && item.selectedVariant && ` (${item.selectedVariant})`}
+                                        {(item.type === "main" || item.type === "combo") && (
+                                            <>
+                                                {item.selectedSize && ` (${item.selectedSize})`}
+                                                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                            </>
+                                        )}
                                     </td>
                                     <td>
-                                        {item.image && (
+                                        {item.image && item.type === "main" && (
                                             <img
                                                 src={item.image}
                                                 className="rounded"
@@ -348,7 +372,12 @@ function Kitchen() {
                                                         <td>{item.tableNumber || "N/A"}</td>
                                                         <td>
                                                             {item.name}
-                                                            {item.type === "combo" && item.selectedVariant && ` (${item.selectedVariant})`}
+                                                            {(item.type === "main" || item.type === "combo") && (
+                                                                <>
+                                                                    {item.selectedSize && ` (${item.selectedSize})`}
+                                                                    {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                                </>
+                                                            )}
                                                         </td>
                                                         <td>{item.quantity}</td>
                                                         <td>{item.type}</td>

@@ -19,13 +19,28 @@ function SavedOrder({ orders, setSavedOrders }) {
   };
 
   const handleSelectOrder = (order) => {
-    // Format cart items to match FoodDetails structure
+    // Format cart items to match the structure expected by Front.jsx
     const formattedCartItems = order.cartItems.map(item => ({
       ...item,
+      item_code: item.item_code || item.id, // Ensure item_code is present
+      name: item.name,
       basePrice: item.basePrice || 0,
-      quantity: item.quantity || 1, // Main item quantity
-      addonCounts: item.addonCounts || {}, // Static add-on quantities with kitchen info
-      selectedCombos: item.selectedCombos || [], // Combos with kitchen info
+      customVariantPrice: item.customVariantPrice || 0,
+      quantity: item.quantity || 1,
+      selectedSize: item.selectedSize || null,
+      selectedCustomVariant: item.selectedCustomVariant || null,
+      addonCounts: item.addonCounts || {},
+      selectedCombos: (item.selectedCombos || []).map(combo => ({
+        ...combo,
+        name1: combo.name1,
+        item_code: combo.item_code,
+        rate: combo.rate || 0,
+        quantity: combo.quantity || 1,
+        selectedSize: combo.selectedSize || null,
+        selectedCustomVariant: combo.selectedCustomVariant || null,
+        kitchen: combo.kitchen || "Unknown",
+      })),
+      kitchen: item.kitchen || "Unknown",
     }));
     setCartItems(formattedCartItems);
     alert(`You selected Table ${order.tableNumber}`);
@@ -35,6 +50,7 @@ function SavedOrder({ orders, setSavedOrders }) {
         phoneNumber: order.phoneNumber,
         customerName: order.customerName,
         existingOrder: order,
+        deliveryType: order.deliveryType || "DINE IN", // Preserve deliveryType if present
       },
     });
   };
@@ -69,11 +85,14 @@ function SavedOrder({ orders, setSavedOrders }) {
                     {order.cartItems.map((item, i) => (
                       <div key={i}>
                         <div>
-                          {item.name} - Qty: {item.quantity}
+                          {item.name}
+                          {item.selectedSize && ` (${item.selectedSize})`}
+                          {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                          - Qty: {item.quantity}
                         </div>
                         {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                           <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                            {Object.entries(item.addonCounts).map(([addonName, { price, quantity, kitchen }]) => (
+                            {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
                               <li key={addonName}>
                                 + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
                               </li>
@@ -84,8 +103,11 @@ function SavedOrder({ orders, setSavedOrders }) {
                           <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
                             {item.selectedCombos.map((combo, idx) => (
                               <li key={idx}>
-                                + {combo.name1} x{combo.quantity || 1} {combo.selectedVariant ? `(${combo.selectedVariant})` : ''} 
-                                - ${(combo.combo_price || 0).toFixed(2)}
+                                + {combo.name1} x{combo.quantity || 1}
+                                {(combo.selectedSize || combo.selectedCustomVariant) && (
+                                  ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
+                                )}
+                                - ${(combo.rate || 0) * (combo.quantity || 1).toFixed(2)}
                               </li>
                             ))}
                           </ul>
