@@ -43,11 +43,29 @@ export const UserProvider = ({ children }) => {
             const existingItemIndex = prevItems.findIndex((cartItem) => cartItem.id === newItem.id);
             if (existingItemIndex !== -1) {
                 const existingItem = prevItems[existingItemIndex];
-                // Only merge if custom variant, size, and other key properties match exactly
+                // Check if main item properties and combos match exactly
+                const combosMatch = JSON.stringify(
+                    (existingItem.selectedCombos || []).map(c => ({
+                        name1: c.name1,
+                        selectedSize: c.selectedSize,
+                        selectedCustomVariant: c.selectedCustomVariant,
+                        quantity: c.quantity
+                    }))
+                ) === JSON.stringify(
+                    (newItem.selectedCombos || []).map(c => ({
+                        name1: c.name1,
+                        selectedSize: c.selectedSize,
+                        selectedCustomVariant: c.selectedCustomVariant,
+                        quantity: c.quantity
+                    }))
+                );
+    
                 if (
                     existingItem.selectedCustomVariant === newItem.selectedCustomVariant &&
-                    existingItem.selectedSize === newItem.selectedSize
+                    existingItem.selectedSize === newItem.selectedSize &&
+                    combosMatch
                 ) {
+                    // Merge only if everything matches, including combos
                     const mergedAddonCounts = { ...existingItem.addonCounts };
                     Object.entries(newItem.addonCounts || {}).forEach(([addonName, { price, quantity }]) => {
                         if (mergedAddonCounts[addonName]) {
@@ -56,13 +74,14 @@ export const UserProvider = ({ children }) => {
                             mergedAddonCounts[addonName] = { price, quantity };
                         }
                     });
-
+    
                     const mergedCombos = [...(existingItem.selectedCombos || [])];
                     (newItem.selectedCombos || []).forEach((newCombo) => {
                         const comboMatchIndex = mergedCombos.findIndex(
                             (combo) =>
                                 combo.name1 === newCombo.name1 &&
-                                combo.selectedVariant === newCombo.selectedVariant
+                                combo.selectedSize === newCombo.selectedSize &&
+                                combo.selectedCustomVariant === newCombo.selectedCustomVariant
                         );
                         if (comboMatchIndex !== -1) {
                             mergedCombos[comboMatchIndex].quantity =
@@ -71,7 +90,7 @@ export const UserProvider = ({ children }) => {
                             mergedCombos.push({ ...newCombo });
                         }
                     });
-
+    
                     return prevItems.map((cartItem, index) =>
                         index === existingItemIndex
                             ? {
@@ -84,7 +103,7 @@ export const UserProvider = ({ children }) => {
                     );
                 }
             }
-            // If no exact match (different custom variant or size), add as a new item
+            // If no exact match (different custom variant, size, or combos), add as a new item
             return [...prevItems, newItem];
         });
     };

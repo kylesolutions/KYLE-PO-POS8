@@ -315,18 +315,26 @@ const FoodDetails = ({ item, onClose }) => {
         const selectedItemCode = getItemCodeForSize(selectedSize);
         const selectedItemName = getItemNameForSize(selectedSize);
         const selectedItem = allItems.find((i) => i.item_code === selectedItemCode) || fetchedItem;
-
+    
         if (fetchedItem.has_variants && !selectedSize) {
             throw new Error("Please select a size for this item.");
         }
-
+    
         const customVariantPrice = selectedCustomVariant
             ? fetchedItem.variants.find((v) => v.type_of_variants === selectedCustomVariant)?.variant_price || 0
             : 0;
-
+    
         try {
+            // Generate a unique cartItemId based on item_code and combo configuration
+            const comboSignature = selectedCombos
+                .map((combo) => `${combo.name1}-${combo.selectedSize || ''}-${combo.selectedCustomVariant || ''}`)
+                .join('|');
+            const cartItemId = `${selectedItemCode}|${comboSignature || 'no-combo'}`;
+    
             const customizedItem = {
-                id: selectedItemCode,
+                cartItemId, // Unique identifier for this cart entry
+                id: selectedItemCode, // Keep original item_code for backend
+                item_code: selectedItemCode,
                 name: selectedItemName,
                 image: selectedItem.image || item.image,
                 category: selectedItem.item_group || item.category,
@@ -353,7 +361,7 @@ const FoodDetails = ({ item, onClose }) => {
                         ...combo,
                         item_code: variantItemCode,
                         custom_variant: combo.selectedCustomVariant || null,
-                        rate: sizePrice + customPrice,
+                        rate: sizePrice + customPrice, // Variant price only, no combo_price
                         quantity: combo.quantity,
                         kitchen: comboItem?.custom_kitchen || combo.kitchen || "Unknown",
                     };
@@ -361,7 +369,7 @@ const FoodDetails = ({ item, onClose }) => {
                 kitchen: selectedItem.custom_kitchen || item.kitchen,
                 quantity: mainQuantity,
             };
-
+    
             console.log("Adding to cart:", JSON.stringify(customizedItem, null, 2));
             addToCart(customizedItem);
             onClose();
@@ -370,7 +378,6 @@ const FoodDetails = ({ item, onClose }) => {
             alert(error.message);
         }
     };
-
     const increaseMainQuantity = () => setMainQuantity((prevQuantity) => prevQuantity + 1);
 
     const decreaseMainQuantity = () => {

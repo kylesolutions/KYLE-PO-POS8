@@ -23,9 +23,9 @@ function Front() {
 
     const userData = useSelector((state) => state.user);
     const company = userData.company || "POS8";
-    const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount );
-    const [taxTemplateName, setTaxTemplateName] = useState(""); 
-    const [taxRate, setTaxRate] = useState(null); 
+    const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount);
+    const [taxTemplateName, setTaxTemplateName] = useState("");
+    const [taxRate, setTaxRate] = useState(null);
     useEffect(() => {
         if (location.state) {
             setPhoneNumber(location.state.phoneNumber || existingOrder?.phoneNumber || "");
@@ -86,7 +86,7 @@ function Front() {
                 fetchTaxRate(null); // Fetch default from API on error
             }
         };
-    
+
         const fetchTaxRate = async (templateName) => {
             try {
                 const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details', {
@@ -110,9 +110,8 @@ function Front() {
                             console.warn(`No tax rate found for ${templateName}. Using first available template.`);
                         }
                     }
-                    // If no specific template or it wasn't found, use the first available template
                     if (!templateName || !data.message.some(t => t.name === templateName)) {
-                        const defaultTax = data.message[0]; // Use first tax template (e.g., GST - P)
+                        const defaultTax = data.message[0];
                         if (defaultTax && defaultTax.sales_tax && defaultTax.sales_tax.length > 0) {
                             const rate = parseFloat(defaultTax.sales_tax[0].rate) || 0;
                             setTaxRate(rate);
@@ -135,7 +134,7 @@ function Front() {
                 setTaxTemplateName("");
             }
         };
-    
+
         fetchCompanyDetails();
     }, [company]);
 
@@ -183,12 +182,12 @@ function Front() {
                     setMenuItems(formattedItems);
 
                     const initialFilteredMenu = formattedItems.filter((item) => {
-                        const isMainItem = (item.variants.length > 0) || 
-                                          !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
-                        return isMainItem && 
-                               (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) && 
-                               item.type !== "addon" && 
-                               item.type !== "combo";
+                        const isMainItem = (item.variants.length > 0) ||
+                            !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
+                        return isMainItem &&
+                            (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) &&
+                            item.type !== "addon" &&
+                            item.type !== "combo";
                     });
                     setFilteredItems(initialFilteredMenu);
 
@@ -207,12 +206,12 @@ function Front() {
 
     const handleFilter = (category) => {
         const filtered = menuItems.filter(item => {
-            const isMainItem = (item.variants.length > 0) || 
-                              !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
-            return isMainItem && 
-                   (category === "All" || item.category.toLowerCase() === category.toLowerCase()) && 
-                   item.type !== "addon" && 
-                   item.type !== "combo";
+            const isMainItem = (item.variants.length > 0) ||
+                !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
+            return isMainItem &&
+                (category === "All" || item.category.toLowerCase() === category.toLowerCase()) &&
+                item.type !== "addon" &&
+                item.type !== "combo";
         });
         setFilteredItems(filtered);
         setSelectedCategory(category);
@@ -236,7 +235,6 @@ function Front() {
         setSelectedItem(null);
     };
 
-    // Return the tax rate, defaulting to 0 if not yet fetched
     const getSubTotal = () => {
         return cartItems.reduce((sum, item) => {
             const mainPrice = item.basePrice * item.quantity;
@@ -245,7 +243,7 @@ function Front() {
                 (sum, [_, { price, quantity }]) => sum + (price * quantity), 0
             );
             const comboPrice = (item.selectedCombos || []).reduce(
-                (sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), // Use rate from FoodDetails
+                (sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1),
                 0
             );
             return sum + mainPrice + customVariantPrice + addonPrice + comboPrice;
@@ -256,7 +254,7 @@ function Front() {
         console.log("Current taxRate:", taxRate);
         return taxRate !== null ? taxRate : 0;
     };
-    
+
     const getTaxAmount = () => {
         const subTotal = getSubTotal();
         const taxRate = getTaxRate();
@@ -264,7 +262,7 @@ function Front() {
         console.log(`Calculating tax: Subtotal = ${subTotal}, Tax Rate = ${taxRate}%, Tax Amount = ${taxAmount}`);
         return taxAmount;
     };
-    
+
     const getGrandTotal = () => {
         const subTotal = getSubTotal();
         const taxAmount = getTaxAmount();
@@ -327,7 +325,7 @@ function Front() {
                 quantity: item.quantity,
                 totalPrice: ((item.basePrice + (item.customVariantPrice || 0)) * item.quantity) +
                     Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
-                    (item.selectedCombos || []).reduce((sum, combo) => sum + ((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1), 0),
+                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), 0), // Use combo.rate
                 selectedSize: item.selectedSize || null,
                 selectedCustomVariant: item.selectedCustomVariant || null,
                 addonCounts: item.addonCounts || {},
@@ -368,19 +366,19 @@ function Front() {
         console.log("Cart Items:", cartItems);
         console.log("Current customerName:", customerName);
         console.log("Customers array:", customers);
-    
+
         if (!paymentDetails || typeof paymentDetails !== "object" || !paymentDetails.mode_of_payment) {
             console.error("Invalid paymentDetails:", paymentDetails);
             alert("Error: Invalid payment details. Please try again.");
             return;
         }
-    
+
         const allItems = cartItems.flatMap((item) => {
             const variantPrice = item.customVariantPrice || 0;
             const mainItem = {
-                item_code: item.item_code, // Use item_code instead of id for consistency
+                item_code: item.item_code,
                 item_name: item.name,
-                description: item.selectedCustomVariant 
+                description: item.selectedCustomVariant
                     ? `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''} (${item.selectedCustomVariant})`
                     : `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''}`,
                 qty: item.quantity,
@@ -389,9 +387,9 @@ function Front() {
                 kitchen: item.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             };
-    
+
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
-                item_code: addonName, // Assuming addonName is the item_code; adjust if needed
+                item_code: addonName,
                 item_name: addonName,
                 description: `Addon: ${addonName}`,
                 qty: quantity,
@@ -400,32 +398,32 @@ function Front() {
                 kitchen: kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
-    
+
             const comboItems = (item.selectedCombos || []).map((combo) => ({
                 item_code: combo.item_code,
                 item_name: combo.name1,
                 description: `Combo: ${combo.name1}${(combo.selectedSize || combo.selectedCustomVariant) ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})` : ''}`,
                 qty: combo.quantity || 1,
-                rate: combo.rate || 0, // Use pre-calculated rate from FoodDetails
+                rate: combo.rate || 0,
                 amount: (combo.rate || 0) * (combo.quantity || 1),
                 kitchen: combo.kitchen || "Unknown",
                 income_account: defaultIncomeAccount,
             }));
-    
+
             return [mainItem, ...addonItems, ...comboItems];
         });
-    
+
         if (allItems.length === 0) {
             console.error("Error: No items in the cart.");
             alert("Error: Cannot create an order with no items.");
             return;
         }
-    
+
         const selectedCustomer = customers.find((c) => c.customer_name === customerName);
         const customerId = selectedCustomer ? selectedCustomer.name : "CUST-2025-00001";
         console.log("Selected Customer:", selectedCustomer);
         console.log("Customer ID to be sent:", customerId);
-    
+
         const grandTotal = getGrandTotal();
         const payload = {
             customer: customerId,
@@ -453,9 +451,9 @@ function Front() {
                 custom_email: email || "",
             }),
         };
-    
+
         console.log("Final Payload before sending to backend:", JSON.stringify(payload, null, 2));
-    
+
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
                 method: "POST",
@@ -465,10 +463,10 @@ function Front() {
                 },
                 body: JSON.stringify(payload),
             });
-    
+
             const result = await response.json();
             console.log("Raw Backend Response:", result);
-    
+
             if (response.ok && result.message?.status === "success") {
                 alert(`POS Invoice saved successfully! Grand Total: ₹${result.message.grand_total}`);
                 setCartItems([]);
@@ -568,11 +566,11 @@ function Front() {
             alert("Customer name is required.");
             return;
         }
-    
+
         const customerExists = customers.some(
             (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
         );
-    
+
         if (!customerExists) {
             try {
                 const customerData = {
@@ -582,7 +580,7 @@ function Front() {
                     ...(email && { email: email }),
                     ...(whatsappNumber && { whatsapp_number: whatsappNumber }),
                 };
-    
+
                 const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer', {
                     method: 'POST',
                     headers: {
@@ -591,7 +589,7 @@ function Front() {
                     },
                     body: JSON.stringify(customerData),
                 });
-    
+
                 const data = await response.json();
                 if (data.status === "success") {
                     alert("Customer created successfully!");
@@ -683,13 +681,13 @@ function Front() {
                     <div className="col-lg-5 col-xl-7 row2">
                         <div className="row" style={{ height: '90vh', overflowY: 'auto' }}>
                             {filteredItems.map((item, index) => (
-                                <div className="col-xl-3 col-lg-6 col-md-4 col-6 align-items-center my-2" key={index}>
+                                <div className="col-xl-3 col-lg-6 col-md-4 col-6 align-items-center my-2" key={item.id}>
                                     <div className="card" onClick={() => handleItemClick(item)}>
                                         <div className='image-box'>
                                             <img src={item.image} alt={item.name} />
                                         </div>
                                         <div className="card-body p-2 mb-0 category-name">
-                                            <h4 className="card-title text-center mb-0" style={{fontSize:"14px"}}>{item.name}</h4>
+                                            <h4 className="card-title text-center mb-0" style={{ fontSize: "14px" }}>{item.name}</h4>
                                         </div>
                                     </div>
                                 </div>
@@ -965,68 +963,68 @@ function Front() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="text-start">
-    {cartItems.map((item, index) => (
-        <tr key={index}>
-            <td className='text-start'>{tableNumber}</td>
-            <td className='text-start'>
-                {item.name}
-                {item.selectedSize && ` (${item.selectedSize})`}
-                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                            <li key={addonName}>
-                                + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                {item.selectedCombos && item.selectedCombos.length > 0 && (
-                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                        {item.selectedCombos.map((combo, idx) => (
-                            <li key={idx}>
-                                + {combo.name1} x{combo.quantity || 1}
-                                {(combo.selectedSize || combo.selectedCustomVariant) && (
-                                    ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
-                                )}
-                                - ${(combo.rate || 0) * (combo.quantity || 1).toFixed(2)}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </td>
-            <td>
-                <input
-                    type="number"
-                    className="form-control form-control-sm"
-                    value={item.quantity}
-                    onChange={(e) => handleQuantityChange(item, e.target.value)}
-                    min="1"
-                    style={{ width: "60px", padding: "2px", textAlign: "center" }}
-                />
-            </td>
-            <td className='text-start'>
-                ${(item.basePrice + (item.customVariantPrice || 0)).toFixed(2)}
-            </td>
-            <td className='text-start'>
-                ${(
-                    (item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
-                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
-                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), 0) // Use combo.rate
-                ).toFixed(2)}
-            </td>
-            <td>
-                <button
-                    className="btn btn-sm"
-                    onClick={() => removeFromCart(item)}
-                    title="Remove Item"
-                >
-                    <i className="bi bi-trash"></i>
-                </button>
-            </td>
-        </tr>
-    ))}
-</tbody>
+                                                    {cartItems.map((item) => (
+                                                        <tr key={`${item.item_code}-${JSON.stringify(item.selectedCombos || [])}`}>
+                                                            <td className='text-start'>{tableNumber}</td>
+                                                            <td className='text-start'>
+                                                                {item.name}
+                                                                {item.selectedSize && ` (${item.selectedSize})`}
+                                                                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                                                                            <li key={addonName}>
+                                                                                + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                )}
+                                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                        {item.selectedCombos.map((combo, idx) => (
+                                                                            <li key={idx}>
+                                                                                + {combo.name1} x{combo.quantity || 1}
+                                                                                {(combo.selectedSize || combo.selectedCustomVariant) && (
+                                                                                    ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
+                                                                                )}
+                                                                                - ${(combo.rate || 0) * (combo.quantity || 1).toFixed(2)}
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                <input
+                                                                    type="number"
+                                                                    className="form-control form-control-sm"
+                                                                    value={item.quantity}
+                                                                    onChange={(e) => handleQuantityChange(item, e.target.value)}
+                                                                    min="1"
+                                                                    style={{ width: "60px", padding: "2px", textAlign: "center" }}
+                                                                />
+                                                            </td>
+                                                            <td className='text-start'>
+                                                                ${(item.basePrice + (item.customVariantPrice || 0)).toFixed(2)}
+                                                            </td>
+                                                            <td className='text-start'>
+                                                                ${(
+                                                                    (item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
+                                                                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
+                                                                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), 0)
+                                                                ).toFixed(2)}
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm"
+                                                                    onClick={() => removeFromCart(item)}
+                                                                    title="Remove Item"
+                                                                >
+                                                                    <i className="bi bi-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
                                             </table>
                                         </div>
                                     </div>
@@ -1036,34 +1034,34 @@ function Front() {
                             <div className="row p-2 mt-2 border shadow rounded" style={{ flexShrink: 0 }}>
                                 <div className="col-12">
                                     <div className="row">
-                                    <div className="col-12 col-lg-6">
-                        <div className="row">
-                            <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
-                                <div className='grand-tot-div justify-content-end'>
-                                    <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
-                                </div>
-                            </div>
-                            <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
-                                <div className='grand-tot-div'>
-                                    <span>$</span><span>{getSubTotal().toFixed(2)}</span>
-                                </div>
-                            </div>
-                            <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
-                                <div className='grand-tot-div justify-content-end'>
-                                    <span>${getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
-                                </div>
-                            </div>
-                            <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
-                                <div className='grand-tot-div justify-content-end'>
-                                    <span>${getGrandTotal().toFixed(2)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                        <div className="col-12 col-lg-6">
+                                            <div className="row">
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
+                                                    <div className='grand-tot-div justify-content-end'>
+                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
+                                                    <div className='grand-tot-div'>
+                                                        <span>$</span><span>{getSubTotal().toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
+                                                    <div className='grand-tot-div justify-content-end'>
+                                                        <span>${getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
+                                                    <div className='grand-tot-div justify-content-end'>
+                                                        <span>${getGrandTotal().toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                         <div className="col-12 col-lg-6">
                                             <div className="row mt-3">
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
@@ -1136,45 +1134,45 @@ function Front() {
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody>
-    {cartItems.map((item, index) => (
-        <tr key={index}>
-            <td>
-                {item.name}
-                {item.selectedSize && ` (${item.selectedSize})`}
-                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                            <li key={addonName}>+ {addonName} x{quantity} (${(price * quantity).toFixed(2)})</li>
-                        ))}
-                    </ul>
-                )}
-                {item.selectedCombos && item.selectedCombos.length > 0 && (
-                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                        {item.selectedCombos.map((combo, idx) => (
-                            <li key={idx}>
-                                + {combo.name1} x{combo.quantity || 1}
-                                {(combo.selectedSize || combo.selectedCustomVariant) && (
-                                    ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
-                                )}
-                                - ${(combo.rate || 0) * (combo.quantity || 1).toFixed(2)}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </td>
-            <td>{item.quantity || 1}</td>
-            <td>${((item.customVariantPrice || 0)).toFixed(2)}</td>
-            <td>
-                ${(
-                    (item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
-                    Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
-                    (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), 0)
-                ).toFixed(2)}
-            </td>
-        </tr>
-    ))}
-</tbody>
+                                                                                {cartItems.map((item) => (
+                                                                                    <tr key={`${item.item_code}-${JSON.stringify(item.selectedCombos || [])}`}>
+                                                                                        <td>
+                                                                                            {item.name}
+                                                                                            {item.selectedSize && ` (${item.selectedSize})`}
+                                                                                            {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                                                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                                                    {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (${(price * quantity).toFixed(2)})</li>
+                                                                                                    ))}
+                                                                                                </ul>
+                                                                                            )}
+                                                                                            {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                                                    {item.selectedCombos.map((combo, idx) => (
+                                                                                                        <li key={idx}>
+                                                                                                            + {combo.name1} x{combo.quantity || 1}
+                                                                                                            {(combo.selectedSize || combo.selectedCustomVariant) && (
+                                                                                                                ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
+                                                                                                            )}
+                                                                                                            - ${(combo.rate || 0) * (combo.quantity || 1).toFixed(2)}
+                                                                                                        </li>
+                                                                                                    ))}
+                                                                                                </ul>
+                                                                                            )}
+                                                                                        </td>
+                                                                                        <td>{item.quantity || 1}</td>
+                                                                                        <td>${(item.basePrice + (item.customVariantPrice || 0)).toFixed(2)}</td>
+                                                                                        <td>
+                                                                                            ${(
+                                                                                                (item.basePrice + (item.customVariantPrice || 0)) * item.quantity +
+                                                                                                Object.entries(item.addonCounts || {}).reduce((sum, [_, { price, quantity }]) => sum + (price * quantity), 0) +
+                                                                                                (item.selectedCombos || []).reduce((sum, combo) => sum + (combo.rate || 0) * (combo.quantity || 1), 0)
+                                                                                            ).toFixed(2)}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
                                                                         </table>
                                                                         <div className="row mt-3">
                                                                             <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
