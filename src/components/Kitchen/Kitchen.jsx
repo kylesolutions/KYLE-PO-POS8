@@ -50,7 +50,7 @@ function Kitchen() {
                 type: "main",
                 customerName: order.customerName,
                 tableNumber: order.tableNumber,
-                id: item.item_code || `${order.tableNumber}-${item.name}`, // Use item_code if available
+                id: item.item_code || `${order.tableNumber}-${item.name}`,
             })),
             ...order.cartItems.flatMap((item) =>
                 Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
@@ -61,7 +61,7 @@ function Kitchen() {
                     customerName: order.customerName,
                     tableNumber: order.tableNumber,
                     id: `${order.tableNumber}-${addonName}-${item.name}`,
-                    status: item.status, // Inherit status initially
+                    status: item.status,
                 }))
             ),
             ...order.cartItems.flatMap((item) =>
@@ -72,10 +72,11 @@ function Kitchen() {
                     type: "combo",
                     selectedSize: combo.selectedSize,
                     selectedCustomVariant: combo.selectedCustomVariant,
+                    image: combo.image, // Only use combo-specific image, no fallback to item.image
                     customerName: order.customerName,
                     tableNumber: order.tableNumber,
                     id: `${order.tableNumber}-${combo.name1}-${item.name}`,
-                    status: combo.status || item.status, // Combo can have its own status
+                    status: combo.status || item.status,
                 }))
             ),
         ]
@@ -90,11 +91,9 @@ function Kitchen() {
             ...order,
             cartItems: order.cartItems.map((item) => {
                 const updatedItem = { ...item };
-                // Update main item status
                 if ((item.item_code || `${order.tableNumber}-${item.name}`) === id) {
                     updatedItem.status = newStatus;
                 }
-                // Update addon status
                 if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.tableNumber}-${addonName}-${item.name}` === id)) {
                     const addonName = Object.keys(item.addonCounts).find(
                         (key) => `${order.tableNumber}-${key}-${item.name}` === id
@@ -107,7 +106,6 @@ function Kitchen() {
                         },
                     };
                 }
-                // Update combo status
                 if ((item.selectedCombos || []).some((combo) => `${order.tableNumber}-${combo.name1}-${item.name}` === id)) {
                     updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
                         `${order.tableNumber}-${combo.name1}-${item.name}` === id
@@ -136,11 +134,9 @@ function Kitchen() {
             ...order,
             cartItems: order.cartItems.map((item) => {
                 const updatedItem = { ...item };
-                // Update main item status
                 if ((item.item_code || `${order.tableNumber}-${item.name}`) === id) {
                     updatedItem.status = "PickedUp";
                 }
-                // Update addon status
                 if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.tableNumber}-${addonName}-${item.name}` === id)) {
                     const addonName = Object.keys(item.addonCounts).find(
                         (key) => `${order.tableNumber}-${key}-${item.name}` === id
@@ -153,7 +149,6 @@ function Kitchen() {
                         },
                     };
                 }
-                // Update combo status
                 if ((item.selectedCombos || []).some((combo) => `${order.tableNumber}-${combo.name1}-${item.name}` === id)) {
                     updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
                         `${order.tableNumber}-${combo.name1}-${item.name}` === id
@@ -276,7 +271,7 @@ function Kitchen() {
                                         )}
                                     </td>
                                     <td>
-                                        {item.image && item.type === "main" && (
+                                        {(item.type === "main" || item.type === "combo") && item.image && (
                                             <img
                                                 src={item.image}
                                                 className="rounded"
