@@ -8,6 +8,8 @@ function SalesInvoice() {
   const [filterId, setFilterId] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [filterTime, setFilterTime] = useState("");
+  const [filterMobile, setFilterMobile] = useState("");
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const fetchInvoices = async () => {
     setLoading(true);
@@ -49,13 +51,17 @@ function SalesInvoice() {
       const matchesTime = filterTime
         ? (invoice.posting_date || "").includes(filterTime)
         : true;
-      return matchesId && matchesDate && matchesTime;
+      const matchesMobile = filterMobile
+        ? (invoice.customer_details?.mobile_no || "").toLowerCase().includes(filterMobile.toLowerCase())
+        : true;
+      return matchesId && matchesDate && matchesTime && matchesMobile;
     });
   };
 
   const handleFilterIdChange = (e) => setFilterId(e.target.value);
   const handleFilterDateChange = (e) => setFilterDate(e.target.value);
   const handleFilterTimeChange = (e) => setFilterTime(e.target.value);
+  const handleFilterMobileChange = (e) => setFilterMobile(e.target.value);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -109,6 +115,14 @@ function SalesInvoice() {
             }
             th { 
               font-weight: bold; 
+            }
+            .footer { 
+              display: flex; 
+              justify-content: flex-end; 
+              margin-top: 15px; 
+            }
+            .footer .totals { 
+              text-align: right; 
             }
             .footer p { 
               margin: 5px 0; 
@@ -166,9 +180,11 @@ function SalesInvoice() {
               </tbody>
             </table>
             <div class="footer">
-              <p><strong>Total Taxes:</strong> ₹${invoice.total_taxes_and_charges || 0}</p>
-              <p><strong>Currency:</strong> ${invoice.currency || "INR"}</p>
-              <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>  
+              <div class="totals">
+                <p><strong>Total Taxes:</strong> ₹${invoice.total_taxes_and_charges || 0}</p>
+                <p><strong>Currency:</strong> ${invoice.currency || "INR"}</p>
+                <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>
+              </div>
             </div>
           </div>
         </body>
@@ -229,6 +245,14 @@ function SalesInvoice() {
     }
   };
 
+  const handleViewDetails = (invoice) => {
+    setSelectedInvoice(invoice);
+  };
+
+  const closePopup = () => {
+    setSelectedInvoice(null);
+  };
+
   const renderInvoiceTable = (invoiceList, title) => {
     if (invoiceList.length === 0) {
       return (
@@ -246,63 +270,103 @@ function SalesInvoice() {
           <table className="table table-bordered table-hover" style={{ fontSize: "14px" }}>
             <thead className="thead-dark">
               <tr>
-                <th style={{ width: "33%" }}>Invoice Details</th>
-                <th style={{ width: "33%" }}>Payment Summary</th>
-                <th style={{ width: "34%" }}>Items & Actions</th>
+                <th>Invoice ID</th>
+                <th>Customer Name</th>
+                <th>Grand Total</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {invoiceList.map((invoice) => (
                 <tr key={invoice.name}>
+                  <td>{invoice.name}</td>
+                  <td>{invoice.customer_details?.customer_name || "N/A"}</td>
+                  <td>₹{invoice.grand_total || 0}</td>
                   <td>
-                    <div>
-                      <strong>Invoice ID:</strong> {invoice.name}<br />
-                      <strong>Customer:</strong> {invoice.customer_details?.customer_name || "N/A"}<br />
-                      <strong>Posting Date:</strong> {formatDate(invoice.posting_date)}
-                    </div>
-                  </td>
-                  <td>
-                    <div>
-                      <strong>Grand Total:</strong> ₹{invoice.grand_total || 0}<br />
-                      <strong>Total Taxes:</strong> ₹{invoice.total_taxes_and_charges || 0}<br />
-                      <strong>Currency:</strong> {invoice.currency || "INR"}<br />
-                      <strong>Paid Amount:</strong> ₹{invoice.paid_amount || 0}
-                    </div>
-                  </td>
-                  <td>
-                    <div>
-                      <strong>Items:</strong>
-                      {invoice.pos_invoice_items && invoice.pos_invoice_items.length > 0 ? (
-                        <ul className="list-unstyled mb-2" style={{ maxHeight: "100px", overflowY: "auto" }}>
-                          {invoice.pos_invoice_items.map((item, idx) => (
-                            <li key={idx}>
-                              {item.item_name || "N/A"} (Qty: {item.qty || 0}, ₹{item.amount || 0})
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span> No items</span>
-                      )}
-                      <div className="d-flex justify-content-center gap-2">
-                        <button
-                          className="btn btn-sm btn-success"
-                          onClick={() => handlePrintInvoice(invoice)}
-                        >
-                          Print
-                        </button>
-                        <button
-                          className="btn btn-sm btn-primary"
-                          onClick={() => handleSendEmail(invoice)}
-                        >
-                          Send Email
-                        </button>
-                      </div>
-                    </div>
+                    <button
+                      className="btn btn-sm btn-info"
+                      onClick={() => handleViewDetails(invoice)}
+                    >
+                      View Details
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderInvoicePopup = () => {
+    if (!selectedInvoice) return null;
+
+    return (
+      <div className="modal" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal-dialog modal-lg">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Invoice Details - {selectedInvoice.name}</h5>
+              <button type="button" className="btn-close" onClick={closePopup}></button>
+            </div>
+            <div className="modal-body">
+              <div className="mb-3">
+                <p><strong>Posting Date:</strong> {formatDate(selectedInvoice.posting_date)}</p>
+                <p><strong>Customer Name:</strong> {selectedInvoice.customer_details?.customer_name || "N/A"}</p>
+                {selectedInvoice.customer_details?.address && (
+                  <p><strong>Address:</strong> {selectedInvoice.customer_details.address}</p>
+                )}
+                <p><strong>Phone Number:</strong> {selectedInvoice.customer_details?.mobile_no || "N/A"}</p>
+              </div>
+              <h6>Items:</h6>
+              {selectedInvoice.pos_invoice_items && selectedInvoice.pos_invoice_items.length > 0 ? (
+                <div className="table-responsive">
+                  <table className="table table-bordered">
+                    <thead>
+                      <tr>
+                        <th>Item Name</th>
+                        <th>Description</th>
+                        <th>Quantity</th>
+                        <th>Rate</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedInvoice.pos_invoice_items.map((item, idx) => (
+                        <tr key={idx}>
+                          <td>{item.item_name || "N/A"}</td>
+                          <td>{item.description || "N/A"}</td>
+                          <td>{item.qty || 0}</td>
+                          <td>₹{item.rate || 0}</td>
+                          <td>₹{item.amount || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p>No items found</p>
+              )}
+              <div className="mt-3">
+                <p><strong>Total Taxes:</strong> ₹{selectedInvoice.total_taxes_and_charges || 0}</p>
+                <p><strong>Currency:</strong> {selectedInvoice.currency || "INR"}</p>
+                <p><strong>Paid Amount:</strong> ₹{selectedInvoice.paid_amount || 0}</p>
+                <p><strong>Grand Total:</strong> ₹{selectedInvoice.grand_total || 0}</p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-success" onClick={() => handlePrintInvoice(selectedInvoice)}>
+                Print
+              </button>
+              <button className="btn btn-primary" onClick={() => handleSendEmail(selectedInvoice)}>
+                Send Email
+              </button>
+              <button className="btn btn-secondary" onClick={closePopup}>
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -333,7 +397,7 @@ function SalesInvoice() {
     return (
       <>
         <div className="row mb-4 justify-content-center">
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label htmlFor="filterId" className="form-label">
               Filter by Invoice ID:
             </label>
@@ -346,7 +410,7 @@ function SalesInvoice() {
               placeholder="Enter Invoice ID (e.g., POSINV-001)"
             />
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label htmlFor="filterDate" className="form-label">
               Filter by Posting Date:
             </label>
@@ -359,7 +423,7 @@ function SalesInvoice() {
               placeholder="Enter Date (e.g., 2025-03-01)"
             />
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label htmlFor="filterTime" className="form-label">
               Filter by Time:
             </label>
@@ -370,6 +434,19 @@ function SalesInvoice() {
               value={filterTime}
               onChange={handleFilterTimeChange}
               placeholder="Enter Time (e.g., 14:30)"
+            />
+          </div>
+          <div className="col-md-3">
+            <label htmlFor="filterMobile" className="form-label">
+              Filter by Mobile Number:
+            </label>
+            <input
+              type="text"
+              id="filterMobile"
+              className="form-control"
+              value={filterMobile}
+              onChange={handleFilterMobileChange}
+              placeholder="Enter Mobile (e.g., 9876543210)"
             />
           </div>
         </div>
@@ -384,6 +461,7 @@ function SalesInvoice() {
             {renderInvoiceTable(part3, "Part 3")}
           </div>
         </div>
+        {renderInvoicePopup()}
       </>
     );
   };

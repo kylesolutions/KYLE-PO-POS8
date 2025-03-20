@@ -93,12 +93,10 @@
     height: 170px;
 }
 
-/* Card Body */
 .card-body {
     font-family: 'Dubai Medium';
 }
 
-/* Grand Total Div */
 .grand-tot-div {
     background: rgb(238, 238, 238);
     border-radius: 5px;
