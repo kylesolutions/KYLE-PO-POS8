@@ -161,7 +161,6 @@ export const UserProvider = ({ children }) => {
             return;
         }
 
-        // Group items by kitchen
         const kitchenOrders = filteredCartItems.reduce((acc, item) => {
             const kitchen = item.kitchen || "Unknown Kitchen";
             if (!acc[kitchen]) acc[kitchen] = { ...order, cartItems: [] };

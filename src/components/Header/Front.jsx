@@ -299,15 +299,36 @@ function Front() {
         }
     };
 
-    const handlePaymentCompletion = (tableNumber) => {
-        const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
-        const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
-        localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
-        const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
-        setBookedTables(updatedBookedTables);
-        localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
-        setCartItems([]);
-        alert(`Payment for Table ${tableNumber || "Order"} is completed.`);
+    const handlePaymentCompletion = async (orderName, tableNumber) => {
+        try {
+            // Call the backend to delete the saved order
+            const response = await fetch(`/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_saved_order?doc_name=${orderName}`, {
+                method: "GET", // Note: Consider switching to POST if required by backend
+                headers: {
+                    "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    "Content-Type": "application/json",
+                },
+            });
+    
+            if (!response.ok) throw new Error(`Failed to delete order: ${response.status}`);
+            const result = await response.json();
+            const responseData = result.message || result;
+            if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
+    
+            // Update local state after successful deletion
+            const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
+            setBookedTables(updatedBookedTables);
+            localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
+            setCartItems([]);
+            alert(`Payment for Table ${tableNumber || "Order"} is completed and order removed from saved list.`);
+    
+            // Optionally, update SavedOrder component if open
+            // This assumes SavedOrder is a sibling or higher-level component
+            // If needed, use context or a global state to refresh SavedOrder
+        } catch (error) {
+            console.error("Error deleting order after payment:", error.message);
+            alert("Payment completed, but failed to remove order from saved list: " + error.message);
+        }
     };
 
     const handlePaymentSelection = async (method) => {
@@ -317,15 +338,15 @@ function Front() {
             mode_of_payment: method,
             amount: grandTotal.toFixed(2),
         };
-
+    
         console.log("Payment Details (Before Sending to Backend):", paymentDetails);
-
+    
         if (!paymentDetails || !paymentDetails.mode_of_payment) {
             console.error("Error: Payment Details are missing or incorrect!", paymentDetails);
             alert("Error: Payment method is not defined. Please try again.");
             return;
         }
-
+    
         const billDetails = {
             customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -350,10 +371,14 @@ function Front() {
                 email,
             }),
         };
-
+    
         try {
+            // Check if this is an existing saved order (from navigation state)
+            const existingOrder = location.state?.existingOrder;
+            const orderName = existingOrder?.name; // Get orderName if it exists
+    
             await handleSaveToBackend(paymentDetails, subTotal);
-
+    
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
             } else if (method === "CREDIT CARD") {
@@ -361,8 +386,15 @@ function Front() {
             } else if (method === "UPI") {
                 alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
             }
-
-            handlePaymentCompletion(tableNumber);
+    
+            // Only delete if it’s a saved order
+            if (orderName) {
+                await handlePaymentCompletion(orderName, tableNumber);
+            } else {
+                // For new orders, just clear the cart
+                setCartItems([]);
+                alert(`Payment for Table ${tableNumber || "Order"} is completed.`);
+            }
         } catch (error) {
             console.error("Error processing payment:", error);
             alert("Failed to process payment. Please try again.");
@@ -654,19 +686,14 @@ function Front() {
     };
 
     const saveOrder = async () => {
-        if (!customerName || cartItems.length === 0) {
-            alert("Please select a customer and add items to the cart.");
-            return;
-        }
-    
         const orderData = {
             customer_name: customerName,
-            table_number: tableNumber,
             phone_number: phoneNumber || "",
+            table_number: tableNumber || "",
             time: new Date().toISOString(),
             delivery_type: deliveryType || "DINE IN",
             items: cartItems.map(item => ({
-                item: item.item_code,
+                item: item.item_code || item.name,
                 quantity: item.quantity || 1,
                 price: item.basePrice || 0,
                 size_variants: item.selectedSize || "",
@@ -674,7 +701,7 @@ function Front() {
                 kitchen: item.kitchen || "Unknown",
             })),
             saved_addons: cartItems.flatMap(item =>
-                Object.entries(item.addonCounts || {}).map(([addonName, { quantity, kitchen }]) => ({
+                Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
                     addon_name: addonName,
                     addon_quantity: quantity,
                     addons_kitchen: kitchen || "Unknown",
@@ -690,11 +717,18 @@ function Front() {
                 }))
             ),
         };
-    
-        console.log("Order Data:", JSON.stringify(orderData, null, 2));
-    
+
+        const existingOrder = location.state?.existingOrder;
+        const apiMethod = existingOrder
+            ? "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_saved_order"
+            : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_saved_order";
+
+        if (existingOrder) {
+            orderData.name = existingOrder.name; // Include the order name for update
+        }
+
         try {
-            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_saved_order", {
+            const response = await fetch(apiMethod, {
                 method: "POST",
                 headers: {
                     "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
@@ -702,22 +736,20 @@ function Front() {
                 },
                 body: JSON.stringify(orderData),
             });
-    
+
+            if (!response.ok) throw new Error(`Failed to save order: ${response.status}`);
             const result = await response.json();
-            console.log("Raw Server Response:", result);
-    
-            // Check nested status inside result.message
-            if (!response.ok || (result.message && result.message.status !== "success")) {
-                const errorMessage = result.exception || (result.message && result.message.message) || result.message || "Unknown error from server";
-                throw new Error(`Failed to save order: ${response.status} - ${errorMessage}`);
-            }
-    
-            console.log("Saved Order Response:", result.message);
-            setCartItems([]);
-            alert(`Order for ${tableNumber ? `Table ${tableNumber}` : deliveryType} saved successfully!`);
+            console.log("Save Order Response:", result);
+
+            const responseData = result.message || result;
+            if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
+
+            alert(`Order ${existingOrder ? "updated" : "saved"} successfully!`);
+            setCartItems([]); // Clear cart after saving
+            navigate("/frontpage"); // Optional: redirect to see updated list
         } catch (error) {
             console.error("Error saving order:", error.message);
-            alert("Failed to save order: " + error.message);
+            alert(`Failed to save order: ${error.message}`);
         }
     };
 

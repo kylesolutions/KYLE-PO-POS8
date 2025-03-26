@@ -13,7 +13,7 @@ function Kitchen() {
     useEffect(() => {
         const fetchSavedOrders = async () => {
             try {
-                const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.kyle_items.manage_saved_orders?method=GET", {
+                const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
                     method: "GET",
                     headers: {
                         "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
