@@ -8,40 +8,131 @@ function Table() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { setCartItems } = useContext(UserContext);
-  const [activeOrders, setActiveOrders] = useState(() => {
-    const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
-    return savedOrders.map(order => order.tableNumber);
-  });
+  const [activeOrders, setActiveOrders] = useState([]);
 
   const navigate = useNavigate();
 
-  const handleTableClick = (tableNumber) => {
-    const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
-    const existingOrder = savedOrders.find(order => order.tableNumber === tableNumber);
+  useEffect(() => {
+    const fetchTables = async () => {
+      try {
+        const response = await fetch(
+          "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_table_details"
+        );
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        setTables(data.message || []);
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
 
-    if (existingOrder) {
-      const formattedCartItems = existingOrder.cartItems.map(item => ({
-        ...item,
-        basePrice: item.basePrice || 0,
-        quantity: item.quantity || 1,
-        addonCounts: item.addonCounts || {},
-        selectedCombos: item.selectedCombos || [],
-      }));
-      setCartItems(formattedCartItems);
-    } else {
+    const fetchActiveOrders = async () => {
+      try {
+        const response = await fetch("/api/resource/Saved Orders", {
+          method: "GET",
+          headers: {
+            "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) throw new Error("Failed to fetch saved orders");
+        const data = await response.json();
+        const activeTableNumbers = data.data.map(order => order.table_number);
+        setActiveOrders(activeTableNumbers);
+      } catch (error) {
+        console.error("Error fetching active orders:", error);
+      }
+    };
+
+    fetchTables();
+    fetchActiveOrders();
+  }, []);
+
+  const handleTableClick = async (tableNumber) => {
+    try {
+      const response = await fetch("/api/resource/Saved Orders", {
+        method: "GET",
+        headers: {
+          "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch saved orders");
+      const data = await response.json();
+      const existingOrder = data.data.find(order => order.table_number === tableNumber);
+
+      if (existingOrder) {
+        const formattedCartItems = existingOrder.items.map(item => ({
+          item_code: item.item,
+          name: item.item,
+          basePrice: item.price,
+          quantity: item.quantity,
+          selectedSize: item.size_variants,
+          selectedCustomVariant: item.other_variants,
+          kitchen: item.kitchen,
+          addonCounts: existingOrder.saved_addons
+            .filter(addon => addon.parent === existingOrder.name && addon.parentfield === "saved_addons")
+            .reduce((acc, addon) => ({
+              ...acc,
+              [addon.addon_name]: {
+                price: 0,
+                quantity: addon.addon_quantity,
+                kitchen: addon.addons_kitchen,
+              },
+            }), {}),
+          selectedCombos: existingOrder.saved_combos
+            .filter(combo => combo.parent === existingOrder.name && combo.parentfield === "saved_combos")
+            .map(combo => ({
+              name1: combo.combo_name,
+              item_code: combo.combo_name,
+              rate: 0,
+              quantity: combo.quantity,
+              selectedSize: combo.size_variants,
+              selectedCustomVariant: combo.other_variants,
+              kitchen: combo.combo_kitchen,
+            })),
+        }));
+        setCartItems(formattedCartItems);
+      } else {
+        setCartItems([]);
+      }
+      setActiveOrders(prevOrders => [...new Set([...prevOrders, tableNumber])]);
+      alert(`You selected Table ${tableNumber}`);
+      navigate("/frontpage", { state: { tableNumber, existingOrder } });
+    } catch (error) {
+      console.error("Error fetching order for table:", error);
       setCartItems([]);
+      navigate("/frontpage", { state: { tableNumber } });
     }
-    setActiveOrders(prevOrders => [...new Set([...prevOrders, tableNumber])]);
-
-    alert(`You selected Table ${tableNumber}`);
-    navigate("/frontpage", { state: { tableNumber, existingOrder } });
   };
 
-  const handleOrderCompletion = (tableNumber) => {
-    setActiveOrders(prevOrders => prevOrders.filter(order => order !== tableNumber));
-    const savedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
-    const updatedOrders = savedOrders.filter(order => order.tableNumber !== tableNumber);
-    localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
+  const handleOrderCompletion = async (tableNumber) => {
+    try {
+      const response = await fetch("/api/resource/Saved Orders", {
+        method: "GET",
+        headers: {
+          "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch saved orders");
+      const data = await response.json();
+      const orderToDelete = data.data.find(order => order.table_number === tableNumber);
+      if (orderToDelete) {
+        await fetch(`/api/resource/Saved Orders/${orderToDelete.name}`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+          },
+        });
+      }
+      setActiveOrders(prevOrders => prevOrders.filter(order => order !== tableNumber));
+    } catch (error) {
+      console.error("Error completing order:", error);
+    }
   };
 
   useEffect(() => {

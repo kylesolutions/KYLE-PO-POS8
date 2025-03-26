@@ -9,29 +9,19 @@ export const UserProvider = ({ children }) => {
     const [preparedItems, setPreparedItems] = useState([]);
     const [kitchenOrders, setKitchenOrders] = useState([]);
     const [bearerOrders, setBearerOrders] = useState([]);
-    const [savedOrders, setSavedOrders] = useState(() => {
-        const saved = localStorage.getItem("savedOrders");
-        return saved ? JSON.parse(saved) : [];
-    });
 
     useEffect(() => {
-        localStorage.setItem("savedOrders", JSON.stringify(savedOrders));
-    }, [savedOrders]);
-
-    useEffect(() => {
-        // Recalculate total price whenever cartItems change
         const newTotalPrice = cartItems.reduce((sum, item) => {
             const basePrice = item.basePrice || 0;
-            const customVariantPrice = item.customVariantPrice || 0; // Include custom variant price
+            const customVariantPrice = item.customVariantPrice || 0;
             const addonsPrice = Object.entries(item.addonCounts || {}).reduce(
                 (addonSum, [_, { price, quantity }]) => addonSum + (price * quantity),
                 0
             );
             const combosPrice = (item.selectedCombos || []).reduce((comboSum, combo) => {
-                const comboBasePrice = combo.combo_price || 0;
-                const variantPrice = combo.variantPrice || 0;
+                const comboBasePrice = combo.rate || 0;
                 const comboQuantity = combo.quantity || 1;
-                return comboSum + (comboBasePrice + variantPrice) * comboQuantity;
+                return comboSum + comboBasePrice * comboQuantity;
             }, 0);
             return sum + ((basePrice + customVariantPrice) * item.quantity) + addonsPrice + combosPrice;
         }, 0);
@@ -43,7 +33,6 @@ export const UserProvider = ({ children }) => {
             const existingItemIndex = prevItems.findIndex((cartItem) => cartItem.id === newItem.id);
             if (existingItemIndex !== -1) {
                 const existingItem = prevItems[existingItemIndex];
-                // Check if main item properties and combos match exactly
                 const combosMatch = JSON.stringify(
                     (existingItem.selectedCombos || []).map(c => ({
                         name1: c.name1,
@@ -59,13 +48,12 @@ export const UserProvider = ({ children }) => {
                         quantity: c.quantity
                     }))
                 );
-    
+
                 if (
                     existingItem.selectedCustomVariant === newItem.selectedCustomVariant &&
                     existingItem.selectedSize === newItem.selectedSize &&
                     combosMatch
                 ) {
-                    // Merge only if everything matches, including combos
                     const mergedAddonCounts = { ...existingItem.addonCounts };
                     Object.entries(newItem.addonCounts || {}).forEach(([addonName, { price, quantity }]) => {
                         if (mergedAddonCounts[addonName]) {
@@ -74,7 +62,7 @@ export const UserProvider = ({ children }) => {
                             mergedAddonCounts[addonName] = { price, quantity };
                         }
                     });
-    
+
                     const mergedCombos = [...(existingItem.selectedCombos || [])];
                     (newItem.selectedCombos || []).forEach((newCombo) => {
                         const comboMatchIndex = mergedCombos.findIndex(
@@ -90,7 +78,7 @@ export const UserProvider = ({ children }) => {
                             mergedCombos.push({ ...newCombo });
                         }
                     });
-    
+
                     return prevItems.map((cartItem, index) =>
                         index === existingItemIndex
                             ? {
@@ -103,7 +91,6 @@ export const UserProvider = ({ children }) => {
                     );
                 }
             }
-            // If no exact match (different custom variant, size, or combos), add as a new item
             return [...prevItems, newItem];
         });
     };
@@ -145,7 +132,7 @@ export const UserProvider = ({ children }) => {
     };
 
     const updateOrderStatus = (id, status) => {
-        setSavedOrders((prevOrders) =>
+        setKitchenOrders((prevOrders) =>
             prevOrders.map((order) => ({
                 ...order,
                 cartItems: order.cartItems.map((item) =>
@@ -167,25 +154,82 @@ export const UserProvider = ({ children }) => {
         setBearerOrders((prev) => prev.filter((item) => item.id !== id));
     };
 
-    const addKitchenOrder = (order) => {
+    const addKitchenOrder = async (order) => {
         const filteredCartItems = order.cartItems.filter((item) => item.category !== "Drinks");
         if (filteredCartItems.length === 0) {
             alert("No items to send to the kitchen as all items belong to the 'Drinks' category.");
             return;
         }
+
+        // Group items by kitchen
         const kitchenOrders = filteredCartItems.reduce((acc, item) => {
             const kitchen = item.kitchen || "Unknown Kitchen";
             if (!acc[kitchen]) acc[kitchen] = { ...order, cartItems: [] };
             acc[kitchen].cartItems.push(item);
             return acc;
         }, {});
-        const kitchenOrderArray = Object.values(kitchenOrders);
-        setSavedOrders((prevOrders) => {
-            const updatedOrders = [...prevOrders, ...kitchenOrderArray];
-            localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
-            return updatedOrders;
+
+        // Prepare and send each kitchen order to the backend
+        const kitchenOrderPromises = Object.entries(kitchenOrders).map(async ([kitchen, kitchenOrder]) => {
+            const orderData = {
+                customer_name: kitchenOrder.customerName || "Unknown",
+                table_number: kitchenOrder.tableNumber || "",
+                phone_number: kitchenOrder.phoneNumber || "",
+                time: new Date().toISOString(),
+                delivery_type: kitchenOrder.deliveryType || "DINE IN",
+                items: kitchenOrder.cartItems.map(item => ({
+                    item: item.item_code || item.name,
+                    quantity: item.quantity || 1,
+                    price: item.basePrice || 0,
+                    size_variants: item.selectedSize || "",
+                    other_variants: item.selectedCustomVariant || "",
+                    kitchen: item.kitchen || "Unknown",
+                })),
+                saved_addons: kitchenOrder.cartItems.flatMap(item =>
+                    Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
+                        addon_name: addonName,
+                        addon_quantity: quantity,
+                        addons_kitchen: kitchen || "Unknown",
+                    }))
+                ),
+                saved_combos: kitchenOrder.cartItems.flatMap(item =>
+                    (item.selectedCombos || []).map(combo => ({
+                        combo_name: combo.name1,
+                        size_variants: combo.selectedSize || "",
+                        quantity: combo.quantity || 1,
+                        other_variants: combo.selectedCustomVariant || "",
+                        combo_kitchen: combo.kitchen || "Unknown",
+                    }))
+                ),
+            };
+
+            try {
+                const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.manage_saved_orders?method=POST", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(orderData),
+                });
+                if (!response.ok) throw new Error("Failed to save kitchen order");
+                const result = await response.json();
+                if (result.status !== "success") throw new Error(result.message || "Unknown error");
+                console.log(`Kitchen order for ${kitchen} saved:`, result);
+                return kitchenOrder;
+            } catch (error) {
+                console.error(`Error saving kitchen order for ${kitchen}:`, error);
+                throw error;
+            }
         });
-        alert("Order successfully sent to the kitchen!");
+
+        try {
+            const savedKitchenOrders = await Promise.all(kitchenOrderPromises);
+            setKitchenOrders(savedKitchenOrders);
+            alert("Order successfully sent to the kitchen!");
+        } catch (error) {
+            alert("Failed to send some kitchen orders. Please try again.");
+        }
     };
 
     const informBearer = (item) => {
@@ -219,8 +263,6 @@ export const UserProvider = ({ children }) => {
                 kitchenOrders,
                 bearerOrders,
                 informBearer,
-                savedOrders,
-                setSavedOrders,
             }}
         >
             {children}

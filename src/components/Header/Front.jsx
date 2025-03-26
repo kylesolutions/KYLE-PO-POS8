@@ -599,6 +599,7 @@ function Front() {
         const customerExists = customers.some(
             (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
         );
+        
 
         if (!customerExists) {
             try {
@@ -652,41 +653,76 @@ function Front() {
         }
     };
 
-    useEffect(() => {
-        const saved = localStorage.getItem("savedOrders");
-        if (saved) {
-            setSavedOrders(JSON.parse(saved));
-        }
-    }, []);
-
-    const saveOrder = () => {
+    const saveOrder = async () => {
         if (!customerName || cartItems.length === 0) {
             alert("Please select a customer and add items to the cart.");
             return;
         }
-
-        const newOrder = {
-            customerName,
-            tableNumber,
-            phoneNumber,
-            cartItems,
-            timestamp: new Date().toISOString(),
-            ...(deliveryType !== "DINE IN" && { address, whatsappNumber, email }),
+    
+        const orderData = {
+            customer_name: customerName,
+            table_number: tableNumber,
+            phone_number: phoneNumber || "",
+            time: new Date().toISOString(),
+            delivery_type: deliveryType || "DINE IN",
+            items: cartItems.map(item => ({
+                item: item.item_code,
+                quantity: item.quantity || 1,
+                price: item.basePrice || 0,
+                size_variants: item.selectedSize || "",
+                other_variants: item.selectedCustomVariant || "",
+                kitchen: item.kitchen || "Unknown",
+            })),
+            saved_addons: cartItems.flatMap(item =>
+                Object.entries(item.addonCounts || {}).map(([addonName, { quantity, kitchen }]) => ({
+                    addon_name: addonName,
+                    addon_quantity: quantity,
+                    addons_kitchen: kitchen || "Unknown",
+                }))
+            ),
+            saved_combos: cartItems.flatMap(item =>
+                (item.selectedCombos || []).map(combo => ({
+                    combo_name: combo.name1,
+                    size_variants: combo.selectedSize || "",
+                    quantity: combo.quantity || 1,
+                    other_variants: combo.selectedCustomVariant || "",
+                    combo_kitchen: combo.kitchen || "Unknown",
+                }))
+            ),
         };
-
-        console.log("Saving Order:", newOrder);
-
-        setSavedOrders((prev) => {
-            const existingOrders = prev.filter((order) => order.tableNumber !== tableNumber);
-            const updatedOrders = [...existingOrders, newOrder];
-            localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
+    
+        console.log("Order Data:", JSON.stringify(orderData, null, 2));
+    
+        try {
+            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_saved_order", {
+                method: "POST",
+                headers: {
+                    "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(orderData),
+            });
+    
+            const result = await response.json();
+            console.log("Raw Server Response:", result);
+    
+            // Check nested status inside result.message
+            if (!response.ok || (result.message && result.message.status !== "success")) {
+                const errorMessage = result.exception || (result.message && result.message.message) || result.message || "Unknown error from server";
+                throw new Error(`Failed to save order: ${response.status} - ${errorMessage}`);
+            }
+    
+            console.log("Saved Order Response:", result.message);
             setCartItems([]);
-            return updatedOrders;
-        });
-        alert(`Order for ${tableNumber ? `Table ${tableNumber}` : deliveryType} saved successfully!`);
+            alert(`Order for ${tableNumber ? `Table ${tableNumber}` : deliveryType} saved successfully!`);
+        } catch (error) {
+            console.error("Error saving order:", error.message);
+            alert("Failed to save order: " + error.message);
+        }
     };
 
     const cancelCart = () => setCartItems([]);
+    
 
     return (
         <>

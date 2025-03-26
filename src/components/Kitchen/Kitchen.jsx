@@ -11,12 +11,68 @@ function Kitchen() {
     const [searchDate, setSearchDate] = useState("");
 
     useEffect(() => {
-        const storedOrders = JSON.parse(localStorage.getItem("savedOrders")) || [];
-        const storedPreparedItems = JSON.parse(localStorage.getItem("preparedItems")) || [];
-        const storedPickedUpItems = JSON.parse(localStorage.getItem("pickedUpItems")) || [];
-        setSavedOrders(storedOrders);
-        setPreparedItems(storedPreparedItems);
-        setPickedUpItems(storedPickedUpItems);
+        const fetchSavedOrders = async () => {
+            try {
+                const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.kyle_items.manage_saved_orders?method=GET", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                    },
+                });
+                if (!response.ok) throw new Error("Failed to fetch saved orders");
+                const data = await response.json();
+                if (data.status !== "success") throw new Error(data.message || "Unknown error");
+                const formattedOrders = data.data.map(order => ({
+                    name: order.name,
+                    customerName: order.customer_name,
+                    tableNumber: order.table_number,
+                    phoneNumber: order.phone_number,
+                    timestamp: order.time,
+                    deliveryType: order.delivery_type,
+                    cartItems: order.items.map(item => ({
+                        item_code: item.item,
+                        name: item.item,
+                        basePrice: item.price,
+                        quantity: item.quantity,
+                        selectedSize: item.size_variants,
+                        selectedCustomVariant: item.other_variants,
+                        kitchen: item.kitchen,
+                        addonCounts: order.saved_addons
+                            .filter(addon => addon.parent === order.name)
+                            .reduce((acc, addon) => ({
+                                ...acc,
+                                [addon.addon_name]: {
+                                    price: 0, // Price not stored in Saved Addon Items; adjust if needed
+                                    quantity: addon.addon_quantity,
+                                    kitchen: addon.addons_kitchen,
+                                },
+                            }), {}),
+                        selectedCombos: order.saved_combos
+                            .filter(combo => combo.parent === order.name)
+                            .map(combo => ({
+                                name1: combo.combo_name,
+                                item_code: combo.combo_name,
+                                rate: 0, // Price not stored in Saved Combo Items; adjust if needed
+                                quantity: combo.quantity,
+                                selectedSize: combo.size_variants,
+                                selectedCustomVariant: combo.other_variants,
+                                kitchen: combo.combo_kitchen,
+                            })),
+                    })),
+                }));
+                setSavedOrders(formattedOrders);
+
+                // Load preparedItems and pickedUpItems from localStorage (unchanged)
+                const storedPreparedItems = JSON.parse(localStorage.getItem("preparedItems")) || [];
+                const storedPickedUpItems = JSON.parse(localStorage.getItem("pickedUpItems")) || [];
+                setPreparedItems(storedPreparedItems);
+                setPickedUpItems(storedPickedUpItems);
+            } catch (error) {
+                console.error("Error fetching saved orders:", error);
+            }
+        };
+        fetchSavedOrders();
     }, []);
 
     // Extract unique kitchens from all items (main, addons, combos)
