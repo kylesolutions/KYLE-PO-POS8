@@ -20,10 +20,20 @@ function Kitchen() {
                         "Content-Type": "application/json",
                     },
                 });
-                if (!response.ok) throw new Error("Failed to fetch saved orders");
+                if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
                 const data = await response.json();
-                if (data.status !== "success") throw new Error(data.message || "Unknown error");
-                const formattedOrders = data.data.map(order => ({
+                console.log("Raw Server Response in Kitchen:", JSON.stringify(data, null, 2));
+
+                const result = data.message || data;
+                if (result.status !== "success") throw new Error(result.message || "Unknown error");
+
+                if (!result.data || !Array.isArray(result.data)) {
+                    console.warn("No orders found or invalid data structure:", result);
+                    setSavedOrders([]);
+                    return;
+                }
+
+                const formattedOrders = result.data.map(order => ({
                     name: order.name,
                     customerName: order.customer_name,
                     tableNumber: order.table_number,
@@ -35,41 +45,43 @@ function Kitchen() {
                         name: item.item,
                         basePrice: item.price,
                         quantity: item.quantity,
-                        selectedSize: item.size_variants,
-                        selectedCustomVariant: item.other_variants,
-                        kitchen: item.kitchen,
-                        addonCounts: order.saved_addons
-                            .filter(addon => addon.parent === order.name)
-                            .reduce((acc, addon) => ({
-                                ...acc,
-                                [addon.addon_name]: {
-                                    price: 0, // Price not stored in Saved Addon Items; adjust if needed
-                                    quantity: addon.addon_quantity,
-                                    kitchen: addon.addons_kitchen,
-                                },
-                            }), {}),
-                        selectedCombos: order.saved_combos
-                            .filter(combo => combo.parent === order.name)
-                            .map(combo => ({
-                                name1: combo.combo_name,
-                                item_code: combo.combo_name,
-                                rate: 0, // Price not stored in Saved Combo Items; adjust if needed
-                                quantity: combo.quantity,
-                                selectedSize: combo.size_variants,
-                                selectedCustomVariant: combo.other_variants,
-                                kitchen: combo.combo_kitchen,
-                            })),
+                        selectedSize: item.size_variants || "",
+                        selectedCustomVariant: item.other_variants || "",
+                        kitchen: item.kitchen || "Unknown",
+                        status: item.status || "Pending", // Ensure status is included
+                        addonCounts: order.saved_addons.reduce((acc, addon) => ({
+                            ...acc,
+                            [addon.addon_name]: {
+                                price: 0, // Adjust if price is available in backend
+                                quantity: addon.addon_quantity,
+                                kitchen: addon.addons_kitchen || "Unknown",
+                                status: addon.status || "Pending", // Add status for addons
+                            },
+                        }), {}),
+                        selectedCombos: order.saved_combos.map(combo => ({
+                            name1: combo.combo_name,
+                            item_code: combo.combo_name,
+                            rate: 0, // Adjust if rate is available in backend
+                            quantity: combo.quantity,
+                            selectedSize: combo.size_variants || "",
+                            selectedCustomVariant: combo.other_variants || "",
+                            kitchen: combo.combo_kitchen || "Unknown",
+                            status: combo.status || "Pending", // Add status for combos
+                        })),
                     })),
                 }));
+
+                console.log("Formatted Orders in Kitchen:", JSON.stringify(formattedOrders, null, 2));
                 setSavedOrders(formattedOrders);
 
-                // Load preparedItems and pickedUpItems from localStorage (unchanged)
+                // Load preparedItems and pickedUpItems from localStorage
                 const storedPreparedItems = JSON.parse(localStorage.getItem("preparedItems")) || [];
                 const storedPickedUpItems = JSON.parse(localStorage.getItem("pickedUpItems")) || [];
                 setPreparedItems(storedPreparedItems);
                 setPickedUpItems(storedPickedUpItems);
             } catch (error) {
                 console.error("Error fetching saved orders:", error);
+                setSavedOrders([]);
             }
         };
         fetchSavedOrders();
@@ -106,18 +118,18 @@ function Kitchen() {
                 type: "main",
                 customerName: order.customerName,
                 tableNumber: order.tableNumber,
-                id: item.item_code || `${order.tableNumber}-${item.name}`,
+                id: `${order.name}-${item.item_code || item.name}`, // Unique ID using order name
             })),
             ...order.cartItems.flatMap((item) =>
-                Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
+                Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen, status }]) => ({
                     name: addonName,
                     quantity,
                     kitchen: kitchen || "Unknown",
                     type: "addon",
                     customerName: order.customerName,
                     tableNumber: order.tableNumber,
-                    id: `${order.tableNumber}-${addonName}-${item.name}`,
-                    status: item.status,
+                    id: `${order.name}-${addonName}-${item.name}`,
+                    status,
                 }))
             ),
             ...order.cartItems.flatMap((item) =>
@@ -128,11 +140,10 @@ function Kitchen() {
                     type: "combo",
                     selectedSize: combo.selectedSize,
                     selectedCustomVariant: combo.selectedCustomVariant,
-                    image: combo.image, // Only use combo-specific image, no fallback to item.image
                     customerName: order.customerName,
                     tableNumber: order.tableNumber,
-                    id: `${order.tableNumber}-${combo.name1}-${item.name}`,
-                    status: combo.status || item.status,
+                    id: `${order.name}-${combo.name1}-${item.name}`,
+                    status: combo.status,
                 }))
             ),
         ]
@@ -147,12 +158,12 @@ function Kitchen() {
             ...order,
             cartItems: order.cartItems.map((item) => {
                 const updatedItem = { ...item };
-                if ((item.item_code || `${order.tableNumber}-${item.name}`) === id) {
+                if (`${order.name}-${item.item_code || item.name}` === id) {
                     updatedItem.status = newStatus;
                 }
-                if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.tableNumber}-${addonName}-${item.name}` === id)) {
+                if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.name}-${addonName}-${item.name}` === id)) {
                     const addonName = Object.keys(item.addonCounts).find(
-                        (key) => `${order.tableNumber}-${key}-${item.name}` === id
+                        (key) => `${order.name}-${key}-${item.name}` === id
                     );
                     updatedItem.addonCounts = {
                         ...item.addonCounts,
@@ -162,9 +173,9 @@ function Kitchen() {
                         },
                     };
                 }
-                if ((item.selectedCombos || []).some((combo) => `${order.tableNumber}-${combo.name1}-${item.name}` === id)) {
+                if ((item.selectedCombos || []).some((combo) => `${order.name}-${combo.name1}-${item.name}` === id)) {
                     updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
-                        `${order.tableNumber}-${combo.name1}-${item.name}` === id
+                        `${order.name}-${combo.name1}-${item.name}` === id
                             ? { ...combo, status: newStatus }
                             : combo
                     );
@@ -190,12 +201,12 @@ function Kitchen() {
             ...order,
             cartItems: order.cartItems.map((item) => {
                 const updatedItem = { ...item };
-                if ((item.item_code || `${order.tableNumber}-${item.name}`) === id) {
+                if (`${order.name}-${item.item_code || item.name}` === id) {
                     updatedItem.status = "PickedUp";
                 }
-                if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.tableNumber}-${addonName}-${item.name}` === id)) {
+                if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.name}-${addonName}-${item.name}` === id)) {
                     const addonName = Object.keys(item.addonCounts).find(
-                        (key) => `${order.tableNumber}-${key}-${item.name}` === id
+                        (key) => `${order.name}-${key}-${item.name}` === id
                     );
                     updatedItem.addonCounts = {
                         ...item.addonCounts,
@@ -205,9 +216,9 @@ function Kitchen() {
                         },
                     };
                 }
-                if ((item.selectedCombos || []).some((combo) => `${order.tableNumber}-${combo.name1}-${item.name}` === id)) {
+                if ((item.selectedCombos || []).some((combo) => `${order.name}-${combo.name1}-${item.name}` === id)) {
                     updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
-                        `${order.tableNumber}-${combo.name1}-${item.name}` === id
+                        `${order.name}-${combo.name1}-${item.name}` === id
                             ? { ...combo, status: "PickedUp" }
                             : combo
                     );
@@ -313,7 +324,7 @@ function Kitchen() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredItems.map((item, index) => (
+                            {filteredItems.map((item) => (
                                 <tr key={item.id} style={getRowStyle(item.status)}>
                                     <td>{item.customerName || "Unknown"}</td>
                                     <td>{item.tableNumber || "N/A"}</td>
@@ -327,7 +338,8 @@ function Kitchen() {
                                         )}
                                     </td>
                                     <td>
-                                        {(item.type === "main" || item.type === "combo") && item.image && (
+                                        {/* Image only for main items if available */}
+                                        {item.type === "main" && item.image && (
                                             <img
                                                 src={item.image}
                                                 className="rounded"

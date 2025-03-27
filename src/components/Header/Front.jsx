@@ -19,21 +19,13 @@ function Front() {
     const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
-    const { tableNumber, existingOrder, deliveryType } = state || {};
+    const { tableNumber: initialTableNumber, existingOrder, deliveryType: initialDeliveryType } = state || {};
 
     const userData = useSelector((state) => state.user);
     const company = userData.company || "POS8";
     const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount);
     const [taxTemplateName, setTaxTemplateName] = useState("");
     const [taxRate, setTaxRate] = useState(null);
-
-    useEffect(() => {
-        if (location.state) {
-            setPhoneNumber(location.state.phoneNumber || existingOrder?.phoneNumber || "");
-            setCustomerName(location.state.customerName || existingOrder?.customerName || "One Time Customer");
-            setIsPhoneNumberSet(!!(location.state.phoneNumber || existingOrder?.phoneNumber));
-        }
-    }, [location.state, existingOrder]);
 
     const [isPhoneNumberSet, setIsPhoneNumberSet] = useState(false);
     const [savedOrders, setSavedOrders] = useState([]);
@@ -45,12 +37,44 @@ function Front() {
     const navigate = useNavigate();
     const [bookedTables, setBookedTables] = useState([]);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
-    const allowedCustomerGroups = useSelector((state) => state.user.allowedCustomerGroups);
     const [address, setAddress] = useState("");
     const [whatsappNumber, setWhatsappNumber] = useState("");
     const [email, setEmail] = useState("");
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [tableNumber, setTableNumber] = useState(initialTableNumber || "");
+    const [deliveryType, setDeliveryType] = useState(initialDeliveryType || "DINE IN");
+
+    useEffect(() => {
+        if (location.state) {
+            const { customerName: stateCustomerName, phoneNumber: statePhoneNumber, tableNumber: stateTableNumber, existingOrder } = location.state;
+            const finalCustomerName = stateCustomerName || existingOrder?.customerName || "One Time Customer";
+            const finalPhoneNumber = statePhoneNumber || existingOrder?.phoneNumber || "";
+            const finalTableNumber = stateTableNumber || existingOrder?.tableNumber || "";
+            const finalDeliveryType = location.state.deliveryType || existingOrder?.deliveryType || "DINE IN";
+            const finalCartItems = existingOrder?.cartItems || [];
+    
+            console.log("State received in Front:", JSON.stringify(location.state, null, 2));
+            console.log("Setting states - customerName:", finalCustomerName, "phoneNumber:", finalPhoneNumber, "tableNumber:", finalTableNumber, "cartItems:", JSON.stringify(finalCartItems, null, 2));
+    
+            setCustomerName(finalCustomerName);
+            setCustomerInput(finalCustomerName);
+            setPhoneNumber(finalPhoneNumber);
+            setTableNumber(finalTableNumber);
+            setDeliveryType(finalDeliveryType);
+            setIsPhoneNumberSet(!!finalPhoneNumber);
+            setCartItems(finalCartItems); // Set cartItems from existingOrder
+        } else {
+            console.log("No location.state received, resetting states.");
+            setCustomerName("One Time Customer");
+            setCustomerInput("");
+            setPhoneNumber("");
+            setTableNumber("");
+            setDeliveryType("DINE IN");
+            setIsPhoneNumberSet(false);
+            setCartItems([]);
+        }
+    }, [location.state, setCartItems]);
 
     useEffect(() => {
         const fetchCompanyDetails = async () => {
@@ -309,19 +333,19 @@ function Front() {
                     "Content-Type": "application/json",
                 },
             });
-    
+
             if (!response.ok) throw new Error(`Failed to delete order: ${response.status}`);
             const result = await response.json();
             const responseData = result.message || result;
             if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
-    
+
             // Update local state after successful deletion
             const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
             setBookedTables(updatedBookedTables);
             localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
             setCartItems([]);
             alert(`Payment for Table ${tableNumber || "Order"} is completed and order removed from saved list.`);
-    
+
             // Optionally, update SavedOrder component if open
             // This assumes SavedOrder is a sibling or higher-level component
             // If needed, use context or a global state to refresh SavedOrder
@@ -338,15 +362,15 @@ function Front() {
             mode_of_payment: method,
             amount: grandTotal.toFixed(2),
         };
-    
+
         console.log("Payment Details (Before Sending to Backend):", paymentDetails);
-    
+
         if (!paymentDetails || !paymentDetails.mode_of_payment) {
             console.error("Error: Payment Details are missing or incorrect!", paymentDetails);
             alert("Error: Payment method is not defined. Please try again.");
             return;
         }
-    
+
         const billDetails = {
             customerName,
             phoneNumber: phoneNumber || "N/A",
@@ -371,14 +395,14 @@ function Front() {
                 email,
             }),
         };
-    
+
         try {
             // Check if this is an existing saved order (from navigation state)
             const existingOrder = location.state?.existingOrder;
             const orderName = existingOrder?.name; // Get orderName if it exists
-    
+
             await handleSaveToBackend(paymentDetails, subTotal);
-    
+
             if (method === "CASH") {
                 navigate("/cash", { state: { billDetails } });
             } else if (method === "CREDIT CARD") {
@@ -386,7 +410,7 @@ function Front() {
             } else if (method === "UPI") {
                 alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
             }
-    
+
             // Only delete if it’s a saved order
             if (orderName) {
                 await handlePaymentCompletion(orderName, tableNumber);
@@ -631,7 +655,7 @@ function Front() {
         const customerExists = customers.some(
             (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
         );
-        
+
 
         if (!customerExists) {
             try {
@@ -724,7 +748,7 @@ function Front() {
             : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_saved_order";
 
         if (existingOrder) {
-            orderData.name = existingOrder.name; // Include the order name for update
+            orderData.name = existingOrder.name;
         }
 
         try {
@@ -745,8 +769,9 @@ function Front() {
             if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
 
             alert(`Order ${existingOrder ? "updated" : "saved"} successfully!`);
-            setCartItems([]); // Clear cart after saving
-            navigate("/frontpage"); // Optional: redirect to see updated list
+            setCartItems([]);
+            setBookedTables(prev => [...new Set([...prev, tableNumber])]);
+            navigate("/table"); // Navigate to Table.jsx to refresh
         } catch (error) {
             console.error("Error saving order:", error.message);
             alert(`Failed to save order: ${error.message}`);
@@ -754,7 +779,6 @@ function Front() {
     };
 
     const cancelCart = () => setCartItems([]);
-    
 
     return (
         <>

@@ -1,4 +1,5 @@
 import React, { createContext, useEffect, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 const UserContext = createContext();
 
@@ -30,68 +31,52 @@ export const UserProvider = ({ children }) => {
 
     const addToCart = (newItem) => {
         setCartItems((prevItems) => {
-            const existingItemIndex = prevItems.findIndex((cartItem) => cartItem.id === newItem.id);
+            const existingItemIndex = prevItems.findIndex((cartItem) =>
+                cartItem.item_code === newItem.item_code &&
+                cartItem.selectedSize === newItem.selectedSize &&
+                cartItem.selectedCustomVariant === newItem.selectedCustomVariant
+            );
+    
             if (existingItemIndex !== -1) {
                 const existingItem = prevItems[existingItemIndex];
-                const combosMatch = JSON.stringify(
-                    (existingItem.selectedCombos || []).map(c => ({
-                        name1: c.name1,
-                        selectedSize: c.selectedSize,
-                        selectedCustomVariant: c.selectedCustomVariant,
-                        quantity: c.quantity
-                    }))
-                ) === JSON.stringify(
-                    (newItem.selectedCombos || []).map(c => ({
-                        name1: c.name1,
-                        selectedSize: c.selectedSize,
-                        selectedCustomVariant: c.selectedCustomVariant,
-                        quantity: c.quantity
-                    }))
-                );
-
-                if (
-                    existingItem.selectedCustomVariant === newItem.selectedCustomVariant &&
-                    existingItem.selectedSize === newItem.selectedSize &&
-                    combosMatch
-                ) {
-                    const mergedAddonCounts = { ...existingItem.addonCounts };
-                    Object.entries(newItem.addonCounts || {}).forEach(([addonName, { price, quantity }]) => {
-                        if (mergedAddonCounts[addonName]) {
-                            mergedAddonCounts[addonName].quantity += quantity;
-                        } else {
-                            mergedAddonCounts[addonName] = { price, quantity };
-                        }
-                    });
-
-                    const mergedCombos = [...(existingItem.selectedCombos || [])];
-                    (newItem.selectedCombos || []).forEach((newCombo) => {
-                        const comboMatchIndex = mergedCombos.findIndex(
-                            (combo) =>
-                                combo.name1 === newCombo.name1 &&
-                                combo.selectedSize === newCombo.selectedSize &&
-                                combo.selectedCustomVariant === newCombo.selectedCustomVariant
-                        );
-                        if (comboMatchIndex !== -1) {
-                            mergedCombos[comboMatchIndex].quantity =
-                                (mergedCombos[comboMatchIndex].quantity || 1) + (newCombo.quantity || 1);
-                        } else {
-                            mergedCombos.push({ ...newCombo });
-                        }
-                    });
-
-                    return prevItems.map((cartItem, index) =>
-                        index === existingItemIndex
-                            ? {
-                                  ...cartItem,
-                                  quantity: cartItem.quantity + newItem.quantity,
-                                  addonCounts: mergedAddonCounts,
-                                  selectedCombos: mergedCombos,
-                              }
-                            : cartItem
+                // Merge quantities and update addons/combos if present
+                const mergedAddonCounts = { ...existingItem.addonCounts };
+                Object.entries(newItem.addonCounts || {}).forEach(([addonName, { price, quantity, kitchen }]) => {
+                    if (mergedAddonCounts[addonName]) {
+                        mergedAddonCounts[addonName].quantity += quantity;
+                    } else {
+                        mergedAddonCounts[addonName] = { price, quantity, kitchen };
+                    }
+                });
+    
+                const mergedCombos = [...(existingItem.selectedCombos || [])];
+                (newItem.selectedCombos || []).forEach((newCombo) => {
+                    const comboMatchIndex = mergedCombos.findIndex(
+                        (combo) =>
+                            combo.name1 === newCombo.name1 &&
+                            combo.selectedSize === newCombo.selectedSize &&
+                            combo.selectedCustomVariant === newCombo.selectedCustomVariant
                     );
-                }
+                    if (comboMatchIndex !== -1) {
+                        mergedCombos[comboMatchIndex].quantity =
+                            (mergedCombos[comboMatchIndex].quantity || 1) + (newCombo.quantity || 1);
+                    } else {
+                        mergedCombos.push({ ...newCombo });
+                    }
+                });
+    
+                return prevItems.map((cartItem, index) =>
+                    index === existingItemIndex
+                        ? {
+                              ...cartItem,
+                              quantity: (cartItem.quantity || 1) + (newItem.quantity || 1),
+                              addonCounts: mergedAddonCounts,
+                              selectedCombos: mergedCombos,
+                          }
+                        : cartItem
+                );
             }
-            return [...prevItems, newItem];
+            return [...prevItems, { ...newItem, cartItemId: uuidv4() }]; // Add unique ID for new items
         });
     };
 
