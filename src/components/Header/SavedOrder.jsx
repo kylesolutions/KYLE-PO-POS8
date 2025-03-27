@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import UserContext from "../../Context/UserContext";
 import { useNavigate } from "react-router-dom";
 
-function SavedOrder() {
+function SavedOrder({ menuItems }) {
     const { setCartItems } = useContext(UserContext);
     const [orders, setOrders] = useState([]);
     const navigate = useNavigate();
@@ -20,7 +20,7 @@ function SavedOrder() {
             if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
 
             const data = await response.json();
-            console.log("Raw Server Response:", JSON.stringify(data, null, 2)); // Detailed log
+            console.log("Raw Server Response:", JSON.stringify(data, null, 2));
 
             const result = data.message || data;
             if (result.status !== "success") throw new Error(result.message || "Unknown error");
@@ -32,7 +32,86 @@ function SavedOrder() {
             }
 
             const formattedOrders = result.data.map(order => {
-                console.log("Processing order:", order); // Log each order
+                // Track which addons and combos have been assigned
+                let addonIndex = 0;
+                let comboIndex = 0;
+
+                const cartItems = order.items.map(item => {
+                    // Determine how many addons and combos belong to this item
+                    const menuItem = menuItems.find(m => m.item_code === item.item) || {};
+                    const expectedAddons = menuItem.addons?.length || 0; // Rough estimate; adjust if needed
+                    const expectedCombos = menuItem.combos?.length || 0; // Rough estimate; adjust if needed
+
+                    // Assign addons to this item
+                    const itemAddons = [];
+                    for (let i = 0; i < expectedAddons && addonIndex < order.saved_addons.length; i++) {
+                        itemAddons.push(order.saved_addons[addonIndex]);
+                        addonIndex++;
+                    }
+
+                    // Assign combos to this item
+                    const itemCombos = [];
+                    for (let i = 0; i < expectedCombos && comboIndex < order.saved_combos.length; i++) {
+                        itemCombos.push(order.saved_combos[comboIndex]);
+                        comboIndex++;
+                    }
+
+                    return {
+                        item_code: item.item,
+                        name: item.item,
+                        basePrice: item.price,
+                        quantity: item.quantity,
+                        selectedSize: item.size_variants,
+                        selectedCustomVariant: item.other_variants,
+                        kitchen: item.kitchen || "Unknown",
+                        addonCounts: itemAddons.reduce((acc, addon) => ({
+                            ...acc,
+                            [addon.addon_name]: {
+                                price: addon.addons_price || 0,
+                                quantity: addon.addon_quantity,
+                                kitchen: addon.addons_kitchen || "Unknown",
+                            },
+                        }), {}),
+                        selectedCombos: itemCombos.map(combo => ({
+                            name1: combo.combo_name,
+                            item_code: combo.combo_name,
+                            rate: (combo.size_variants_price || 0) + (combo.other_variants_price || 0),
+                            quantity: combo.quantity || 1,
+                            selectedSize: combo.size_variants,
+                            selectedCustomVariant: combo.other_variants,
+                            kitchen: combo.combo_kitchen || "Unknown",
+                        })),
+                    };
+                });
+
+                // If there are leftover addons or combos, assign them to the last item (fallback)
+                if (addonIndex < order.saved_addons.length || comboIndex < order.saved_combos.length) {
+                    const lastItem = cartItems[cartItems.length - 1];
+                    lastItem.addonCounts = {
+                        ...lastItem.addonCounts,
+                        ...order.saved_addons.slice(addonIndex).reduce((acc, addon) => ({
+                            ...acc,
+                            [addon.addon_name]: {
+                                price: addon.addons_price || 0,
+                                quantity: addon.addon_quantity,
+                                kitchen: addon.addons_kitchen || "Unknown",
+                            },
+                        }), {}),
+                    };
+                    lastItem.selectedCombos = [
+                        ...lastItem.selectedCombos,
+                        ...order.saved_combos.slice(comboIndex).map(combo => ({
+                            name1: combo.combo_name,
+                            item_code: combo.combo_name,
+                            rate: (combo.size_variants_price || 0) + (combo.other_variants_price || 0),
+                            quantity: combo.quantity || 1,
+                            selectedSize: combo.size_variants,
+                            selectedCustomVariant: combo.other_variants,
+                            kitchen: combo.combo_kitchen || "Unknown",
+                        })),
+                    ];
+                }
+
                 return {
                     name: order.name,
                     customerName: order.customer_name,
@@ -40,46 +119,21 @@ function SavedOrder() {
                     phoneNumber: order.phone_number,
                     timestamp: order.time,
                     deliveryType: order.delivery_type,
-                    cartItems: order.items.map(item => ({
-                        item_code: item.item,
-                        name: item.item,
-                        basePrice: item.price,
-                        quantity: item.quantity,
-                        selectedSize: item.size_variants,
-                        selectedCustomVariant: item.other_variants,
-                        kitchen: item.kitchen,
-                        addonCounts: order.saved_addons.reduce((acc, addon) => ({
-                            ...acc,
-                            [addon.addon_name]: {
-                                price: 0, // Adjust if price is available
-                                quantity: addon.addon_quantity,
-                                kitchen: addon.addons_kitchen,
-                            },
-                        }), {}),
-                        selectedCombos: order.saved_combos.map(combo => ({
-                            name1: combo.combo_name,
-                            item_code: combo.combo_name,
-                            rate: 0, // Adjust if rate is available
-                            quantity: combo.quantity,
-                            selectedSize: combo.size_variants,
-                            selectedCustomVariant: combo.other_variants,
-                            kitchen: combo.combo_kitchen,
-                        })),
-                    })),
+                    cartItems,
                 };
             });
 
-            console.log("Formatted orders:", formattedOrders);
+            console.log("Formatted orders:", JSON.stringify(formattedOrders, null, 2));
             setOrders(formattedOrders);
         } catch (error) {
             console.error("Error fetching saved orders:", error.message);
-            setOrders([]); // Ensure blank state on error
+            setOrders([]);
         }
     };
 
     useEffect(() => {
         fetchSavedOrders();
-    }, []);
+    }, [menuItems]);
 
     const handleDeleteOrder = async (orderName) => {
         const confirmed = window.confirm("Are you sure you want to delete this order?");
@@ -176,7 +230,7 @@ function SavedOrder() {
                                                     {item.name}
                                                     {item.selectedSize && ` (${item.selectedSize})`}
                                                     {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                                                    - Qty: {item.quantity}
+                                                    - Qty: {item.quantity} - ${(item.basePrice * item.quantity).toFixed(2)}
                                                 </div>
                                                 {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                     <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
@@ -195,7 +249,7 @@ function SavedOrder() {
                                                                 {(combo.selectedSize || combo.selectedCustomVariant) && (
                                                                     ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
                                                                 )}
-                                                                - ${(combo.rate || 0) * (combo.quantity || 1).toFixed(2)}
+                                                                - ${(combo.rate * (combo.quantity || 1)).toFixed(2)}
                                                             </li>
                                                         ))}
                                                     </ul>

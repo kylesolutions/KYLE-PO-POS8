@@ -729,28 +729,53 @@ function Front() {
                     addon_name: addonName,
                     addon_quantity: quantity,
                     addons_kitchen: kitchen || "Unknown",
+                    addons_price: parseFloat(price) || 0,
                 }))
             ),
             saved_combos: cartItems.flatMap(item =>
-                (item.selectedCombos || []).map(combo => ({
-                    combo_name: combo.name1,
-                    size_variants: combo.selectedSize || "",
-                    quantity: combo.quantity || 1,
-                    other_variants: combo.selectedCustomVariant || "",
-                    combo_kitchen: combo.kitchen || "Unknown",
-                }))
+                (item.selectedCombos || []).map(combo => {
+                    const menuItem = menuItems.find(m => m.item_code === item.item_code);
+                    const comboData = menuItem?.combos.find(c => c.name1 === combo.name1) || {};
+                    const baseComboPrice = parseFloat(comboData.combo_price) || 0;
+    
+                    let sizeVariantPrice = 0;
+                    if (combo.selectedSize && comboData.variants?.length > 0) {
+                        const variant = comboData.variants.find(v => v.type_of_variants === combo.selectedSize);
+                        sizeVariantPrice = variant ? parseFloat(variant.price || variant.price_list_rate) || 0 : 0;
+                    } else if (!combo.selectedSize && !combo.selectedCustomVariant) {
+                        // If no variants are selected, use the base combo price
+                        sizeVariantPrice = baseComboPrice;
+                    }
+    
+                    let otherVariantPrice = 0;
+                    if (combo.selectedCustomVariant) {
+                        // If only custom variant is selected, calculate additional price beyond base and size
+                        otherVariantPrice = (parseFloat(combo.rate) || 0);
+                        if (otherVariantPrice < 0) otherVariantPrice = 0; // Ensure no negative prices
+                    }
+    
+                    return {
+                        combo_name: combo.name1,
+                        size_variants: combo.selectedSize || "",
+                        quantity: combo.quantity || 1,
+                        other_variants: combo.selectedCustomVariant || "",
+                        combo_kitchen: combo.kitchen || "Unknown",
+                        size_variants_price: sizeVariantPrice,
+                        other_variants_price: otherVariantPrice,
+                    };
+                })
             ),
         };
-
+    
         const existingOrder = location.state?.existingOrder;
         const apiMethod = existingOrder
             ? "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_saved_order"
             : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_saved_order";
-
+    
         if (existingOrder) {
             orderData.name = existingOrder.name;
         }
-
+    
         try {
             const response = await fetch(apiMethod, {
                 method: "POST",
@@ -760,18 +785,18 @@ function Front() {
                 },
                 body: JSON.stringify(orderData),
             });
-
+    
             if (!response.ok) throw new Error(`Failed to save order: ${response.status}`);
             const result = await response.json();
             console.log("Save Order Response:", result);
-
+    
             const responseData = result.message || result;
             if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
-
+    
             alert(`Order ${existingOrder ? "updated" : "saved"} successfully!`);
             setCartItems([]);
             setBookedTables(prev => [...new Set([...prev, tableNumber])]);
-            navigate("/table"); // Navigate to Table.jsx to refresh
+            navigate("/table");
         } catch (error) {
             console.error("Error saving order:", error.message);
             alert(`Failed to save order: ${error.message}`);
@@ -814,7 +839,7 @@ function Front() {
                                 </div>
                             ))}
                         </div>
-                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} />
+                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={menuItems} />
                     </div>
 
                     <div className="col-lg-5 col-xl-4 row1 px-4">
