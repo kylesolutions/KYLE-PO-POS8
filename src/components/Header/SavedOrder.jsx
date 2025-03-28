@@ -2,84 +2,133 @@ import { useContext, useEffect, useState } from "react";
 import UserContext from "../../Context/UserContext";
 import { useNavigate } from "react-router-dom";
 
-function SavedOrder({ menuItems }) {
+function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
     const { setCartItems } = useContext(UserContext);
     const [orders, setOrders] = useState([]);
+    const [allItems, setAllItems] = useState([]);  // Add state for allItems
     const navigate = useNavigate();
+
+    // Fetch all items (same as FoodDetails.jsx)
+    const fetchAllItems = async () => {
+        try {
+            const response = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kyle_item_details",
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            const data = await response.json();
+            console.log("Raw Items API Response:", JSON.stringify(data, null, 2));
+
+            let itemList = Array.isArray(data) ? data : (data.message && Array.isArray(data.message) ? data.message : []);
+            if (!itemList.length) throw new Error("Invalid items data structure");
+
+            const baseUrl = "http://109.199.100.136:6060/";
+            setAllItems(
+                itemList.map((item) => ({
+                    ...item,
+                    variants: item.variants ? item.variants.map((v) => ({
+                        type_of_variants: v.type_of_variants,
+                        item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,  // Ensure variant item_code is present
+                        variant_price: parseFloat(v.variants_price) || 0,
+                    })) : [],
+                    price_list_rate: parseFloat(item.price_list_rate) || 0,
+                    image: item.image ? `${baseUrl}${item.image}` : "default-image.jpg",
+                    custom_kitchen: item.custom_kitchen || "Unknown",
+                    item_name: item.item_name || item.name,
+                    has_variants: item.has_variants || false,
+                }))
+            );
+        } catch (error) {
+            console.error("Error fetching all items:", error);
+            setAllItems([]);
+        }
+    };
 
     const fetchSavedOrders = async () => {
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
                 method: "GET",
                 headers: {
-                    "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
                     "Content-Type": "application/json",
                 },
             });
-    
+
             if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
-    
+
             const data = await response.json();
             console.log("Raw Server Response:", JSON.stringify(data, null, 2));
-    
+
             const result = data.message || data;
             if (result.status !== "success") throw new Error(result.message || "Unknown error");
-    
+
             if (!result.data || !Array.isArray(result.data)) {
                 console.warn("No orders found or invalid data structure:", result);
                 setOrders([]);
                 return;
             }
-    
+
             const formattedOrders = result.data.map(order => {
                 let addonIndex = 0;
                 let comboIndex = 0;
-    
+
                 const cartItems = order.items.map(item => {
-                    const menuItem = menuItems.find(m => m.item_code === item.item) || {};
+                    const menuItem = allItems.find(m => m.item_code === item.item) || {};
                     const expectedAddons = menuItem.addons?.length || 0;
                     const expectedCombos = menuItem.combos?.length || 0;
-    
+
                     const itemAddons = [];
                     for (let i = 0; i < expectedAddons && addonIndex < order.saved_addons.length; i++) {
                         itemAddons.push(order.saved_addons[addonIndex]);
                         addonIndex++;
                     }
-    
+
                     const itemCombos = [];
                     for (let i = 0; i < expectedCombos && comboIndex < order.saved_combos.length; i++) {
-                        itemCombos.push(order.saved_combos[comboIndex]);
+                        const combo = order.saved_combos[comboIndex];
+                        const comboItem = allItems.find(m => m.item_name === combo.combo_name || m.item_code === combo.combo_item_code) || {};
+                        // Prioritize combo_item_code from backend, fallback to variant resolution
+                        const resolvedComboItemCode = combo.combo_item_code || (comboItem.has_variants && combo.size_variants
+                            ? (allItems.find(i => i.item_code === `${comboItem.item_code}-${combo.size_variants}`)?.item_code || combo.combo_name)
+                            : combo.combo_name);
+                        itemCombos.push({
+                            name1: combo.combo_name,
+                            item_code: resolvedComboItemCode,
+                            rate: parseFloat(combo.combo_rate) || 0,
+                            quantity: combo.quantity || 1,
+                            selectedSize: combo.size_variants || null,
+                            selectedCustomVariant: combo.other_variants || null,
+                            kitchen: combo.combo_kitchen || comboItem.custom_kitchen || "Unknown",
+                        });
                         comboIndex++;
                     }
-    
+
                     return {
-                        item_code: item.item, // This should now be a variant item_code (e.g., FRENCH_FRIES-M)
-                        name: menuItem.item_name || item.item, // Use actual name from menuItems if available
-                        basePrice: item.price,
-                        quantity: item.quantity,
-                        selectedSize: item.size_variants,
-                        selectedCustomVariant: item.other_variants,
-                        kitchen: item.kitchen || "Unknown",
+                        item_code: item.item,
+                        name: menuItem.item_name || item.item,
+                        basePrice: parseFloat(item.price) || 0,
+                        quantity: item.quantity || 1,
+                        selectedSize: item.size_variants || null,
+                        selectedCustomVariant: item.other_variants || null,
+                        kitchen: item.kitchen || menuItem.custom_kitchen || "Unknown",
                         addonCounts: itemAddons.reduce((acc, addon) => ({
                             ...acc,
                             [addon.addon_name]: {
-                                price: addon.addons_price || 0,
-                                quantity: addon.addon_quantity,
+                                price: parseFloat(addon.addons_price) || 0,
+                                quantity: addon.addon_quantity || 0,
                                 kitchen: addon.addons_kitchen || "Unknown",
                             },
                         }), {}),
-                        selectedCombos: itemCombos.map(combo => ({
-                            name1: combo.combo_name,
-                            item_code: combo.combo_name, // Could also resolve combo variant here if needed
-                            rate: parseFloat(combo.combo_rate) || 0,
-                            quantity: combo.quantity || 1,
-                            selectedSize: combo.size_variants,
-                            selectedCustomVariant: combo.other_variants,
-                            kitchen: combo.combo_kitchen || "Unknown",
-                        })),
+                        selectedCombos: itemCombos,
                     };
                 });
-    
+
                 if (addonIndex < order.saved_addons.length || comboIndex < order.saved_combos.length) {
                     const lastItem = cartItems[cartItems.length - 1];
                     lastItem.addonCounts = {
@@ -87,26 +136,32 @@ function SavedOrder({ menuItems }) {
                         ...order.saved_addons.slice(addonIndex).reduce((acc, addon) => ({
                             ...acc,
                             [addon.addon_name]: {
-                                price: addon.addons_price || 0,
-                                quantity: addon.addon_quantity,
+                                price: parseFloat(addon.addons_price) || 0,
+                                quantity: addon.addon_quantity || 0,
                                 kitchen: addon.addons_kitchen || "Unknown",
                             },
                         }), {}),
                     };
                     lastItem.selectedCombos = [
                         ...lastItem.selectedCombos,
-                        ...order.saved_combos.slice(comboIndex).map(combo => ({
-                            name1: combo.combo_name,
-                            item_code: combo.combo_name,
-                            rate: parseFloat(combo.combo_rate) || 0,
-                            quantity: combo.quantity || 1,
-                            selectedSize: combo.size_variants,
-                            selectedCustomVariant: combo.other_variants,
-                            kitchen: combo.combo_kitchen || "Unknown",
-                        })),
+                        ...order.saved_combos.slice(comboIndex).map(combo => {
+                            const comboItem = allItems.find(m => m.item_name === combo.combo_name || m.item_code === combo.combo_item_code) || {};
+                            const resolvedComboItemCode = combo.combo_item_code || (comboItem.has_variants && combo.size_variants
+                                ? (allItems.find(i => i.item_code === `${comboItem.item_code}-${combo.size_variants}`)?.item_code || combo.combo_name)
+                                : combo.combo_name);
+                            return {
+                                name1: combo.combo_name,
+                                item_code: resolvedComboItemCode,
+                                rate: parseFloat(combo.combo_rate) || 0,
+                                quantity: combo.quantity || 1,
+                                selectedSize: combo.size_variants || null,
+                                selectedCustomVariant: combo.other_variants || null,
+                                kitchen: combo.combo_kitchen || comboItem.custom_kitchen || "Unknown",
+                            };
+                        }),
                     ];
                 }
-    
+
                 return {
                     name: order.name,
                     customerName: order.customer_name,
@@ -117,7 +172,7 @@ function SavedOrder({ menuItems }) {
                     cartItems,
                 };
             });
-    
+
             console.log("Formatted orders:", JSON.stringify(formattedOrders, null, 2));
             setOrders(formattedOrders);
         } catch (error) {
@@ -127,8 +182,14 @@ function SavedOrder({ menuItems }) {
     };
 
     useEffect(() => {
-        fetchSavedOrders();
-    }, [menuItems]);
+        fetchAllItems();  // Fetch items first
+    }, []);
+
+    useEffect(() => {
+        if (allItems.length > 0) {
+            fetchSavedOrders();  // Fetch orders once items are loaded
+        }
+    }, [allItems]);
 
     const handleDeleteOrder = async (orderName) => {
         const confirmed = window.confirm("Are you sure you want to delete this order?");
@@ -137,7 +198,7 @@ function SavedOrder({ menuItems }) {
                 const response = await fetch(`/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_saved_order?doc_name=${orderName}`, {
                     method: "GET",
                     headers: {
-                        "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
                         "Content-Type": "application/json",
                     },
                 });
@@ -159,10 +220,10 @@ function SavedOrder({ menuItems }) {
     const handleSelectOrder = (order) => {
         const formattedCartItems = order.cartItems.map(item => ({
             ...item,
-            item_code: item.item_code, // Already a variant item_code from fetchSavedOrders
+            item_code: item.item_code,
             name: item.name,
             basePrice: item.basePrice || 0,
-            customVariantPrice: item.customVariantPrice || 0, // This may not be set; could be calculated if needed
+            customVariantPrice: item.customVariantPrice || 0,
             quantity: item.quantity || 1,
             selectedSize: item.selectedSize || null,
             selectedCustomVariant: item.selectedCustomVariant || null,
@@ -170,7 +231,7 @@ function SavedOrder({ menuItems }) {
             selectedCombos: (item.selectedCombos || []).map(combo => ({
                 ...combo,
                 name1: combo.name1,
-                item_code: combo.item_code, // Could resolve combo variant here if needed
+                item_code: combo.item_code, // Already resolved in fetchSavedOrders
                 rate: combo.rate || 0,
                 quantity: combo.quantity || 1,
                 selectedSize: combo.selectedSize || null,

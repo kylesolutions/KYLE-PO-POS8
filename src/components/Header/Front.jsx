@@ -10,7 +10,7 @@ import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 
 function Front() {
-    const [menuItems, setMenuItems] = useState([]);
+    const [allItems, setAllItems] = useState([]); // Changed from menuItems to allItems
     const [filteredItems, setFilteredItems] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState("null");
     const [selectedItem, setSelectedItem] = useState(null);
@@ -53,17 +53,17 @@ function Front() {
             const finalTableNumber = stateTableNumber || existingOrder?.tableNumber || "";
             const finalDeliveryType = location.state.deliveryType || existingOrder?.deliveryType || "DINE IN";
             const finalCartItems = existingOrder?.cartItems || [];
-    
+
             console.log("State received in Front:", JSON.stringify(location.state, null, 2));
             console.log("Setting states - customerName:", finalCustomerName, "phoneNumber:", finalPhoneNumber, "tableNumber:", finalTableNumber, "cartItems:", JSON.stringify(finalCartItems, null, 2));
-    
+
             setCustomerName(finalCustomerName);
             setCustomerInput(finalCustomerName);
             setPhoneNumber(finalPhoneNumber);
             setTableNumber(finalTableNumber);
             setDeliveryType(finalDeliveryType);
             setIsPhoneNumberSet(!!finalPhoneNumber);
-            setCartItems(finalCartItems); // Set cartItems from existingOrder
+            setCartItems(finalCartItems);
         } else {
             console.log("No location.state received, resetting states.");
             setCustomerName("One Time Customer");
@@ -175,7 +175,7 @@ function Front() {
                 });
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
-                console.log('API Response:', data);
+                console.log('API Response (allItems):', JSON.stringify(data, null, 2));
 
                 if (data && Array.isArray(data.message)) {
                     const baseUrl = 'http://109.199.100.136:6060/';
@@ -186,7 +186,11 @@ function Front() {
                         image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
                         price: parseFloat(item.price_list_rate) || 0,
                         item_code: item.item_code,
-                        variants: item.variants || [],
+                        variants: item.variants ? item.variants.map((v) => ({
+                            type_of_variants: v.type_of_variants,
+                            item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
+                            variant_price: parseFloat(v.variants_price) || 0,
+                        })) : [],
                         customVariants: item.custom_variant_applicable ? ['Spicy', 'Non-Spicy'] : [],
                         addons: (item.addons || []).map((addon) => ({
                             name: addon.name || addon.item_name || "Unnamed Addon",
@@ -202,11 +206,12 @@ function Front() {
                         ingredients: item.ingredients || [],
                         kitchen: item.custom_kitchen || "Unknown",
                         type: item.type || "regular",
+                        has_variants: item.has_variants || false,
                     }));
 
-                    setMenuItems(formattedItems);
+                    setAllItems(formattedItems); // Changed from setMenuItems
 
-                    const initialFilteredMenu = formattedItems.filter((item) => {
+                    const initialFilteredItems = formattedItems.filter((item) => {
                         const isMainItem = (item.variants.length > 0) ||
                             !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
                         return isMainItem &&
@@ -214,7 +219,7 @@ function Front() {
                             item.type !== "addon" &&
                             item.type !== "combo";
                     });
-                    setFilteredItems(initialFilteredMenu);
+                    setFilteredItems(initialFilteredItems);
 
                     const uniqueCategories = [...new Set(formattedItems.map((item) => item.category.toLowerCase()))];
                     setCategories(uniqueCategories);
@@ -230,7 +235,7 @@ function Front() {
     }, [allowedItemGroups]);
 
     const handleFilter = (category) => {
-        const filtered = menuItems.filter(item => {
+        const filtered = allItems.filter(item => { // Changed from menuItems
             const isMainItem = (item.variants.length > 0) ||
                 !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
             return isMainItem &&
@@ -325,9 +330,8 @@ function Front() {
 
     const handlePaymentCompletion = async (orderName, tableNumber) => {
         try {
-            // Call the backend to delete the saved order
             const response = await fetch(`/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_saved_order?doc_name=${orderName}`, {
-                method: "GET", // Note: Consider switching to POST if required by backend
+                method: "GET",
                 headers: {
                     "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
                     "Content-Type": "application/json",
@@ -339,16 +343,11 @@ function Front() {
             const responseData = result.message || result;
             if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
 
-            // Update local state after successful deletion
             const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
             setBookedTables(updatedBookedTables);
             localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
             setCartItems([]);
             alert(`Payment for Table ${tableNumber || "Order"} is completed and order removed from saved list.`);
-
-            // Optionally, update SavedOrder component if open
-            // This assumes SavedOrder is a sibling or higher-level component
-            // If needed, use context or a global state to refresh SavedOrder
         } catch (error) {
             console.error("Error deleting order after payment:", error.message);
             alert("Payment completed, but failed to remove order from saved list: " + error.message);
@@ -397,9 +396,8 @@ function Front() {
         };
 
         try {
-            // Check if this is an existing saved order (from navigation state)
             const existingOrder = location.state?.existingOrder;
-            const orderName = existingOrder?.name; // Get orderName if it exists
+            const orderName = existingOrder?.name;
 
             await handleSaveToBackend(paymentDetails, subTotal);
 
@@ -411,11 +409,9 @@ function Front() {
                 alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
             }
 
-            // Only delete if it’s a saved order
             if (orderName) {
                 await handlePaymentCompletion(orderName, tableNumber);
             } else {
-                // For new orders, just clear the cart
                 setCartItems([]);
                 alert(`Payment for Table ${tableNumber || "Order"} is completed.`);
             }
@@ -438,19 +434,26 @@ function Front() {
         }
 
         const resolveVariantItemCode = (itemCode, selectedSize) => {
-            const itemData = menuItems.find((m) => m.item_code === itemCode);
-            if (itemData && itemData.variants.length > 0) {
-                if (!selectedSize) {
-                    console.warn(`Item ${itemCode} is a template with variants but no size selected. Defaulting to 'M'.`);
-                    return itemData.variants.find(v => v.type_of_variants === "M")?.item_code || itemData.variants[0].item_code || itemCode;
-                }
-                const variant = itemData.variants.find((v) => v.type_of_variants === selectedSize);
-                return variant ? variant.item_code : itemCode;
+            const itemData = allItems.find((m) => m.item_code === itemCode); // Changed from menuItems
+            if (!itemData) return itemCode;
+            if (itemData.has_variants && selectedSize) {
+                const variantItem = allItems.find((i) => i.item_code === `${itemData.item_code}-${selectedSize}`);
+                return variantItem ? variantItem.item_code : itemCode;
             }
             return itemCode;
         };
 
-        const allItems = cartItems.flatMap((item) => {
+        const resolveComboVariantItemCode = (comboName, selectedSize) => {
+            const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName); // Changed from menuItems
+            if (!comboItem) return comboName;
+            if (comboItem.has_variants && selectedSize) {
+                const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
+                return variantItem ? variantItem.item_code : comboItem.item_code;
+            }
+            return comboItem.item_code;
+        };
+
+        const allCartItems = cartItems.flatMap((item) => {
             const variantPrice = parseFloat(item.customVariantPrice) || 0;
             let resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
             console.log(`Resolved item_code for ${item.name}: ${resolvedItemCode}`);
@@ -480,7 +483,7 @@ function Front() {
             }));
 
             const comboItems = (item.selectedCombos || []).map((combo) => {
-                const resolvedComboItemCode = resolveVariantItemCode(combo.item_code, combo.selectedSize);
+                const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
                 console.log(`Resolved combo item_code for ${combo.name1}: ${resolvedComboItemCode}`);
 
                 return {
@@ -498,7 +501,7 @@ function Front() {
             return [mainItem, ...addonItems, ...comboItems];
         });
 
-        if (allItems.length === 0) {
+        if (allCartItems.length === 0) {
             console.error("Error: No items in the cart.");
             alert("Error: Cannot create an order with no items.");
             return;
@@ -529,7 +532,7 @@ function Front() {
                 mode_of_payment: paymentDetails.mode_of_payment,
                 amount: grandTotal.toFixed(2),
             }],
-            items: allItems,
+            items: allCartItems,
             ...(deliveryType !== "DINE IN" && {
                 custom_address: address || "",
                 custom_whatsapp_number: whatsappNumber || "",
@@ -656,7 +659,6 @@ function Front() {
             (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
         );
 
-
         if (!customerExists) {
             try {
                 const customerData = {
@@ -711,18 +713,25 @@ function Front() {
 
     const saveOrder = async () => {
         const resolveVariantItemCode = (itemCode, selectedSize) => {
-            const menuItem = menuItems.find((m) => m.item_code === itemCode);
-            if (menuItem && menuItem.variants.length > 0) {
-                if (!selectedSize) {
-                    console.warn(`Item ${itemCode} is a template with variants but no size selected. Defaulting to 'M'.`);
-                    return menuItem.variants.find(v => v.type_of_variants === "M")?.item_code || menuItem.variants[0].item_code || itemCode;
-                }
-                const variant = menuItem.variants.find((v) => v.type_of_variants === selectedSize);
-                return variant ? variant.item_code : itemCode;
+            const menuItem = allItems.find((m) => m.item_code === itemCode); // Changed from menuItems
+            if (!menuItem) return itemCode;
+            if (menuItem.has_variants && selectedSize) {
+                const variantItem = allItems.find((i) => i.item_code === `${menuItem.item_code}-${selectedSize}`);
+                return variantItem ? variantItem.item_code : itemCode;
             }
             return itemCode;
         };
-    
+
+        const resolveComboVariantItemCode = (comboName, selectedSize) => {
+            const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName); // Changed from menuItems
+            if (!comboItem) return comboName;
+            if (comboItem.has_variants && selectedSize) {
+                const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
+                return variantItem ? variantItem.item_code : comboItem.item_code;
+            }
+            return comboItem.item_code;
+        };
+
         const orderData = {
             customer_name: customerName,
             phone_number: phoneNumber || "",
@@ -730,7 +739,7 @@ function Front() {
             time: new Date().toISOString(),
             delivery_type: deliveryType || "DINE IN",
             items: cartItems.map(item => ({
-                item: resolveVariantItemCode(item.item_code, item.selectedSize), // Resolve to variant item_code
+                item: resolveVariantItemCode(item.item_code, item.selectedSize),
                 quantity: item.quantity || 1,
                 price: item.basePrice || 0,
                 size_variants: item.selectedSize || "",
@@ -747,30 +756,32 @@ function Front() {
             ),
             saved_combos: cartItems.flatMap(item =>
                 (item.selectedCombos || []).map(combo => {
-                    const menuItem = menuItems.find(m => m.item_code === item.item_code);
-                    const comboData = menuItem?.combos.find(c => c.name1 === combo.name1) || {};
-                    const comboRate = parseFloat(combo.rate) || parseFloat(comboData.combo_price) || 0;
+                    const comboItem = allItems.find(m => m.item_name === combo.name1 || m.item_code === combo.item_code); // Changed from menuItems
+                    const comboRate = parseFloat(combo.rate) || 0;
+                    const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
+                    console.log(`Saving combo ${combo.name1}: resolvedComboItemCode=${resolvedComboItemCode}`);
                     return {
                         combo_name: combo.name1,
+                        combo_item_code: resolvedComboItemCode,
                         size_variants: combo.selectedSize || "",
                         quantity: combo.quantity || 1,
                         other_variants: combo.selectedCustomVariant || "",
-                        combo_kitchen: combo.kitchen || "Unknown",
+                        combo_kitchen: combo.kitchen || comboItem?.kitchen || "Unknown",
                         combo_rate: comboRate,
                     };
                 })
             ),
         };
-    
+
         const existingOrder = location.state?.existingOrder;
         const apiMethod = existingOrder
             ? "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_saved_order"
             : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_saved_order";
-    
+
         if (existingOrder) {
             orderData.name = existingOrder.name;
         }
-    
+
         try {
             const response = await fetch(apiMethod, {
                 method: "POST",
@@ -780,14 +791,14 @@ function Front() {
                 },
                 body: JSON.stringify(orderData),
             });
-    
+
             if (!response.ok) throw new Error(`Failed to save order: ${response.status}`);
             const result = await response.json();
             console.log("Save Order Response:", JSON.stringify(result, null, 2));
-    
+
             const responseData = result.message || result;
             if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
-    
+
             alert(`Order ${existingOrder ? "updated" : "saved"} successfully!`);
             setCartItems([]);
             setBookedTables(prev => [...new Set([...prev, tableNumber])]);
@@ -834,7 +845,7 @@ function Front() {
                                 </div>
                             ))}
                         </div>
-                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={menuItems} />
+                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} /> {/* Changed from menuItems to allItems */}
                     </div>
 
                     <div className="col-lg-5 col-xl-4 row1 px-4">
@@ -1394,7 +1405,7 @@ function Front() {
                 {selectedItem && (
                     <FoodDetails
                         item={selectedItem}
-                        allItems={menuItems}
+                        allItems={allItems} // Changed from menuItems
                         onClose={() => setSelectedItem(null)}
                         onUpdate={handleItemUpdate}
                     />
