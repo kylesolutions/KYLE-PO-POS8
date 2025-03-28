@@ -16,49 +16,45 @@ function SavedOrder({ menuItems }) {
                     "Content-Type": "application/json",
                 },
             });
-
+    
             if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
-
+    
             const data = await response.json();
             console.log("Raw Server Response:", JSON.stringify(data, null, 2));
-
+    
             const result = data.message || data;
             if (result.status !== "success") throw new Error(result.message || "Unknown error");
-
+    
             if (!result.data || !Array.isArray(result.data)) {
                 console.warn("No orders found or invalid data structure:", result);
                 setOrders([]);
                 return;
             }
-
+    
             const formattedOrders = result.data.map(order => {
-                // Track which addons and combos have been assigned
                 let addonIndex = 0;
                 let comboIndex = 0;
-
+    
                 const cartItems = order.items.map(item => {
-                    // Determine how many addons and combos belong to this item
                     const menuItem = menuItems.find(m => m.item_code === item.item) || {};
-                    const expectedAddons = menuItem.addons?.length || 0; // Rough estimate; adjust if needed
-                    const expectedCombos = menuItem.combos?.length || 0; // Rough estimate; adjust if needed
-
-                    // Assign addons to this item
+                    const expectedAddons = menuItem.addons?.length || 0;
+                    const expectedCombos = menuItem.combos?.length || 0;
+    
                     const itemAddons = [];
                     for (let i = 0; i < expectedAddons && addonIndex < order.saved_addons.length; i++) {
                         itemAddons.push(order.saved_addons[addonIndex]);
                         addonIndex++;
                     }
-
-                    // Assign combos to this item
+    
                     const itemCombos = [];
                     for (let i = 0; i < expectedCombos && comboIndex < order.saved_combos.length; i++) {
                         itemCombos.push(order.saved_combos[comboIndex]);
                         comboIndex++;
                     }
-
+    
                     return {
-                        item_code: item.item,
-                        name: item.item,
+                        item_code: item.item, // This should now be a variant item_code (e.g., FRENCH_FRIES-M)
+                        name: menuItem.item_name || item.item, // Use actual name from menuItems if available
                         basePrice: item.price,
                         quantity: item.quantity,
                         selectedSize: item.size_variants,
@@ -74,8 +70,8 @@ function SavedOrder({ menuItems }) {
                         }), {}),
                         selectedCombos: itemCombos.map(combo => ({
                             name1: combo.combo_name,
-                            item_code: combo.combo_name,
-                            rate: (combo.size_variants_price || 0) + (combo.other_variants_price || 0),
+                            item_code: combo.combo_name, // Could also resolve combo variant here if needed
+                            rate: parseFloat(combo.combo_rate) || 0,
                             quantity: combo.quantity || 1,
                             selectedSize: combo.size_variants,
                             selectedCustomVariant: combo.other_variants,
@@ -83,8 +79,7 @@ function SavedOrder({ menuItems }) {
                         })),
                     };
                 });
-
-                // If there are leftover addons or combos, assign them to the last item (fallback)
+    
                 if (addonIndex < order.saved_addons.length || comboIndex < order.saved_combos.length) {
                     const lastItem = cartItems[cartItems.length - 1];
                     lastItem.addonCounts = {
@@ -103,7 +98,7 @@ function SavedOrder({ menuItems }) {
                         ...order.saved_combos.slice(comboIndex).map(combo => ({
                             name1: combo.combo_name,
                             item_code: combo.combo_name,
-                            rate: (combo.size_variants_price || 0) + (combo.other_variants_price || 0),
+                            rate: parseFloat(combo.combo_rate) || 0,
                             quantity: combo.quantity || 1,
                             selectedSize: combo.size_variants,
                             selectedCustomVariant: combo.other_variants,
@@ -111,7 +106,7 @@ function SavedOrder({ menuItems }) {
                         })),
                     ];
                 }
-
+    
                 return {
                     name: order.name,
                     customerName: order.customer_name,
@@ -122,7 +117,7 @@ function SavedOrder({ menuItems }) {
                     cartItems,
                 };
             });
-
+    
             console.log("Formatted orders:", JSON.stringify(formattedOrders, null, 2));
             setOrders(formattedOrders);
         } catch (error) {
@@ -164,10 +159,10 @@ function SavedOrder({ menuItems }) {
     const handleSelectOrder = (order) => {
         const formattedCartItems = order.cartItems.map(item => ({
             ...item,
-            item_code: item.item_code || item.id,
+            item_code: item.item_code, // Already a variant item_code from fetchSavedOrders
             name: item.name,
             basePrice: item.basePrice || 0,
-            customVariantPrice: item.customVariantPrice || 0,
+            customVariantPrice: item.customVariantPrice || 0, // This may not be set; could be calculated if needed
             quantity: item.quantity || 1,
             selectedSize: item.selectedSize || null,
             selectedCustomVariant: item.selectedCustomVariant || null,
@@ -175,7 +170,7 @@ function SavedOrder({ menuItems }) {
             selectedCombos: (item.selectedCombos || []).map(combo => ({
                 ...combo,
                 name1: combo.name1,
-                item_code: combo.item_code,
+                item_code: combo.item_code, // Could resolve combo variant here if needed
                 rate: combo.rate || 0,
                 quantity: combo.quantity || 1,
                 selectedSize: combo.selectedSize || null,

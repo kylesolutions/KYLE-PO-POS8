@@ -76,7 +76,7 @@ export const UserProvider = ({ children }) => {
                         : cartItem
                 );
             }
-            return [...prevItems, { ...newItem, cartItemId: uuidv4() }]; // Add unique ID for new items
+            return [...prevItems, { ...newItem, cartItemId: uuidv4() }]; 
         });
     };
 

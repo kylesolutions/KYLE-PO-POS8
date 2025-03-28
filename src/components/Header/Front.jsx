@@ -710,6 +710,19 @@ function Front() {
     };
 
     const saveOrder = async () => {
+        const resolveVariantItemCode = (itemCode, selectedSize) => {
+            const menuItem = menuItems.find((m) => m.item_code === itemCode);
+            if (menuItem && menuItem.variants.length > 0) {
+                if (!selectedSize) {
+                    console.warn(`Item ${itemCode} is a template with variants but no size selected. Defaulting to 'M'.`);
+                    return menuItem.variants.find(v => v.type_of_variants === "M")?.item_code || menuItem.variants[0].item_code || itemCode;
+                }
+                const variant = menuItem.variants.find((v) => v.type_of_variants === selectedSize);
+                return variant ? variant.item_code : itemCode;
+            }
+            return itemCode;
+        };
+    
         const orderData = {
             customer_name: customerName,
             phone_number: phoneNumber || "",
@@ -717,7 +730,7 @@ function Front() {
             time: new Date().toISOString(),
             delivery_type: deliveryType || "DINE IN",
             items: cartItems.map(item => ({
-                item: item.item_code || item.name,
+                item: resolveVariantItemCode(item.item_code, item.selectedSize), // Resolve to variant item_code
                 quantity: item.quantity || 1,
                 price: item.basePrice || 0,
                 size_variants: item.selectedSize || "",
@@ -736,32 +749,14 @@ function Front() {
                 (item.selectedCombos || []).map(combo => {
                     const menuItem = menuItems.find(m => m.item_code === item.item_code);
                     const comboData = menuItem?.combos.find(c => c.name1 === combo.name1) || {};
-                    const baseComboPrice = parseFloat(comboData.combo_price) || 0;
-    
-                    let sizeVariantPrice = 0;
-                    if (combo.selectedSize && comboData.variants?.length > 0) {
-                        const variant = comboData.variants.find(v => v.type_of_variants === combo.selectedSize);
-                        sizeVariantPrice = variant ? parseFloat(variant.price || variant.price_list_rate) || 0 : 0;
-                    } else if (!combo.selectedSize && !combo.selectedCustomVariant) {
-                        // If no variants are selected, use the base combo price
-                        sizeVariantPrice = baseComboPrice;
-                    }
-    
-                    let otherVariantPrice = 0;
-                    if (combo.selectedCustomVariant) {
-                        // If only custom variant is selected, calculate additional price beyond base and size
-                        otherVariantPrice = (parseFloat(combo.rate) || 0);
-                        if (otherVariantPrice < 0) otherVariantPrice = 0; // Ensure no negative prices
-                    }
-    
+                    const comboRate = parseFloat(combo.rate) || parseFloat(comboData.combo_price) || 0;
                     return {
                         combo_name: combo.name1,
                         size_variants: combo.selectedSize || "",
                         quantity: combo.quantity || 1,
                         other_variants: combo.selectedCustomVariant || "",
                         combo_kitchen: combo.kitchen || "Unknown",
-                        size_variants_price: sizeVariantPrice,
-                        other_variants_price: otherVariantPrice,
+                        combo_rate: comboRate,
                     };
                 })
             ),
@@ -788,7 +783,7 @@ function Front() {
     
             if (!response.ok) throw new Error(`Failed to save order: ${response.status}`);
             const result = await response.json();
-            console.log("Save Order Response:", result);
+            console.log("Save Order Response:", JSON.stringify(result, null, 2));
     
             const responseData = result.message || result;
             if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
