@@ -27,7 +27,7 @@ function Table() {
             if (data.message && Array.isArray(data.message.data)) {
                 const activeTableNumbers = data.message.data
                     .map(order => order.table_number)
-                    .filter(Boolean);
+                    .filter(Boolean); // Filter out null/undefined/empty table numbers
                 console.log("Active Table Numbers:", activeTableNumbers);
                 setActiveOrders(activeTableNumbers);
             } else {
@@ -41,15 +41,20 @@ function Table() {
     }, []);
 
     useEffect(() => {
-        const fetchTables = async () => {
+        const fetchTablesAndOrders = async () => {
             try {
-                const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_table_details", {
+                // Fetch tables
+                const tableResponse = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_table_details", {
                     headers: { "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a" }
                 });
-                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                const data = await response.json();
-                console.log("Fetched Tables:", data);
-                setTables(data.message || []);
+                if (!tableResponse.ok) throw new Error(`HTTP error! Status: ${tableResponse.status}`);
+                const tableData = await tableResponse.json();
+                console.log("Fetched Tables:", JSON.stringify(tableData, null, 2));
+                setTables(tableData.message || []);
+
+                // Fetch active orders after tables are fetched
+                await fetchActiveOrders();
+
                 setLoading(false);
             } catch (err) {
                 setError(err.message);
@@ -57,82 +62,83 @@ function Table() {
             }
         };
 
-        fetchTables();
-        fetchActiveOrders(); // Re-fetch every time component mounts
-    }, [fetchActiveOrders]); // Remove empty array to ensure re-fetch on navigation
+        fetchTablesAndOrders();
+    }, [fetchActiveOrders]); // Dependency on fetchActiveOrders to ensure it’s memoized
 
     const handleTableClick = async (tableNumber) => {
-      try {
-          const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
-              method: "GET",
-              headers: {
-                  "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
-                  "Content-Type": "application/json",
-              },
-          });
-          if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
-          const data = await response.json();
-          console.log("Saved Orders for Table", tableNumber, ":", JSON.stringify(data, null, 2));
-          const existingOrder = data.message.data.find(order => order.table_number === tableNumber);
-  
-          if (existingOrder) {
-              const formattedCartItems = existingOrder.items.map(item => ({
-                  item_code: item.item,
-                  name: item.item,
-                  basePrice: item.price,
-                  quantity: item.quantity,
-                  selectedSize: item.size_variants || "",
-                  selectedCustomVariant: item.other_variants || "",
-                  kitchen: item.kitchen || "Unknown",
-                  cartItemId: uuidv4(), // Unique key for cart
-                  addonCounts: existingOrder.saved_addons.reduce((acc, addon) => ({
-                      ...acc,
-                      [addon.addon_name]: {
-                          price: 0, // Adjust if price is available in backend
-                          quantity: addon.addon_quantity,
-                          kitchen: addon.addons_kitchen || "Unknown",
-                      },
-                  }), {}),
-                  selectedCombos: existingOrder.saved_combos.map(combo => ({
-                      name1: combo.combo_name,
-                      item_code: combo.combo_name,
-                      rate: 0, // Adjust if rate is available in backend
-                      quantity: combo.quantity,
-                      selectedSize: combo.size_variants || "",
-                      selectedCustomVariant: combo.other_variants || "",
-                      kitchen: combo.combo_kitchen || "Unknown",
-                  })),
-              }));
-              setCartItems(formattedCartItems);
-              const navigationState = {
-                  tableNumber,
-                  customerName: existingOrder.customer_name,
-                  phoneNumber: existingOrder.phone_number,
-                  existingOrder: {
-                      name: existingOrder.name,
-                      customerName: existingOrder.customer_name,
-                      phoneNumber: existingOrder.phone_number,
-                      tableNumber: existingOrder.table_number,
-                      deliveryType: existingOrder.delivery_type,
-                      cartItems: formattedCartItems,
-                  },
-              };
-              console.log("Navigating to /frontpage with state:", JSON.stringify(navigationState, null, 2));
-              navigate("/frontpage", { state: navigationState });
-          } else {
-              setCartItems([]);
-              console.log("No existing order for Table", tableNumber, "- Navigating with tableNumber only");
-              navigate("/frontpage", { state: { tableNumber } });
-          }
-      } catch (error) {
-          console.error("Error fetching order for table:", error);
-          setCartItems([]);
-          navigate("/frontpage", { state: { tableNumber } });
-      }
-  };
+        try {
+            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
+                method: "GET",
+                headers: {
+                    "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    "Content-Type": "application/json",
+                },
+            });
+            if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
+            const data = await response.json();
+            console.log("Saved Orders for Table", tableNumber, ":", JSON.stringify(data, null, 2));
+            const existingOrder = data.message.data.find(order => order.table_number === tableNumber);
+
+            if (existingOrder) {
+                const formattedCartItems = existingOrder.items.map(item => ({
+                    item_code: item.item,
+                    name: item.item,
+                    basePrice: item.price,
+                    quantity: item.quantity,
+                    selectedSize: item.size_variants || "",
+                    selectedCustomVariant: item.other_variants || "",
+                    kitchen: item.kitchen || "Unknown",
+                    cartItemId: uuidv4(),
+                    addonCounts: existingOrder.saved_addons.reduce((acc, addon) => ({
+                        ...acc,
+                        [addon.addon_name]: {
+                            price: 0,
+                            quantity: addon.addon_quantity,
+                            kitchen: addon.addons_kitchen || "Unknown",
+                        },
+                    }), {}),
+                    selectedCombos: existingOrder.saved_combos.map(combo => ({
+                        name1: combo.combo_name,
+                        item_code: combo.combo_name,
+                        rate: 0,
+                        quantity: combo.quantity,
+                        selectedSize: combo.size_variants || "",
+                        selectedCustomVariant: combo.other_variants || "",
+                        kitchen: combo.combo_kitchen || "Unknown",
+                    })),
+                }));
+                setCartItems(formattedCartItems);
+                const navigationState = {
+                    tableNumber,
+                    customerName: existingOrder.customer_name,
+                    phoneNumber: existingOrder.phone_number,
+                    existingOrder: {
+                        name: existingOrder.name,
+                        customerName: existingOrder.customer_name,
+                        phoneNumber: existingOrder.phone_number,
+                        tableNumber: existingOrder.table_number,
+                        deliveryType: existingOrder.delivery_type,
+                        cartItems: formattedCartItems,
+                    },
+                };
+                console.log("Navigating to /frontpage with state:", JSON.stringify(navigationState, null, 2));
+                navigate("/frontpage", { state: navigationState });
+            } else {
+                setCartItems([]);
+                console.log("No existing order for Table", tableNumber, "- Navigating with tableNumber only");
+                navigate("/frontpage", { state: { tableNumber } });
+            }
+        } catch (error) {
+            console.error("Error fetching order for table:", error);
+            setCartItems([]);
+            navigate("/frontpage", { state: { tableNumber } });
+        }
+    };
 
     if (loading) return <div>Loading tables...</div>;
     if (error) return <div>Error: {error}</div>;
+
+    console.log("Rendering tables with activeOrders:", activeOrders);
 
     return (
         <>

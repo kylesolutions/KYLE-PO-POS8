@@ -10,7 +10,7 @@ import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 
 function Front() {
-    const [allItems, setAllItems] = useState([]); // Changed from menuItems to allItems
+    const [allItems, setAllItems] = useState([]);
     const [filteredItems, setFilteredItems] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState("null");
     const [selectedItem, setSelectedItem] = useState(null);
@@ -176,70 +176,109 @@ function Front() {
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
                 console.log('API Response (allItems):', JSON.stringify(data, null, 2));
-
-                if (data && Array.isArray(data.message)) {
-                    const baseUrl = 'http://109.199.100.136:6060/';
-                    const formattedItems = data.message.map((item) => ({
-                        id: uuidv4(),
-                        name: item.item_name,
-                        category: item.item_group,
-                        image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
-                        price: parseFloat(item.price_list_rate) || 0,
-                        item_code: item.item_code,
-                        variants: item.variants ? item.variants.map((v) => ({
-                            type_of_variants: v.type_of_variants,
-                            item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
-                            variant_price: parseFloat(v.variants_price) || 0,
-                        })) : [],
-                        customVariants: item.custom_variant_applicable ? ['Spicy', 'Non-Spicy'] : [],
-                        addons: (item.addons || []).map((addon) => ({
-                            name: addon.name || addon.item_name || "Unnamed Addon",
-                            price: parseFloat(addon.price || addon.price_list_rate) || 0,
-                            kitchen: addon.kitchen || addon.custom_kitchen || "Unknown",
-                        })),
-                        combos: (item.combos || []).map((combo) => ({
-                            name1: combo.name1 || combo.item_name || "Unnamed Combo",
-                            combo_price: parseFloat(combo.price || combo.combo_price || combo.price_list_rate) || 0,
-                            kitchen: combo.kitchen || combo.custom_kitchen || "Unknown",
-                            variants: combo.variants || [],
-                        })),
-                        ingredients: item.ingredients || [],
-                        kitchen: item.custom_kitchen || "Unknown",
-                        type: item.type || "regular",
-                        has_variants: item.has_variants || false,
-                    }));
-
-                    setAllItems(formattedItems); // Changed from setMenuItems
-
-                    const initialFilteredItems = formattedItems.filter((item) => {
-                        const isMainItem = (item.variants.length > 0) ||
-                            !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
-                        return isMainItem &&
-                            (allowedItemGroups.length === 0 || allowedItemGroups.includes(item.category)) &&
-                            item.type !== "addon" &&
-                            item.type !== "combo";
-                    });
-                    setFilteredItems(initialFilteredItems);
-
-                    const uniqueCategories = [...new Set(formattedItems.map((item) => item.category.toLowerCase()))];
-                    setCategories(uniqueCategories);
-                } else {
+    
+                if (!data || !Array.isArray(data.message)) {
                     throw new Error('Invalid data structure or missing message array');
                 }
+    
+                const baseUrl = 'http://109.199.100.136:6060/';
+                const formattedItems = data.message
+                    .filter(item => item && typeof item === 'object')
+                    .map((item) => {
+                        try {
+                            const formattedItem = {
+                                id: uuidv4(),
+                                name: item.item_name || 'Unnamed Item',
+                                category: item.item_group || 'Uncategorized',
+                                image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
+                                price: parseFloat(item.price_list_rate) || 0,
+                                item_code: item.item_code || '',
+                                variants: Array.isArray(item.variants) ? item.variants.map((v) => ({
+                                    type_of_variants: v.type_of_variants || '',
+                                    item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
+                                    variant_price: parseFloat(v.variants_price) || 0,
+                                })) : [],
+                                customVariants: item.custom_variant_applicable ? ['Spicy', 'Non-Spicy'] : [],
+                                addons: Array.isArray(item.addons) ? item.addons.map((addon) => ({
+                                    name: addon.name || addon.item_name || "Unnamed Addon",
+                                    price: parseFloat(addon.price || addon.price_list_rate) || 0,
+                                    kitchen: addon.kitchen || addon.custom_kitchen || "Unknown",
+                                })) : [],
+                                combos: Array.isArray(item.combos) ? item.combos.map((combo) => ({
+                                    name1: combo.name1 || combo.item_name || "Unnamed Combo",
+                                    combo_price: parseFloat(combo.price || combo.combo_price || combo.price_list_rate) || 0,
+                                    kitchen: combo.kitchen || combo.custom_kitchen || "Unknown",
+                                    variants: Array.isArray(combo.variants) ? combo.variants : [],
+                                })) : [],
+                                ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
+                                kitchen: item.custom_kitchen || "Unknown",
+                                type: item.type || "regular",
+                                has_variants: item.has_variants || false,
+                            };
+                            if (!Array.isArray(formattedItem.variants)) {
+                                console.warn('Variants not an array for item:', item);
+                                formattedItem.variants = [];
+                            }
+                            return formattedItem;
+                        } catch (mapError) {
+                            console.error('Error mapping item:', item, mapError);
+                            return null;
+                        }
+                    })
+                    .filter(item => item !== null && item !== undefined);
+    
+                console.log('Formatted Items:', JSON.stringify(formattedItems, null, 2));
+    
+                if (formattedItems.length === 0) {
+                    console.warn('No valid items after formatting.');
+                }
+    
+                const validItems = formattedItems.filter(item => {
+                    if (!item || typeof item !== 'object' || !('variants' in item)) {
+                        console.error('Invalid item detected:', item);
+                        return false;
+                    }
+                    return true;
+                });
+    
+                const initialFilteredItems = validItems.filter((item) => {
+                    try {
+                        console.log('Filtering item:', item.name, 'Variants:', item.variants);
+                        const isMainItem = (Array.isArray(item.variants) && item.variants.length > 0) ||
+                            !["-S", "-M", "-L"].some(suffix => (item.item_code || '').endsWith(suffix));
+                        return isMainItem &&
+                            ((allowedItemGroups || []).length === 0 || (allowedItemGroups || []).includes(item.category)) &&
+                            item.type !== "addon" &&
+                            item.type !== "combo";
+                    } catch (filterError) {
+                        console.error('Error filtering item:', item, filterError);
+                        return false;
+                    }
+                });
+    
+                console.log('Initial Filtered Items:', JSON.stringify(initialFilteredItems, null, 2));
+    
+                setAllItems(validItems);
+                setFilteredItems(initialFilteredItems);
+                const uniqueCategories = [...new Set(validItems.map((item) => (item.category || '').toLowerCase()))];
+                setCategories(uniqueCategories);
             } catch (error) {
                 console.error('Error fetching items:', error);
+                setAllItems([]);
+                setFilteredItems([]);
+                setCategories([]);
             }
         };
-
+    
         fetchItems();
     }, [allowedItemGroups]);
 
     const handleFilter = (category) => {
-        const filtered = allItems.filter(item => { // Changed from menuItems
-            const isMainItem = (item.variants.length > 0) ||
-                !["-S", "-M", "-L"].some(suffix => item.item_code.endsWith(suffix));
+        const filtered = allItems.filter(item => {
+            const isMainItem = ((item.variants || []).length > 0) ||
+                !["-S", "-M", "-L"].some(suffix => (item.item_code || '').endsWith(suffix));
             return isMainItem &&
-                (category === "All" || item.category.toLowerCase() === category.toLowerCase()) &&
+                (category === "All" || (item.category || '').toLowerCase() === category.toLowerCase()) &&
                 item.type !== "addon" &&
                 item.type !== "combo";
         });
@@ -434,7 +473,7 @@ function Front() {
         }
 
         const resolveVariantItemCode = (itemCode, selectedSize) => {
-            const itemData = allItems.find((m) => m.item_code === itemCode); // Changed from menuItems
+            const itemData = allItems.find((m) => m.item_code === itemCode);
             if (!itemData) return itemCode;
             if (itemData.has_variants && selectedSize) {
                 const variantItem = allItems.find((i) => i.item_code === `${itemData.item_code}-${selectedSize}`);
@@ -444,7 +483,7 @@ function Front() {
         };
 
         const resolveComboVariantItemCode = (comboName, selectedSize) => {
-            const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName); // Changed from menuItems
+            const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
             if (!comboItem) return comboName;
             if (comboItem.has_variants && selectedSize) {
                 const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
@@ -713,7 +752,7 @@ function Front() {
 
     const saveOrder = async () => {
         const resolveVariantItemCode = (itemCode, selectedSize) => {
-            const menuItem = allItems.find((m) => m.item_code === itemCode); // Changed from menuItems
+            const menuItem = allItems.find((m) => m.item_code === itemCode);
             if (!menuItem) return itemCode;
             if (menuItem.has_variants && selectedSize) {
                 const variantItem = allItems.find((i) => i.item_code === `${menuItem.item_code}-${selectedSize}`);
@@ -723,7 +762,7 @@ function Front() {
         };
 
         const resolveComboVariantItemCode = (comboName, selectedSize) => {
-            const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName); // Changed from menuItems
+            const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
             if (!comboItem) return comboName;
             if (comboItem.has_variants && selectedSize) {
                 const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
@@ -756,7 +795,7 @@ function Front() {
             ),
             saved_combos: cartItems.flatMap(item =>
                 (item.selectedCombos || []).map(combo => {
-                    const comboItem = allItems.find(m => m.item_name === combo.name1 || m.item_code === combo.item_code); // Changed from menuItems
+                    const comboItem = allItems.find(m => m.item_name === combo.name1 || m.item_code === combo.item_code);
                     const comboRate = parseFloat(combo.rate) || 0;
                     const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
                     console.log(`Saving combo ${combo.name1}: resolvedComboItemCode=${resolvedComboItemCode}`);
@@ -845,7 +884,7 @@ function Front() {
                                 </div>
                             ))}
                         </div>
-                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} /> {/* Changed from menuItems to allItems */}
+                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} />
                     </div>
 
                     <div className="col-lg-5 col-xl-4 row1 px-4">
@@ -1405,7 +1444,7 @@ function Front() {
                 {selectedItem && (
                     <FoodDetails
                         item={selectedItem}
-                        allItems={allItems} // Changed from menuItems
+                        allItems={allItems}
                         onClose={() => setSelectedItem(null)}
                         onUpdate={handleItemUpdate}
                     />
