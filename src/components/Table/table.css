@@ -1,3 +1,4 @@
+/* General Container Styles */
 .table-page {
   font-family: Arial, sans-serif;
   text-align: center;
@@ -35,6 +36,7 @@
   }
 }
 
+/* Table Card Base Styles */
 .table-card {
   width: 150px;
   height: 150px;
@@ -53,33 +55,36 @@
     background-color 0.3s ease, 
     color 0.3s ease, 
     border 0.3s ease;
-  background-color: #f8f9fa;
+  background-color: #f8f9fa; /* Default background */
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Available Table (Lighter) */
+/* Available Table Styles */
 .table-card.available {
-  background-color: #d9f0d9;  
-  color: #333;
-  border: 2px solid #8fd88f;
+  background-color: #d9f0d9; /* Light green */
+  color: #333; /* Dark text for contrast */
+  border: 2px solid #8fd88f; /* Green border */
 }
 
 .table-card.available:hover {
-  background-color: #c0e6c0;
+  background-color: #c0e6c0; /* Slightly darker green on hover */
+  border: 2px solid #6bc86b; /* Darker green border */
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05); /* Slight zoom effect */
 }
 
-/* Booked Table (Darker) */
+/* Booked Table Styles */
 .table-card.booked {
-  background-color: #4e4e4e;  
-  color: white;
-  border: 2px solid #3a3a3a;
+  background-color: #ff4d4d; /* Bright red */
+  color: white; /* White text for contrast */
+  border: 2px solid #cc0000; /* Darker red border */
 }
 
 .table-card.booked:hover {
-  background-color: #5f5f5f;
-  border: 2px solid #2e2e2e;
+  background-color: #ff6666; /* Lighter red on hover */
+  border: 2px solid #b30000; /* Slightly darker red border */
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transform: scale(1.05); /* Slight zoom effect */
 }
 
 /* Click Effect */
@@ -88,24 +93,31 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+/* Table Number Styles */
 .table-number {
   font-size: 22px;
   font-weight: bold;
-  margin-bottom: 8px; /* Creates space between table number and chairs */
+  margin-bottom: 8px; /* Space between table number and chairs */
 }
 
+/* Chairs Container Styles */
 .chairs-container {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 5px; /* Adjust space between chairs */
+  gap: 5px; /* Space between chairs */
 }
 
+/* Chair Icon Styles */
 .chair-icon {
-  font-size: 22px; /* Adjust chair size */
-  color: #555; /* Default chair color */
+  font-size: 22px; /* Chair size */
+  color: #555; /* Dark gray for available tables */
 }
 
 .table-card.booked .chair-icon {
-  color: red; /* Change chair color if booked */
+  color: #ffe6e6; /* Light pinkish for booked tables (contrast with red) */
+}
+
+.table-card.available .chair-icon {
+  color: #555; /* Ensure consistency for available tables */
 }
