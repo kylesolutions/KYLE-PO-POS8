@@ -38,12 +38,12 @@ function Front() {
     const [bookedTables, setBookedTables] = useState([]);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
     const [address, setAddress] = useState("");
-    const [whatsappNumber, setWhatsappNumber] = useState("");
+    const [watsappNumber, setWatsappNumber] = useState(""); // Updated to match backend field name
     const [email, setEmail] = useState("");
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [tableNumber, setTableNumber] = useState(initialTableNumber || "");
-    const [deliveryType, setDeliveryType] = useState(initialDeliveryType || "DINE IN");
+    const [deliveryType, setDeliveryType] = useState(initialDeliveryType || "");
 
     useEffect(() => {
         if (location.state) {
@@ -51,8 +51,11 @@ function Front() {
             const finalCustomerName = stateCustomerName || existingOrder?.customerName || "One Time Customer";
             const finalPhoneNumber = statePhoneNumber || existingOrder?.phoneNumber || "";
             const finalTableNumber = stateTableNumber || existingOrder?.tableNumber || "";
-            const finalDeliveryType = location.state.deliveryType || existingOrder?.deliveryType || "DINE IN";
+            const finalDeliveryType = location.state.deliveryType || existingOrder?.deliveryType || "";
             const finalCartItems = existingOrder?.cartItems || [];
+            const finalAddress = existingOrder?.address || "";
+            const finalWatsappNumber = existingOrder?.watsappNumber || ""; // Updated field name
+            const finalEmail = existingOrder?.email || "";
 
             console.log("State received in Front:", JSON.stringify(location.state, null, 2));
             console.log("Setting states - customerName:", finalCustomerName, "phoneNumber:", finalPhoneNumber, "tableNumber:", finalTableNumber, "cartItems:", JSON.stringify(finalCartItems, null, 2));
@@ -62,6 +65,9 @@ function Front() {
             setPhoneNumber(finalPhoneNumber);
             setTableNumber(finalTableNumber);
             setDeliveryType(finalDeliveryType);
+            setAddress(finalAddress);
+            setWatsappNumber(finalWatsappNumber); // Updated field name
+            setEmail(finalEmail);
             setIsPhoneNumberSet(!!finalPhoneNumber);
             setCartItems(finalCartItems);
         } else {
@@ -70,7 +76,10 @@ function Front() {
             setCustomerInput("");
             setPhoneNumber("");
             setTableNumber("");
-            setDeliveryType("DINE IN");
+            setDeliveryType("");
+            setAddress("");
+            setWatsappNumber(""); // Updated field name
+            setEmail("");
             setIsPhoneNumberSet(false);
             setCartItems([]);
         }
@@ -429,7 +438,7 @@ function Front() {
             payments: [paymentDetails],
             ...(deliveryType !== "DINE IN" && {
                 address,
-                whatsappNumber,
+                watsappNumber, // Updated field name
                 email,
             }),
         };
@@ -573,9 +582,9 @@ function Front() {
             }],
             items: allCartItems,
             ...(deliveryType !== "DINE IN" && {
-                custom_address: address || "",
-                custom_whatsapp_number: whatsappNumber || "",
-                custom_email: email || "",
+                address: address || "",
+                watsapp_number: watsappNumber || "", // Updated field name
+                email: email || "",
             }),
         };
 
@@ -681,7 +690,7 @@ function Front() {
             setPhoneNumber(selectedCustomer.mobile_no);
             setAddress(selectedCustomer.primary_address);
             setEmail(selectedCustomer.email_id);
-            setWhatsappNumber(selectedCustomer.custom_watsapp_no);
+            setWatsappNumber(selectedCustomer.custom_watsapp_no); // Updated field name
             setIsPhoneNumberSet(!!selectedCustomer.mobile_no);
         }
         setShowCustomerSuggestions(false);
@@ -705,7 +714,7 @@ function Front() {
                     ...(phoneNumber && { phone: phoneNumber }),
                     ...(address && { address: address }),
                     ...(email && { email: email }),
-                    ...(whatsappNumber && { whatsapp_number: whatsappNumber }),
+                    ...(watsappNumber && { watsapp_number: watsappNumber }), // Updated field name
                 };
 
                 const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer', {
@@ -726,7 +735,7 @@ function Front() {
                         mobile_no: phoneNumber || "",
                         primary_address: address || "",
                         email_id: email || "",
-                        custom_watsapp_no: whatsappNumber || ""
+                        custom_watsapp_no: watsappNumber || "" // Updated field name
                     };
                     setCustomers((prev) => [...prev, newCustomer]);
                     setFilteredCustomers((prev) => [...prev, newCustomer]);
@@ -760,7 +769,7 @@ function Front() {
             }
             return itemCode;
         };
-
+    
         const resolveComboVariantItemCode = (comboName, selectedSize) => {
             const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
             if (!comboItem) return comboName;
@@ -770,13 +779,28 @@ function Front() {
             }
             return comboItem.item_code;
         };
-
+    
+        if (deliveryType && deliveryType !== "DINE IN") {
+            if (!address || address.trim() === "") {
+                alert("Please enter a delivery address for this delivery type.");
+                return;
+            }
+            if (!watsappNumber || watsappNumber.trim() === "") { // Updated field name
+                alert("Please enter a WhatsApp number for this delivery type.");
+                return;
+            }
+            if (!email || email.trim() === "") {
+                alert("Please enter an email address for this delivery type.");
+                return;
+            }
+        }
+    
         const orderData = {
             customer_name: customerName,
             phone_number: phoneNumber || "",
             table_number: tableNumber || "",
             time: new Date().toISOString(),
-            delivery_type: deliveryType || "DINE IN",
+            delivery_type: deliveryType || "",
             items: cartItems.map(item => ({
                 item: resolveVariantItemCode(item.item_code, item.selectedSize),
                 quantity: item.quantity || 1,
@@ -810,17 +834,22 @@ function Front() {
                     };
                 })
             ),
+            ...(deliveryType && deliveryType !== "DINE IN" && {
+                address: address || "",
+                watsapp_number: watsappNumber || "", // Updated field name
+                email: email || "",
+            }),
         };
-
+    
         const existingOrder = location.state?.existingOrder;
         const apiMethod = existingOrder
             ? "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_saved_order"
             : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_saved_order";
-
+    
         if (existingOrder) {
             orderData.name = existingOrder.name;
         }
-
+    
         try {
             const response = await fetch(apiMethod, {
                 method: "POST",
@@ -830,14 +859,14 @@ function Front() {
                 },
                 body: JSON.stringify(orderData),
             });
-
+    
             if (!response.ok) throw new Error(`Failed to save order: ${response.status}`);
             const result = await response.json();
             console.log("Save Order Response:", JSON.stringify(result, null, 2));
-
+    
             const responseData = result.message || result;
             if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
-
+    
             alert(`Order ${existingOrder ? "updated" : "saved"} successfully!`);
             setCartItems([]);
             setBookedTables(prev => [...new Set([...prev, tableNumber])]);
@@ -1122,8 +1151,8 @@ function Front() {
                                                             type="text"
                                                             className="form-control"
                                                             placeholder="Enter WhatsApp number"
-                                                            value={whatsappNumber}
-                                                            onChange={(e) => setWhatsappNumber(e.target.value)}
+                                                            value={watsappNumber} // Updated field name
+                                                            onChange={(e) => setWatsappNumber(e.target.value)}
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
                                                     </div>
@@ -1299,7 +1328,7 @@ function Front() {
                                                                         {deliveryType !== "DINE IN" && (
                                                                             <div className="mt-2">
                                                                                 <p><strong>Address:</strong> {address || "N/A"}</p>
-                                                                                <p><strong>WhatsApp:</strong> {whatsappNumber || "N/A"}</p>
+                                                                                <p><strong>WhatsApp:</strong> {watsappNumber || "N/A"}</p> {/* Updated field name */}
                                                                                 <p><strong>Email:</strong> {email || "N/A"}</p>
                                                                             </div>
                                                                         )}

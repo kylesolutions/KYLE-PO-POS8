@@ -1,11 +1,14 @@
 import { useContext, useEffect, useState } from "react";
 import UserContext from "../../Context/UserContext";
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid"; // Import uuid for cartItemId
 
-function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
+function SavedOrder() {
     const { setCartItems } = useContext(UserContext);
     const [orders, setOrders] = useState([]);
-    const [allItems, setAllItems] = useState([]);  // Add state for allItems
+    const [allItems, setAllItems] = useState([]);
+    const [loading, setLoading] = useState(true); // Add loading state
+    const [error, setError] = useState(null); // Add error state
     const navigate = useNavigate();
 
     // Fetch all items (same as FoodDetails.jsx)
@@ -34,7 +37,7 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                     ...item,
                     variants: item.variants ? item.variants.map((v) => ({
                         type_of_variants: v.type_of_variants,
-                        item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,  // Ensure variant item_code is present
+                        item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
                         variant_price: parseFloat(v.variants_price) || 0,
                     })) : [],
                     price_list_rate: parseFloat(item.price_list_rate) || 0,
@@ -47,11 +50,15 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
         } catch (error) {
             console.error("Error fetching all items:", error);
             setAllItems([]);
+            setError("Failed to load items. Please try again.");
         }
     };
 
     const fetchSavedOrders = async () => {
         try {
+            setLoading(true);
+            setError(null);
+
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
                 method: "GET",
                 headers: {
@@ -84,16 +91,15 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                     const expectedCombos = menuItem.combos?.length || 0;
 
                     const itemAddons = [];
-                    for (let i = 0; i < expectedAddons && addonIndex < order.saved_addons.length; i++) {
+                    for (let i = 0; i < expectedAddons && addonIndex < (order.saved_addons?.length || 0); i++) {
                         itemAddons.push(order.saved_addons[addonIndex]);
                         addonIndex++;
                     }
 
                     const itemCombos = [];
-                    for (let i = 0; i < expectedCombos && comboIndex < order.saved_combos.length; i++) {
+                    for (let i = 0; i < expectedCombos && comboIndex < (order.saved_combos?.length || 0); i++) {
                         const combo = order.saved_combos[comboIndex];
                         const comboItem = allItems.find(m => m.item_name === combo.combo_name || m.item_code === combo.combo_item_code) || {};
-                        // Prioritize combo_item_code from backend, fallback to variant resolution
                         const resolvedComboItemCode = combo.combo_item_code || (comboItem.has_variants && combo.size_variants
                             ? (allItems.find(i => i.item_code === `${comboItem.item_code}-${combo.size_variants}`)?.item_code || combo.combo_name)
                             : combo.combo_name);
@@ -101,7 +107,7 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                             name1: combo.combo_name,
                             item_code: resolvedComboItemCode,
                             rate: parseFloat(combo.combo_rate) || 0,
-                            quantity: combo.quantity || 1,
+                            quantity: parseInt(combo.quantity, 10) || 1,
                             selectedSize: combo.size_variants || null,
                             selectedCustomVariant: combo.other_variants || null,
                             kitchen: combo.combo_kitchen || comboItem.custom_kitchen || "Unknown",
@@ -110,10 +116,11 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                     }
 
                     return {
+                        cartItemId: uuidv4(), // Add unique ID for cart item
                         item_code: item.item,
                         name: menuItem.item_name || item.item,
                         basePrice: parseFloat(item.price) || 0,
-                        quantity: item.quantity || 1,
+                        quantity: parseInt(item.quantity, 10) || 1,
                         selectedSize: item.size_variants || null,
                         selectedCustomVariant: item.other_variants || null,
                         kitchen: item.kitchen || menuItem.custom_kitchen || "Unknown",
@@ -121,7 +128,7 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                             ...acc,
                             [addon.addon_name]: {
                                 price: parseFloat(addon.addons_price) || 0,
-                                quantity: addon.addon_quantity || 0,
+                                quantity: parseInt(addon.addon_quantity, 10) || 0,
                                 kitchen: addon.addons_kitchen || "Unknown",
                             },
                         }), {}),
@@ -129,7 +136,7 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                     };
                 });
 
-                if (addonIndex < order.saved_addons.length || comboIndex < order.saved_combos.length) {
+                if (addonIndex < (order.saved_addons?.length || 0) || comboIndex < (order.saved_combos?.length || 0)) {
                     const lastItem = cartItems[cartItems.length - 1];
                     lastItem.addonCounts = {
                         ...lastItem.addonCounts,
@@ -137,7 +144,7 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                             ...acc,
                             [addon.addon_name]: {
                                 price: parseFloat(addon.addons_price) || 0,
-                                quantity: addon.addon_quantity || 0,
+                                quantity: parseInt(addon.addon_quantity, 10) || 0,
                                 kitchen: addon.addons_kitchen || "Unknown",
                             },
                         }), {}),
@@ -153,7 +160,7 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                                 name1: combo.combo_name,
                                 item_code: resolvedComboItemCode,
                                 rate: parseFloat(combo.combo_rate) || 0,
-                                quantity: combo.quantity || 1,
+                                quantity: parseInt(combo.quantity, 10) || 1,
                                 selectedSize: combo.size_variants || null,
                                 selectedCustomVariant: combo.other_variants || null,
                                 kitchen: combo.combo_kitchen || comboItem.custom_kitchen || "Unknown",
@@ -168,7 +175,10 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                     tableNumber: order.table_number,
                     phoneNumber: order.phone_number,
                     timestamp: order.time,
-                    deliveryType: order.delivery_type,
+                    deliveryType: order.delivery_type || "DINE IN", // Ensure deliveryType is always set
+                    address: order.address || "", // Updated field name
+                    watsappNumber: order.watsapp_number || "", // Updated field name
+                    email: order.email || "", // Updated field name
                     cartItems,
                 };
             });
@@ -177,17 +187,20 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
             setOrders(formattedOrders);
         } catch (error) {
             console.error("Error fetching saved orders:", error.message);
+            setError("Failed to load saved orders. Please try again.");
             setOrders([]);
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchAllItems();  // Fetch items first
+        fetchAllItems();
     }, []);
 
     useEffect(() => {
         if (allItems.length > 0) {
-            fetchSavedOrders();  // Fetch orders once items are loaded
+            fetchSavedOrders();
         }
     }, [allItems]);
 
@@ -231,7 +244,7 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
             selectedCombos: (item.selectedCombos || []).map(combo => ({
                 ...combo,
                 name1: combo.name1,
-                item_code: combo.item_code, // Already resolved in fetchSavedOrders
+                item_code: combo.item_code,
                 rate: combo.rate || 0,
                 quantity: combo.quantity || 1,
                 selectedSize: combo.selectedSize || null,
@@ -241,14 +254,14 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
             kitchen: item.kitchen || "Unknown",
         }));
         setCartItems(formattedCartItems);
-        alert(`You selected Table ${order.tableNumber}`);
+        alert(`You selected ${order.deliveryType === "DINE IN" ? `Table ${order.tableNumber}` : `Order (${order.deliveryType})`}`);
         navigate("/frontpage", {
             state: {
                 tableNumber: order.tableNumber,
                 phoneNumber: order.phoneNumber,
                 customerName: order.customerName,
                 existingOrder: order,
-                deliveryType: order.deliveryType || "DINE IN",
+                deliveryType: order.deliveryType, // Pass the actual deliveryType without fallback
             },
         });
     };
@@ -256,7 +269,11 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
     return (
         <div className="container mt-4">
             <h2 className="text-center">Saved Orders</h2>
-            {orders.length === 0 ? (
+            {loading ? (
+                <p className="text-center text-muted">Loading saved orders...</p>
+            ) : error ? (
+                <p className="text-center text-danger">{error}</p>
+            ) : orders.length === 0 ? (
                 <p className="text-center text-muted">No saved orders yet.</p>
             ) : (
                 <div className="table-responsive">
@@ -267,6 +284,10 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                                 <th>Customer Name</th>
                                 <th>Table Number</th>
                                 <th>Phone Number</th>
+                                <th>Delivery Type</th>
+                                <th>Address</th>
+                                <th>WhatsApp Number</th>
+                                <th>Email</th>
                                 <th>Items</th>
                                 <th>Timestamp</th>
                                 <th>Action</th>
@@ -277,8 +298,12 @@ function SavedOrder() {  // Removed menuItems prop since we'll fetch allItems
                                 <tr key={order.name}>
                                     <td>{index + 1}</td>
                                     <td>{order.customerName}</td>
-                                    <td>{order.tableNumber}</td>
-                                    <td>{order.phoneNumber}</td>
+                                    <td>{order.tableNumber || "N/A"}</td>
+                                    <td>{order.phoneNumber || "N/A"}</td>
+                                    <td>{order.deliveryType}</td>
+                                    <td>{order.address || "N/A"}</td>
+                                    <td>{order.watsappNumber || "N/A"}</td> {/* Updated field name */}
+                                    <td>{order.email || "N/A"}</td>
                                     <td>
                                         {order.cartItems.map((item, i) => (
                                             <div key={i}>
