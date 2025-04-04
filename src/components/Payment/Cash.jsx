@@ -8,6 +8,10 @@ function Cash() {
     const [billDetails, setBillDetails] = useState(null);
     const [cashGiven, setCashGiven] = useState(""); // Optional field
     const [change, setChange] = useState(0);
+    const [taxRate, setTaxRate] = useState(null);
+    const [taxCategory, setTaxCategory] = useState(""); // New state for tax category
+    const [taxTemplateName, setTaxTemplateName] = useState("");
+    const [company, setCompany] = useState(""); // Default company, can be dynamic if passed via state
 
     useEffect(() => {
         if (location.state?.billDetails) {
@@ -16,7 +20,86 @@ function Cash() {
         } else {
             console.warn("No billDetails received in Cash.jsx");
         }
+
+        // Fetch tax details when component mounts
+        fetchTaxDetails();
     }, [location]);
+
+    const fetchTaxDetails = async () => {
+        try {
+            const companyResponse = await fetch('/api/method/frappe.client.get_value', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                },
+                body: JSON.stringify({
+                    doctype: "Company",
+                    name: company,
+                    fieldname: ["default_income_account", "custom_tax_type"]
+                }),
+            });
+            const companyData = await companyResponse.json();
+            if (companyData.message) {
+                const taxTemplate = companyData.message.custom_tax_type;
+                setTaxTemplateName(taxTemplate || "");
+                fetchTaxRate(taxTemplate);
+            } else {
+                fetchTaxRate(null);
+            }
+        } catch (error) {
+            console.error("Error fetching company details in Cash.jsx:", error);
+            fetchTaxRate(null);
+        }
+    };
+
+    const fetchTaxRate = async (templateName) => {
+        try {
+            const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                },
+            });
+            const data = await response.json();
+            if (data.message && Array.isArray(data.message)) {
+                if (templateName) {
+                    const tax = data.message.find(t => t.name === templateName);
+                    if (tax && tax.sales_tax && tax.sales_tax.length > 0) {
+                        const rate = parseFloat(tax.sales_tax[0].rate) || 0;
+                        setTaxRate(rate);
+                        setTaxCategory(tax.tax_category || "Unknown"); // Set tax_category
+                        setTaxTemplateName(templateName);
+                    } else {
+                        console.warn(`No tax rate or category found for ${templateName}. Using first available template.`);
+                    }
+                }
+                if (!templateName || !data.message.some(t => t.name === templateName)) {
+                    const defaultTax = data.message[0];
+                    if (defaultTax && defaultTax.sales_tax && defaultTax.sales_tax.length > 0) {
+                        const rate = parseFloat(defaultTax.sales_tax[0].rate) || 0;
+                        setTaxRate(rate);
+                        setTaxCategory(defaultTax.tax_category || "Unknown"); // Set tax_category for default
+                        setTaxTemplateName(defaultTax.name);
+                    } else {
+                        setTaxRate(0);
+                        setTaxCategory("N/A");
+                        setTaxTemplateName("");
+                    }
+                }
+            } else {
+                setTaxRate(0);
+                setTaxCategory("N/A");
+                setTaxTemplateName("");
+            }
+        } catch (error) {
+            console.error("Error fetching tax rate in Cash.jsx:", error);
+            setTaxRate(0);
+            setTaxCategory("N/A");
+            setTaxTemplateName("");
+        }
+    };
 
     const handleCashChange = (e) => {
         const givenAmount = parseFloat(e.target.value) || 0;
@@ -35,20 +118,26 @@ function Cash() {
         }
 
         const grandTotal = parseFloat(billDetails.grand_total) || 0;
-        const cash = cashGiven ? parseFloat(cashGiven) || 0 : grandTotal; // Default to grandTotal if cashGiven is empty
+        const cash = cashGiven ? parseFloat(cashGiven) || 0 : grandTotal;
 
-        // If cashGiven is provided, validate it
         if (cashGiven && cash < grandTotal) {
             alert("Cash given is less than the grand total!");
             return;
         }
 
-        // Calculate change only if cashGiven is provided, otherwise assume exact amount
         const calculatedChange = cashGiven ? (cash - grandTotal) : 0;
-
         alert(`Payment confirmed! Change: ₹${calculatedChange.toFixed(2)}`);
         navigate("/frontpage");
     };
+
+    // Calculate tax amount based on fetched tax rate and subtotal
+    const getSubTotal = () => parseFloat(billDetails?.total) || 0;
+    const getTaxAmount = () => {
+        const subTotal = getSubTotal();
+        const rate = taxRate !== null ? parseFloat(taxRate) : 0;
+        return subTotal > 0 && rate > 0 ? (subTotal * rate) / 100 : (parseFloat(billDetails?.grand_total) - subTotal) || 0;
+    };
+    const getGrandTotal = () => getSubTotal() + getTaxAmount();
 
     return (
         <div className="cash-container">
@@ -122,11 +211,13 @@ function Cash() {
                                         <div className="totals-section mb-4 p-3 bg-light rounded">
                                             <div className="row">
                                                 <div className="col-6 text-start">Subtotal:</div>
-                                                <div className="col-6 text-end">₹{(parseFloat(billDetails.total) || 0).toFixed(2)}</div>
-                                                <div className="col-6 text-start">VAT ({((parseFloat(billDetails.grand_total) - parseFloat(billDetails.total)) / parseFloat(billDetails.total) * 100 || 0).toFixed(2)}%):</div>
-                                                <div className="col-6 text-end">₹{((parseFloat(billDetails.grand_total) - parseFloat(billDetails.total)) || 0).toFixed(2)}</div>
+                                                <div className="col-6 text-end">₹{getSubTotal().toFixed(2)}</div>
+                                                <div className="col-6 text-start">
+                                                    {taxCategory} ({taxRate !== null ? `${taxRate}%` : "N/A"}):
+                                                </div>
+                                                <div className="col-6 text-end">₹{getTaxAmount().toFixed(2)}</div>
                                                 <div className="col-6 text-start fw-bold">Grand Total:</div>
-                                                <div className="col-6 text-end fw-bold">₹{(parseFloat(billDetails.grand_total) || 0).toFixed(2)}</div>
+                                                <div className="col-6 text-end fw-bold">₹{getGrandTotal().toFixed(2)}</div>
                                             </div>
                                         </div>
 
