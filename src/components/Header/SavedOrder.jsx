@@ -1,280 +1,144 @@
 import { useContext, useEffect, useState } from "react";
 import UserContext from "../../Context/UserContext";
 import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid"; // Import uuid for cartItemId
+import { v4 as uuidv4 } from "uuid";
 
-function SavedOrder() {
+function SavedOrder({ orders, setSavedOrders, menuItems }) {
     const { setCartItems } = useContext(UserContext);
-    const [orders, setOrders] = useState([]);
-    const [allItems, setAllItems] = useState([]);
-    const [loading, setLoading] = useState(true); // Add loading state
-    const [error, setError] = useState(null); // Add error state
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const navigate = useNavigate();
-
-    // Fetch all items (same as FoodDetails.jsx)
-    const fetchAllItems = async () => {
-        try {
-            const response = await fetch(
-                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kyle_item_details",
-                {
-                    method: "GET",
-                    headers: {
-                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            const data = await response.json();
-            console.log("Raw Items API Response:", JSON.stringify(data, null, 2));
-
-            let itemList = Array.isArray(data) ? data : (data.message && Array.isArray(data.message) ? data.message : []);
-            if (!itemList.length) throw new Error("Invalid items data structure");
-
-            const baseUrl = "http://109.199.100.136:6060/";
-            setAllItems(
-                itemList.map((item) => ({
-                    ...item,
-                    variants: item.variants ? item.variants.map((v) => ({
-                        type_of_variants: v.type_of_variants,
-                        item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
-                        variant_price: parseFloat(v.variants_price) || 0,
-                    })) : [],
-                    price_list_rate: parseFloat(item.price_list_rate) || 0,
-                    image: item.image ? `${baseUrl}${item.image}` : "default-image.jpg",
-                    custom_kitchen: item.custom_kitchen || "Unknown",
-                    item_name: item.item_name || item.name,
-                    has_variants: item.has_variants || false,
-                }))
-            );
-        } catch (error) {
-            console.error("Error fetching all items:", error);
-            setAllItems([]);
-            setError("Failed to load items. Please try again.");
-        }
-    };
 
     const fetchSavedOrders = async () => {
         try {
             setLoading(true);
             setError(null);
 
-            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
-                method: "GET",
-                headers: {
-                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                    "Content-Type": "application/json",
-                },
-            });
+            const response = await fetch(
+                "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices",
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                        "Expect": "", // Suppress Expect header to avoid 417
+                    },
+                }
+            );
 
-            if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch POS Invoices: ${response.status} - ${response.statusText}`);
+            }
 
             const data = await response.json();
-            console.log("Raw Server Response:", JSON.stringify(data, null, 2));
+            console.log("Raw response from get_pos_invoices:", data);
 
             const result = data.message || data;
-            if (result.status !== "success") throw new Error(result.message || "Unknown error");
+            if (result.status !== "success") {
+                throw new Error(result.message || "Unknown error from server");
+            }
 
             if (!result.data || !Array.isArray(result.data)) {
-                console.warn("No orders found or invalid data structure:", result);
-                setOrders([]);
+                console.warn("No data or invalid format in response:", result);
+                setSavedOrders([]);
                 return;
             }
 
-            const formattedOrders = result.data.map(order => {
-                let addonIndex = 0;
-                let comboIndex = 0;
+            const draftOrders = result.data.filter(
+                (order) =>
+                    order.custom_is_draft_without_payment === 1 ||
+                    order.custom_is_draft_without_payment === "1"
+            );
+            console.log("Filtered draft orders:", draftOrders);
 
-                const cartItems = order.items.map(item => {
-                    const menuItem = allItems.find(m => m.item_code === item.item) || {};
-                    const expectedAddons = menuItem.addons?.length || 0;
-                    const expectedCombos = menuItem.combos?.length || 0;
-
-                    const itemAddons = [];
-                    for (let i = 0; i < expectedAddons && addonIndex < (order.saved_addons?.length || 0); i++) {
-                        itemAddons.push(order.saved_addons[addonIndex]);
-                        addonIndex++;
-                    }
-
-                    const itemCombos = [];
-                    for (let i = 0; i < expectedCombos && comboIndex < (order.saved_combos?.length || 0); i++) {
-                        const combo = order.saved_combos[comboIndex];
-                        const comboItem = allItems.find(m => m.item_name === combo.combo_name || m.item_code === combo.combo_item_code) || {};
-                        const resolvedComboItemCode = combo.combo_item_code || (comboItem.has_variants && combo.size_variants
-                            ? (allItems.find(i => i.item_code === `${comboItem.item_code}-${combo.size_variants}`)?.item_code || combo.combo_name)
-                            : combo.combo_name);
-                        itemCombos.push({
-                            name1: combo.combo_name,
-                            item_code: resolvedComboItemCode,
-                            rate: parseFloat(combo.combo_rate) || 0,
-                            quantity: parseInt(combo.quantity, 10) || 1,
-                            selectedSize: combo.size_variants || null,
-                            selectedCustomVariant: combo.other_variants || null,
-                            kitchen: combo.combo_kitchen || comboItem.custom_kitchen || "Unknown",
-                        });
-                        comboIndex++;
-                    }
-
+            const formattedOrders = draftOrders.map((order) => {
+                const cartItems = order.items.map((item) => {
+                    const menuItem = menuItems.find((m) => m.item_code === item.item_code) || {};
                     return {
-                        cartItemId: uuidv4(), // Add unique ID for cart item
-                        item_code: item.item,
-                        name: menuItem.item_name || item.item,
-                        basePrice: parseFloat(item.price) || 0,
-                        quantity: parseInt(item.quantity, 10) || 1,
-                        selectedSize: item.size_variants || null,
-                        selectedCustomVariant: item.other_variants || null,
-                        kitchen: item.kitchen || menuItem.custom_kitchen || "Unknown",
-                        addonCounts: itemAddons.reduce((acc, addon) => ({
-                            ...acc,
-                            [addon.addon_name]: {
-                                price: parseFloat(addon.addons_price) || 0,
-                                quantity: parseInt(addon.addon_quantity, 10) || 0,
-                                kitchen: addon.addons_kitchen || "Unknown",
-                            },
-                        }), {}),
-                        selectedCombos: itemCombos,
+                        cartItemId: uuidv4(),
+                        item_code: item.item_code,
+                        name: item.item_name,
+                        basePrice: parseFloat(item.rate) || 0,
+                        quantity: parseInt(item.qty, 10) || 1,
+                        selectedSize: item.custom_size_variants || null,
+                        selectedCustomVariant: item.custom_other_variants || null,
+                        kitchen: menuItem.custom_kitchen || item.custom_kitchen || "Unknown",
+                        addonCounts: {}, // Add logic if addons are supported
+                        selectedCombos: [], // Add logic if combos are supported
                     };
                 });
 
-                if (addonIndex < (order.saved_addons?.length || 0) || comboIndex < (order.saved_combos?.length || 0)) {
-                    const lastItem = cartItems[cartItems.length - 1];
-                    lastItem.addonCounts = {
-                        ...lastItem.addonCounts,
-                        ...order.saved_addons.slice(addonIndex).reduce((acc, addon) => ({
-                            ...acc,
-                            [addon.addon_name]: {
-                                price: parseFloat(addon.addons_price) || 0,
-                                quantity: parseInt(addon.addon_quantity, 10) || 0,
-                                kitchen: addon.addons_kitchen || "Unknown",
-                            },
-                        }), {}),
-                    };
-                    lastItem.selectedCombos = [
-                        ...lastItem.selectedCombos,
-                        ...order.saved_combos.slice(comboIndex).map(combo => {
-                            const comboItem = allItems.find(m => m.item_name === combo.combo_name || m.item_code === combo.combo_item_code) || {};
-                            const resolvedComboItemCode = combo.combo_item_code || (comboItem.has_variants && combo.size_variants
-                                ? (allItems.find(i => i.item_code === `${comboItem.item_code}-${combo.size_variants}`)?.item_code || combo.combo_name)
-                                : combo.combo_name);
-                            return {
-                                name1: combo.combo_name,
-                                item_code: resolvedComboItemCode,
-                                rate: parseFloat(combo.combo_rate) || 0,
-                                quantity: parseInt(combo.quantity, 10) || 1,
-                                selectedSize: combo.size_variants || null,
-                                selectedCustomVariant: combo.other_variants || null,
-                                kitchen: combo.combo_kitchen || comboItem.custom_kitchen || "Unknown",
-                            };
-                        }),
-                    ];
-                }
-
                 return {
                     name: order.name,
-                    customerName: order.customer_name,
-                    tableNumber: order.table_number,
-                    phoneNumber: order.phone_number,
-                    timestamp: order.time,
-                    deliveryType: order.delivery_type || "DINE IN", // Ensure deliveryType is always set
-                    address: order.address || "", // Updated field name
-                    watsappNumber: order.watsapp_number || "", // Updated field name
-                    email: order.email || "", // Updated field name
+                    customer: order.customer,
+                    custom_table_number: order.custom_table_number,
+                    contact_mobile: order.contact_mobile,
+                    custom_delivery_type: order.custom_delivery_type || "DINE IN",
+                    customer_address: order.customer_address || "",
+                    contact_email: order.contact_email || "",
+                    posting_date: order.posting_date,
                     cartItems,
                 };
             });
 
-            console.log("Formatted orders:", JSON.stringify(formattedOrders, null, 2));
-            setOrders(formattedOrders);
+            setSavedOrders(formattedOrders);
+            console.log("Formatted orders set:", formattedOrders);
         } catch (error) {
-            console.error("Error fetching saved orders:", error.message);
-            setError("Failed to load saved orders. Please try again.");
-            setOrders([]);
+            console.error("Error fetching POS Invoices:", error.message);
+            setError(`Failed to load saved orders: ${error.message}. Please try again or contact support.`);
+            setSavedOrders([]);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchAllItems();
-    }, []);
-
-    useEffect(() => {
-        if (allItems.length > 0) {
-            fetchSavedOrders();
-        }
-    }, [allItems]);
-
-    const handleDeleteOrder = async (orderName) => {
-        const confirmed = window.confirm("Are you sure you want to delete this order?");
-        if (confirmed) {
-            try {
-                const response = await fetch(`/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_saved_order?doc_name=${orderName}`, {
-                    method: "GET",
-                    headers: {
-                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                        "Content-Type": "application/json",
-                    },
-                });
-                if (!response.ok) throw new Error(`Failed to delete order: ${response.status}`);
-                const result = await response.json();
-                console.log("Delete Response:", result);
-                const responseData = result.message || result;
-                if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
-                setOrders(prev => prev.filter(order => order.name !== orderName));
-                setCartItems([]);
-                alert("Order deleted successfully.");
-            } catch (error) {
-                console.error("Error deleting order:", error.message);
-                alert("Failed to delete order: " + error.message);
-            }
-        }
-    };
+        fetchSavedOrders();
+    }, [setSavedOrders, menuItems]);
 
     const handleSelectOrder = (order) => {
-        const formattedCartItems = order.cartItems.map(item => ({
-            ...item,
+        const formattedCartItems = order.cartItems.map((item) => ({
+            cartItemId: item.cartItemId || uuidv4(),
             item_code: item.item_code,
             name: item.name,
             basePrice: item.basePrice || 0,
-            customVariantPrice: item.customVariantPrice || 0,
             quantity: item.quantity || 1,
             selectedSize: item.selectedSize || null,
             selectedCustomVariant: item.selectedCustomVariant || null,
             addonCounts: item.addonCounts || {},
-            selectedCombos: (item.selectedCombos || []).map(combo => ({
-                ...combo,
-                name1: combo.name1,
-                item_code: combo.item_code,
-                rate: combo.rate || 0,
-                quantity: combo.quantity || 1,
-                selectedSize: combo.selectedSize || null,
-                selectedCustomVariant: combo.selectedCustomVariant || null,
-                kitchen: combo.kitchen || "Unknown",
-            })),
+            selectedCombos: item.selectedCombos || [],
             kitchen: item.kitchen || "Unknown",
         }));
         setCartItems(formattedCartItems);
-        alert(`You selected ${order.deliveryType === "DINE IN" ? `Table ${order.tableNumber}` : `Order (${order.deliveryType})`}`);
+        alert(
+            `You selected ${
+                order.custom_delivery_type === "DINE IN"
+                    ? `Table ${order.custom_table_number}`
+                    : `Order (${order.custom_delivery_type})`
+            }`
+        );
         navigate("/frontpage", {
             state: {
-                tableNumber: order.tableNumber,
-                phoneNumber: order.phoneNumber,
-                customerName: order.customerName,
+                tableNumber: order.custom_table_number,
+                phoneNumber: order.contact_mobile,
+                customerName: order.customer,
                 existingOrder: order,
-                deliveryType: order.deliveryType, // Pass the actual deliveryType without fallback
+                deliveryType: order.custom_delivery_type,
+                address: order.customer_address,
+                email: order.contact_email,
             },
         });
     };
 
     return (
         <div className="container mt-4">
-            <h2 className="text-center">Saved Orders</h2>
+            <h2 className="text-center">Saved Orders (Draft Invoices Without Payments)</h2>
             {loading ? (
                 <p className="text-center text-muted">Loading saved orders...</p>
             ) : error ? (
                 <p className="text-center text-danger">{error}</p>
             ) : orders.length === 0 ? (
-                <p className="text-center text-muted">No saved orders yet.</p>
+                <p className="text-center text-muted">No draft invoices without payments found.</p>
             ) : (
                 <div className="table-responsive">
                     <table className="table table-bordered">
@@ -286,7 +150,6 @@ function SavedOrder() {
                                 <th>Phone Number</th>
                                 <th>Delivery Type</th>
                                 <th>Address</th>
-                                <th>WhatsApp Number</th>
                                 <th>Email</th>
                                 <th>Items</th>
                                 <th>Timestamp</th>
@@ -297,60 +160,54 @@ function SavedOrder() {
                             {orders.map((order, index) => (
                                 <tr key={order.name}>
                                     <td>{index + 1}</td>
-                                    <td>{order.customerName}</td>
-                                    <td>{order.tableNumber || "N/A"}</td>
-                                    <td>{order.phoneNumber || "N/A"}</td>
-                                    <td>{order.deliveryType}</td>
-                                    <td>{order.address || "N/A"}</td>
-                                    <td>{order.watsappNumber || "N/A"}</td> {/* Updated field name */}
-                                    <td>{order.email || "N/A"}</td>
+                                    <td>{order.customer}</td>
+                                    <td>{order.custom_table_number || "N/A"}</td>
+                                    <td>{order.contact_mobile || "N/A"}</td>
+                                    <td>{order.custom_delivery_type}</td>
+                                    <td>{order.customer_address || "N/A"}</td>
+                                    <td>{order.contact_email || "N/A"}</td>
                                     <td>
                                         {order.cartItems.map((item, i) => (
                                             <div key={i}>
                                                 <div>
                                                     {item.name}
                                                     {item.selectedSize && ` (${item.selectedSize})`}
-                                                    {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                                                    - Qty: {item.quantity} - ${(item.basePrice * item.quantity).toFixed(2)}
+                                                    {item.selectedCustomVariant &&
+                                                        ` (${item.selectedCustomVariant})`}
+                                                    - Qty: {item.quantity} - ₹
+                                                    {(item.basePrice * item.quantity).toFixed(2)}
                                                 </div>
-                                                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                            <li key={addonName}>
-                                                                + {addonName} x{quantity} (${(price * quantity).toFixed(2)})
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                        {item.selectedCombos.map((combo, idx) => (
-                                                            <li key={idx}>
-                                                                + {combo.name1} x{combo.quantity || 1}
-                                                                {(combo.selectedSize || combo.selectedCustomVariant) && (
-                                                                    ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
-                                                                )}
-                                                                - ${(combo.rate * (combo.quantity || 1)).toFixed(2)}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                                {item.addonCounts &&
+                                                    Object.keys(item.addonCounts).length > 0 && (
+                                                        <ul
+                                                            style={{
+                                                                listStyleType: "none",
+                                                                padding: 0,
+                                                                marginTop: "5px",
+                                                                fontSize: "12px",
+                                                                color: "#888",
+                                                            }}
+                                                        >
+                                                            {Object.entries(item.addonCounts).map(
+                                                                ([addonName, { price, quantity }]) => (
+                                                                    <li key={addonName}>
+                                                                        + {addonName} x{quantity} (₹
+                                                                        {(price * quantity).toFixed(2)})
+                                                                    </li>
+                                                                )
+                                                            )}
+                                                        </ul>
+                                                    )}
                                             </div>
                                         ))}
                                     </td>
-                                    <td>{new Date(order.timestamp).toLocaleString()}</td>
+                                    <td>{new Date(order.posting_date).toLocaleString()}</td>
                                     <td>
                                         <button
-                                            className="btn btn-primary btn-sm me-2"
+                                            className="btn btn-primary btn-sm"
                                             onClick={() => handleSelectOrder(order)}
                                         >
                                             Select
-                                        </button>
-                                        <button
-                                            className="btn btn-danger btn-sm"
-                                            onClick={() => handleDeleteOrder(order.name)}
-                                        >
-                                            Delete
                                         </button>
                                     </td>
                                 </tr>

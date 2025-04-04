@@ -20,13 +20,11 @@ function Front() {
     const location = useLocation();
     const { state } = useLocation();
     const { tableNumber: initialTableNumber, existingOrder, deliveryType: initialDeliveryType } = state || {};
-
     const userData = useSelector((state) => state.user);
     const company = userData.company || "POS8";
     const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount);
     const [taxTemplateName, setTaxTemplateName] = useState("");
     const [taxRate, setTaxRate] = useState(null);
-
     const [isPhoneNumberSet, setIsPhoneNumberSet] = useState(false);
     const [savedOrders, setSavedOrders] = useState([]);
     const [phoneNumber, setPhoneNumber] = useState("");
@@ -38,8 +36,9 @@ function Front() {
     const [bookedTables, setBookedTables] = useState([]);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
     const [address, setAddress] = useState("");
-    const [watsappNumber, setWatsappNumber] = useState(""); // Updated to match backend field name
+    const [watsappNumber, setWatsappNumber] = useState(""); 
     const [email, setEmail] = useState("");
+    const [bearer,setBearer] = useState(userData.user)
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [tableNumber, setTableNumber] = useState(initialTableNumber || "");
@@ -48,17 +47,14 @@ function Front() {
     useEffect(() => {
         if (location.state) {
             const { customerName: stateCustomerName, phoneNumber: statePhoneNumber, tableNumber: stateTableNumber, existingOrder } = location.state;
-            const finalCustomerName = stateCustomerName || existingOrder?.customerName || "One Time Customer";
-            const finalPhoneNumber = statePhoneNumber || existingOrder?.phoneNumber || "";
-            const finalTableNumber = stateTableNumber || existingOrder?.tableNumber || "";
-            const finalDeliveryType = location.state.deliveryType || existingOrder?.deliveryType || "";
+            const finalCustomerName = stateCustomerName || existingOrder?.customer || "One Time Customer";
+            const finalPhoneNumber = statePhoneNumber || existingOrder?.contact_mobile || "";
+            const finalTableNumber = stateTableNumber || existingOrder?.custom_table_number || "";
+            const finalDeliveryType = location.state.deliveryType || existingOrder?.custom_delivery_type || "";
             const finalCartItems = existingOrder?.cartItems || [];
-            const finalAddress = existingOrder?.address || "";
-            const finalWatsappNumber = existingOrder?.watsappNumber || ""; // Updated field name
-            const finalEmail = existingOrder?.email || "";
-
-            console.log("State received in Front:", JSON.stringify(location.state, null, 2));
-            console.log("Setting states - customerName:", finalCustomerName, "phoneNumber:", finalPhoneNumber, "tableNumber:", finalTableNumber, "cartItems:", JSON.stringify(finalCartItems, null, 2));
+            const finalAddress = existingOrder?.customer_address || "";
+            const finalWatsappNumber = existingOrder?.contact_mobile || ""; 
+            const finalEmail = existingOrder?.contact_email || "";
 
             setCustomerName(finalCustomerName);
             setCustomerInput(finalCustomerName);
@@ -66,19 +62,18 @@ function Front() {
             setTableNumber(finalTableNumber);
             setDeliveryType(finalDeliveryType);
             setAddress(finalAddress);
-            setWatsappNumber(finalWatsappNumber); // Updated field name
+            setWatsappNumber(finalWatsappNumber); 
             setEmail(finalEmail);
             setIsPhoneNumberSet(!!finalPhoneNumber);
             setCartItems(finalCartItems);
         } else {
-            console.log("No location.state received, resetting states.");
             setCustomerName("One Time Customer");
             setCustomerInput("");
             setPhoneNumber("");
             setTableNumber("");
             setDeliveryType("");
             setAddress("");
-            setWatsappNumber(""); // Updated field name
+            setWatsappNumber(""); 
             setEmail("");
             setIsPhoneNumberSet(false);
             setCartItems([]);
@@ -108,11 +103,9 @@ function Front() {
                         setTaxTemplateName(taxTemplate);
                         fetchTaxRate(taxTemplate);
                     } else {
-                        console.warn(`No custom_tax_type found for company ${company}. Fetching available tax templates.`);
                         fetchTaxRate(null);
                     }
                 } else {
-                    console.warn(`No data for company ${company}. Fetching available tax templates.`);
                     fetchTaxRate(null);
                 }
             } catch (error) {
@@ -131,7 +124,6 @@ function Front() {
                     },
                 });
                 const data = await response.json();
-                console.log("Full Tax API Response:", JSON.stringify(data, null, 2));
                 if (data.message && Array.isArray(data.message)) {
                     if (templateName) {
                         const tax = data.message.find(t => t.name === templateName);
@@ -139,7 +131,6 @@ function Front() {
                             const rate = parseFloat(tax.sales_tax[0].rate) || 0;
                             setTaxRate(rate);
                             setTaxTemplateName(taxTemplate);
-                            console.log(`Tax rate for ${templateName}: ${rate}%`);
                         } else {
                             console.warn(`No tax rate found for ${templateName}. Using first available template.`);
                         }
@@ -150,15 +141,12 @@ function Front() {
                             const rate = parseFloat(defaultTax.sales_tax[0].rate) || 0;
                             setTaxRate(rate);
                             setTaxTemplateName(defaultTax.name);
-                            console.log(`Using default tax template ${defaultTax.name}: ${rate}%`);
                         } else {
-                            console.warn("No valid tax templates found. Setting rate to 0%.");
                             setTaxRate(0);
                             setTaxTemplateName("");
                         }
                     }
                 } else {
-                    console.warn("Invalid tax details response. Setting rate to 0%.");
                     setTaxRate(0);
                     setTaxTemplateName("");
                 }
@@ -184,89 +172,55 @@ function Front() {
                 });
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
-                console.log('API Response (allItems):', JSON.stringify(data, null, 2));
-    
-                if (!data || !Array.isArray(data.message)) {
-                    throw new Error('Invalid data structure or missing message array');
-                }
-    
+
                 const baseUrl = 'http://109.199.100.136:6060/';
                 const formattedItems = data.message
                     .filter(item => item && typeof item === 'object')
-                    .map((item) => {
-                        try {
-                            const formattedItem = {
-                                id: uuidv4(),
-                                name: item.item_name || 'Unnamed Item',
-                                category: item.item_group || 'Uncategorized',
-                                image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
-                                price: parseFloat(item.price_list_rate) || 0,
-                                item_code: item.item_code || '',
-                                variants: Array.isArray(item.variants) ? item.variants.map((v) => ({
-                                    type_of_variants: v.type_of_variants || '',
-                                    item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
-                                    variant_price: parseFloat(v.variants_price) || 0,
-                                })) : [],
-                                customVariants: item.custom_variant_applicable ? ['Spicy', 'Non-Spicy'] : [],
-                                addons: Array.isArray(item.addons) ? item.addons.map((addon) => ({
-                                    name: addon.name || addon.item_name || "Unnamed Addon",
-                                    price: parseFloat(addon.price || addon.price_list_rate) || 0,
-                                    kitchen: addon.kitchen || addon.custom_kitchen || "Unknown",
-                                })) : [],
-                                combos: Array.isArray(item.combos) ? item.combos.map((combo) => ({
-                                    name1: combo.name1 || combo.item_name || "Unnamed Combo",
-                                    combo_price: parseFloat(combo.price || combo.combo_price || combo.price_list_rate) || 0,
-                                    kitchen: combo.kitchen || combo.custom_kitchen || "Unknown",
-                                    variants: Array.isArray(combo.variants) ? combo.variants : [],
-                                })) : [],
-                                ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
-                                kitchen: item.custom_kitchen || "Unknown",
-                                type: item.type || "regular",
-                                has_variants: item.has_variants || false,
-                            };
-                            if (!Array.isArray(formattedItem.variants)) {
-                                console.warn('Variants not an array for item:', item);
-                                formattedItem.variants = [];
-                            }
-                            return formattedItem;
-                        } catch (mapError) {
-                            console.error('Error mapping item:', item, mapError);
-                            return null;
-                        }
-                    })
+                    .map((item) => ({
+                        id: uuidv4(),
+                        name: item.item_name || 'Unnamed Item',
+                        category: item.item_group || 'Uncategorized',
+                        image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
+                        price: parseFloat(item.price_list_rate) || 0,
+                        item_code: item.item_code || '',
+                        variants: Array.isArray(item.variants) ? item.variants.map((v) => ({
+                            type_of_variants: v.type_of_variants || '',
+                            item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
+                            variant_price: parseFloat(v.variants_price) || 0,
+                        })) : [],
+                        customVariants: item.custom_variant_applicable ? ['Spicy', 'Non-Spicy'] : [],
+                        addons: Array.isArray(item.addons) ? item.addons.map((addon) => ({
+                            name: addon.name || addon.item_name || "Unnamed Addon",
+                            price: parseFloat(addon.price || addon.price_list_rate) || 0,
+                            kitchen: addon.kitchen || addon.custom_kitchen || "Unknown",
+                        })) : [],
+                        combos: Array.isArray(item.combos) ? item.combos.map((combo) => ({
+                            name1: combo.name1 || combo.item_name || "Unnamed Combo",
+                            combo_price: parseFloat(combo.price || combo.combo_price || combo.price_list_rate) || 0,
+                            kitchen: combo.kitchen || combo.custom_kitchen || "Unknown",
+                            variants: Array.isArray(combo.variants) ? combo.variants : [],
+                        })) : [],
+                        ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
+                        kitchen: item.custom_kitchen || "Unknown",
+                        type: item.type || "regular",
+                        has_variants: item.has_variants || false,
+                    }))
                     .filter(item => item !== null && item !== undefined);
-    
-                console.log('Formatted Items:', JSON.stringify(formattedItems, null, 2));
-    
-                if (formattedItems.length === 0) {
-                    console.warn('No valid items after formatting.');
-                }
-    
+
                 const validItems = formattedItems.filter(item => {
-                    if (!item || typeof item !== 'object' || !('variants' in item)) {
-                        console.error('Invalid item detected:', item);
-                        return false;
-                    }
+                    if (!item || typeof item !== 'object' || !('variants' in item)) return false;
                     return true;
                 });
-    
+
                 const initialFilteredItems = validItems.filter((item) => {
-                    try {
-                        console.log('Filtering item:', item.name, 'Variants:', item.variants);
-                        const isMainItem = (Array.isArray(item.variants) && item.variants.length > 0) ||
-                            !["-S", "-M", "-L"].some(suffix => (item.item_code || '').endsWith(suffix));
-                        return isMainItem &&
-                            ((allowedItemGroups || []).length === 0 || (allowedItemGroups || []).includes(item.category)) &&
-                            item.type !== "addon" &&
-                            item.type !== "combo";
-                    } catch (filterError) {
-                        console.error('Error filtering item:', item, filterError);
-                        return false;
-                    }
+                    const isMainItem = (Array.isArray(item.variants) && item.variants.length > 0) ||
+                        !["-S", "-M", "-L"].some(suffix => (item.item_code || '').endsWith(suffix));
+                    return isMainItem &&
+                        ((allowedItemGroups || []).length === 0 || (allowedItemGroups || []).includes(item.category)) &&
+                        item.type !== "addon" &&
+                        item.type !== "combo";
                 });
-    
-                console.log('Initial Filtered Items:', JSON.stringify(initialFilteredItems, null, 2));
-    
+
                 setAllItems(validItems);
                 setFilteredItems(initialFilteredItems);
                 const uniqueCategories = [...new Set(validItems.map((item) => (item.category || '').toLowerCase()))];
@@ -278,7 +232,7 @@ function Front() {
                 setCategories([]);
             }
         };
-    
+
         fetchItems();
     }, [allowedItemGroups]);
 
@@ -308,7 +262,6 @@ function Front() {
     const handleItemClick = (item) => setSelectedItem(item);
 
     const handleItemUpdate = (updatedItem) => {
-        console.log("Updated Item from FoodDetails:", updatedItem);
         updateCartItem(updatedItem);
         setSelectedItem(null);
     };
@@ -324,38 +277,20 @@ function Front() {
             (sum, combo) => sum + (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
             0
         );
-        const total = mainPrice + customVariantPrice + addonPrice + comboPrice;
-        console.log(`Item Total for ${item.name}: Main=${mainPrice}, Custom=${customVariantPrice}, Addons=${addonPrice}, Combos=${comboPrice}, Total=${total}`);
-        return total;
+        return mainPrice + customVariantPrice + addonPrice + comboPrice;
     };
 
-    const getSubTotal = () => {
-        const subTotal = cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
-        console.log("SubTotal:", subTotal);
-        return subTotal;
-    };
+    const getSubTotal = () => cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
 
-    const getTaxRate = () => {
-        const rate = taxRate !== null ? parseFloat(taxRate) : 0;
-        console.log("Current taxRate:", rate);
-        return rate;
-    };
+    const getTaxRate = () => taxRate !== null ? parseFloat(taxRate) : 0;
 
     const getTaxAmount = () => {
         const subTotal = getSubTotal();
         const taxRate = getTaxRate();
-        const taxAmount = subTotal > 0 && taxRate > 0 ? (subTotal * taxRate) / 100 : 0;
-        console.log(`Tax Calculation: Subtotal=${subTotal}, Tax Rate=${taxRate}%, Tax Amount=${taxAmount}`);
-        return taxAmount;
+        return subTotal > 0 && taxRate > 0 ? (subTotal * taxRate) / 100 : 0;
     };
 
-    const getGrandTotal = () => {
-        const subTotal = getSubTotal();
-        const taxAmount = getTaxAmount();
-        const grandTotal = subTotal + taxAmount;
-        console.log(`Grand Total: Subtotal=${subTotal}, Tax=${taxAmount}, Total=${grandTotal}`);
-        return grandTotal;
-    };
+    const getGrandTotal = () => getSubTotal() + getTaxAmount();
 
     const handleCheckoutClick = () => setShowButtons(true);
 
@@ -376,32 +311,6 @@ function Front() {
         }
     };
 
-    const handlePaymentCompletion = async (orderName, tableNumber) => {
-        try {
-            const response = await fetch(`/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_saved_order?doc_name=${orderName}`, {
-                method: "GET",
-                headers: {
-                    "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
-                    "Content-Type": "application/json",
-                },
-            });
-
-            if (!response.ok) throw new Error(`Failed to delete order: ${response.status}`);
-            const result = await response.json();
-            const responseData = result.message || result;
-            if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
-
-            const updatedBookedTables = bookedTables.filter(table => table !== tableNumber);
-            setBookedTables(updatedBookedTables);
-            localStorage.setItem("bookedTables", JSON.stringify(updatedBookedTables));
-            setCartItems([]);
-            alert(`Payment for Table ${tableNumber || "Order"} is completed and order removed from saved list.`);
-        } catch (error) {
-            console.error("Error deleting order after payment:", error.message);
-            alert("Payment completed, but failed to remove order from saved list: " + error.message);
-        }
-    };
-
     const handlePaymentSelection = async (method) => {
         const subTotal = getSubTotal();
         const grandTotal = getGrandTotal();
@@ -409,88 +318,137 @@ function Front() {
             mode_of_payment: method,
             amount: grandTotal.toFixed(2),
         };
-
-        console.log("Payment Details (Before Sending to Backend):", paymentDetails);
-
-        if (!paymentDetails || !paymentDetails.mode_of_payment) {
-            console.error("Error: Payment Details are missing or incorrect!", paymentDetails);
-            alert("Error: Payment method is not defined. Please try again.");
+    
+        const existingOrder = location.state?.existingOrder;
+        const invoiceName = existingOrder?.name;
+    
+        if (!invoiceName) {
+            alert("No existing draft invoice selected. Please save the order first.");
             return;
         }
-
-        const billDetails = {
-            customerName,
-            phoneNumber: phoneNumber || "N/A",
-            items: cartItems.map((item) => ({
-                name: item.name,
-                price: parseFloat(item.basePrice) || 0,
-                quantity: item.quantity || 1,
-                totalPrice: getItemTotal(item),
-                selectedSize: item.selectedSize || null,
-                selectedCustomVariant: item.selectedCustomVariant || null,
-                addonCounts: item.addonCounts || {},
-                selectedCombos: item.selectedCombos || [],
-            })),
-            subTotal: subTotal.toFixed(2),
-            vatRate: getTaxRate(),
-            vatAmount: getTaxAmount().toFixed(2),
-            totalAmount: grandTotal.toFixed(2),
-            payments: [paymentDetails],
-            ...(deliveryType !== "DINE IN" && {
-                address,
-                watsappNumber, // Updated field name
-                email,
+    
+        const payload = {
+            name: invoiceName,
+            payments: [{
+                mode_of_payment: paymentDetails.mode_of_payment,
+                amount: paymentDetails.amount,
+            }],
+            total: subTotal.toFixed(2),
+            net_total: subTotal.toFixed(2),
+            base_net_total: subTotal.toFixed(2),
+            grand_total: grandTotal.toFixed(2),
+            taxes_and_charges: taxTemplateName || "",
+            customer: customerName || "CUST-2025-00001",
+            contact_mobile: phoneNumber || watsappNumber || "",
+            custom_table_number: tableNumber || "",
+            custom_delivery_type: deliveryType || "DINE IN",
+            customer_address: address || "",
+            contact_email: email || "",
+            custom_bearer: bearer || "",
+            items: cartItems.flatMap((item) => {
+                const variantPrice = parseFloat(item.customVariantPrice) || 0;
+                const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
+    
+                const mainItem = {
+                    item_code: resolvedItemCode,
+                    item_name: item.name,
+                    qty: item.quantity || 1,
+                    rate: (parseFloat(item.basePrice) || 0) + variantPrice,
+                    amount: ((parseFloat(item.basePrice) || 0) + variantPrice) * (item.quantity || 1),
+                    income_account: defaultIncomeAccount || "Sales - P",
+                    custom_size_variants: item.selectedSize || "",
+                    custom_other_variants: item.selectedCustomVariant || "",
+                };
+    
+                const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                    item_code: addonName,
+                    item_name: addonName,
+                    qty: quantity || 0,
+                    rate: parseFloat(price) || 0,
+                    amount: (parseFloat(price) || 0) * (quantity || 0),
+                    income_account: defaultIncomeAccount || "Sales - P",
+                }));
+    
+                const comboItems = (item.selectedCombos || []).map((combo) => {
+                    const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
+                    return {
+                        item_code: resolvedComboItemCode,
+                        item_name: combo.name1,
+                        qty: combo.quantity || 1,
+                        rate: parseFloat(combo.rate) || 0,
+                        amount: (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
+                        income_account: defaultIncomeAccount || "Sales - P",
+                        custom_size_variants: combo.selectedSize || "",
+                        custom_other_variants: combo.selectedCustomVariant || "",
+                    };
+                });
+    
+                return [mainItem, ...addonItems, ...comboItems];
             }),
         };
-
+    
         try {
-            const existingOrder = location.state?.existingOrder;
-            const orderName = existingOrder?.name;
-
-            await handleSaveToBackend(paymentDetails, subTotal);
-
-            if (method === "CASH") {
-                navigate("/cash", { state: { billDetails } });
-            } else if (method === "CREDIT CARD") {
-                navigate("/card", { state: { billDetails } });
-            } else if (method === "UPI") {
-                alert("Redirecting to UPI payment... Please complete the payment in your UPI app.");
-            }
-
-            if (orderName) {
-                await handlePaymentCompletion(orderName, tableNumber);
-            } else {
+            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    "Expect": "",
+                },
+                body: JSON.stringify(payload),
+            });
+    
+            const result = await response.json();
+            if (response.ok && result.message?.status === "success") {
+                if (method === "CASH") {
+                    navigate("/cash", { state: { billDetails: result.message.data } });
+                } else if (method === "CREDIT CARD") {
+                    navigate("/card", { state: { billDetails: result.message.data } });
+                } else if (method === "UPI") {
+                    alert("Redirecting to UPI payment...");
+                }
                 setCartItems([]);
-                alert(`Payment for Table ${tableNumber || "Order"} is completed.`);
+                alert(`Payment completed for Invoice ${invoiceName}. Status: ${result.message.data.status}`);
+            } else {
+                const errorMsg = result.message?.exception || result.message?.message || "Unknown error";
+                alert(`Failed to process payment for POS Invoice: ${errorMsg}`);
             }
         } catch (error) {
             console.error("Error processing payment:", error);
             alert("Failed to process payment. Please try again.");
         }
     };
-
-    const handleSaveToBackend = async (paymentDetails, subTotal) => {
-        console.log("Inside handleSaveToBackend | Payment Details:", paymentDetails);
-        console.log("Cart Items Full Details:", JSON.stringify(cartItems, null, 2));
-        console.log("Current customerName:", customerName);
-        console.log("Customers array:", customers);
-
-        if (!paymentDetails || typeof paymentDetails !== "object" || !paymentDetails.mode_of_payment) {
-            console.error("Invalid paymentDetails:", paymentDetails);
-            alert("Error: Invalid payment details. Please try again.");
-            return;
+    const resolveVariantItemCode = (itemCode, selectedSize) => {
+        const menuItem = allItems.find((m) => m.item_code === itemCode);
+        if (!menuItem) return itemCode;
+        if (menuItem.has_variants && selectedSize) {
+            const variantItem = allItems.find((i) => i.item_code === `${menuItem.item_code}-${selectedSize}`);
+            return variantItem ? variantItem.item_code : itemCode;
         }
+        return itemCode;
+    };
+    
+    const resolveComboVariantItemCode = (comboName, selectedSize) => {
+        const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
+        if (!comboItem) return comboName;
+        if (comboItem.has_variants && selectedSize) {
+            const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
+            return variantItem ? variantItem.item_code : comboItem.item_code;
+        }
+        return comboItem.item_code;
+    };
 
+    const saveOrder = async () => {
         const resolveVariantItemCode = (itemCode, selectedSize) => {
-            const itemData = allItems.find((m) => m.item_code === itemCode);
-            if (!itemData) return itemCode;
-            if (itemData.has_variants && selectedSize) {
-                const variantItem = allItems.find((i) => i.item_code === `${itemData.item_code}-${selectedSize}`);
+            const menuItem = allItems.find((m) => m.item_code === itemCode);
+            if (!menuItem) return itemCode;
+            if (menuItem.has_variants && selectedSize) {
+                const variantItem = allItems.find((i) => i.item_code === `${menuItem.item_code}-${selectedSize}`);
                 return variantItem ? variantItem.item_code : itemCode;
             }
             return itemCode;
         };
-
+    
         const resolveComboVariantItemCode = (comboName, selectedSize) => {
             const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
             if (!comboItem) return comboName;
@@ -500,67 +458,75 @@ function Front() {
             }
             return comboItem.item_code;
         };
-
+    
+        if (cartItems.length === 0) {
+            alert("Cart is empty. Please add items before saving.");
+            return;
+        }
+    
+        if (deliveryType && deliveryType !== "DINE IN") {
+            if (!address || address.trim() === "") {
+                alert("Please enter a delivery address for this delivery type.");
+                return;
+            }
+            if (!watsappNumber || watsappNumber.trim() === "") {
+                alert("Please enter a WhatsApp number for this delivery type.");
+                return;
+            }
+            if (!email || email.trim() === "") {
+                alert("Please enter an email address for this delivery type.");
+                return;
+            }
+        }
+    
+        const selectedCustomer = customers.find((c) => c.customer_name === customerName);
+        const customerId = selectedCustomer ? selectedCustomer.name : "CUST-2025-00001";
+    
         const allCartItems = cartItems.flatMap((item) => {
             const variantPrice = parseFloat(item.customVariantPrice) || 0;
             let resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
-            console.log(`Resolved item_code for ${item.name}: ${resolvedItemCode}`);
-
+    
             const mainItem = {
                 item_code: resolvedItemCode,
                 item_name: item.name,
-                description: item.selectedCustomVariant
-                    ? `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''} (${item.selectedCustomVariant})`
-                    : `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''}`,
                 qty: item.quantity || 1,
                 rate: (parseFloat(item.basePrice) || 0) + variantPrice,
                 amount: ((parseFloat(item.basePrice) || 0) + variantPrice) * (item.quantity || 1),
-                kitchen: item.kitchen || "Unknown",
-                income_account: defaultIncomeAccount,
+                income_account: defaultIncomeAccount || "Sales - P",
+                custom_size_variants: item.selectedSize || "",
+                custom_other_variants: item.selectedCustomVariant || "",
             };
-
-            const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
+    
+            const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
                 item_code: addonName,
                 item_name: addonName,
-                description: `Addon: ${addonName}`,
                 qty: quantity || 0,
                 rate: parseFloat(price) || 0,
                 amount: (parseFloat(price) || 0) * (quantity || 0),
-                kitchen: kitchen || "Unknown",
-                income_account: defaultIncomeAccount,
+                income_account: defaultIncomeAccount || "Sales - P",
             }));
-
+    
             const comboItems = (item.selectedCombos || []).map((combo) => {
                 const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
-                console.log(`Resolved combo item_code for ${combo.name1}: ${resolvedComboItemCode}`);
-
                 return {
                     item_code: resolvedComboItemCode,
                     item_name: combo.name1,
-                    description: `Combo: ${combo.name1}${(combo.selectedSize || combo.selectedCustomVariant) ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})` : ''}`,
                     qty: combo.quantity || 1,
                     rate: parseFloat(combo.rate) || 0,
                     amount: (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
-                    kitchen: combo.kitchen || "Unknown",
-                    income_account: defaultIncomeAccount,
+                    income_account: defaultIncomeAccount || "Sales - P",
+                    custom_size_variants: combo.selectedSize || "",
+                    custom_other_variants: combo.selectedCustomVariant || "",
                 };
             });
-
+    
             return [mainItem, ...addonItems, ...comboItems];
         });
-
-        if (allCartItems.length === 0) {
-            console.error("Error: No items in the cart.");
-            alert("Error: Cannot create an order with no items.");
-            return;
-        }
-
-        const selectedCustomer = customers.find((c) => c.customer_name === customerName);
-        const customerId = selectedCustomer ? selectedCustomer.name : "CUST-2025-00001";
-        console.log("Selected Customer:", selectedCustomer);
-        console.log("Customer ID to be sent:", customerId);
-
+    
+        const subTotal = getSubTotal();
         const grandTotal = getGrandTotal();
+        const existingOrder = location.state?.existingOrder;
+    
         const payload = {
             customer: customerId,
             posting_date: new Date().toISOString().split("T")[0],
@@ -575,47 +541,58 @@ function Front() {
             total: subTotal.toFixed(2),
             net_total: subTotal.toFixed(2),
             base_net_total: subTotal.toFixed(2),
-            taxes_and_charges: taxTemplateName,
-            payments: [{
-                mode_of_payment: paymentDetails.mode_of_payment,
-                amount: grandTotal.toFixed(2),
-            }],
+            taxes_and_charges: taxTemplateName || "",
+            grand_total: grandTotal.toFixed(2),
+            status: "Draft",
+            custom_table_number: tableNumber || "",
+            custom_delivery_type: deliveryType || "DINE IN",
+            customer_address: address || "",
+            contact_mobile: phoneNumber || watsappNumber || "",
+            contact_email: email || "",
+            custom_bearer: bearer || "",
             items: allCartItems,
-            ...(deliveryType !== "DINE IN" && {
-                address: address || "",
-                watsapp_number: watsappNumber || "", // Updated field name
-                email: email || "",
-            }),
         };
-
-        console.log("Final Payload before sending to backend:", JSON.stringify(payload, null, 2));
-
+    
+        if (existingOrder && existingOrder.name) {
+            payload.name = existingOrder.name;
+        }
+    
+        console.log("Saving payload:", JSON.stringify(payload, null, 2));
+    
         try {
-            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice", {
+            const apiEndpoint = existingOrder && existingOrder.name
+                ? "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice_draft"
+                : "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice";
+    
+            const response = await fetch(apiEndpoint, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    "Expect": "",
                 },
                 body: JSON.stringify(payload),
             });
-
+    
             const result = await response.json();
-            console.log("Raw Backend Response:", result);
-
-            if (response.ok && result.message?.status === "success") {
-                alert(`POS Invoice saved successfully! Grand Total: ₹${result.message.grand_total}`);
-                setCartItems([]);
-                localStorage.removeItem("savedOrders");
+            console.log("Response from API:", result);
+    
+            if (response.ok && result.message && result.message.status === "success") {
+                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: ₹${result.message.data.grand_total}`);
+                setCartItems([]); // Clear cart after saving
+                if (tableNumber && !existingOrder) {
+                    setBookedTables(prev => [...new Set([...prev, tableNumber])]);
+                }
+                navigate("/table", { state: { savedInvoice: result.message.data } });
             } else {
-                console.error("Backend response error:", result);
-                alert(`Failed to save POS Invoice: ${result.message?.message || "Unknown error"}`);
-            }
-        } catch (error) {
-            console.error("Network or Request Error:", error);
-            alert("A network error occurred. Please check your connection and try again.");
+                const errorMsg = result.message?.exception || result.message?.message || result.exception || result.message || "Unknown error";
+                alert(`Failed to ${existingOrder ? "update" : "save"} POS Invoice: ${errorMsg}`);
         }
-    };
+    } catch (error) {
+        console.error(`Error ${existingOrder ? "updating" : "saving"} POS Invoice:`, error);
+        alert("A network error occurred. Please check your connection and try again.");
+    }
+};
 
     const handleShow = () => setShowPaymentModal(true);
     const handleClose = () => setShowPaymentModal(false);
@@ -640,13 +617,7 @@ function Front() {
                     },
                 });
                 const data = await response.json();
-                console.log("Raw Customer API Response:", data);
-                let customerList = [];
-                if (Array.isArray(data)) {
-                    customerList = data;
-                } else if (data.message && Array.isArray(data.message)) {
-                    customerList = data.message;
-                }
+                let customerList = Array.isArray(data) ? data : (data.message || []);
                 const formattedCustomers = customerList.map(customer => ({
                     name: customer.name,
                     customer_name: customer.customer_name || "",
@@ -690,7 +661,7 @@ function Front() {
             setPhoneNumber(selectedCustomer.mobile_no);
             setAddress(selectedCustomer.primary_address);
             setEmail(selectedCustomer.email_id);
-            setWatsappNumber(selectedCustomer.custom_watsapp_no); // Updated field name
+            setWatsappNumber(selectedCustomer.custom_watsapp_no); 
             setIsPhoneNumberSet(!!selectedCustomer.mobile_no);
         }
         setShowCustomerSuggestions(false);
@@ -702,11 +673,11 @@ function Front() {
             alert("Customer name is required.");
             return;
         }
-
+    
         const customerExists = customers.some(
             (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
         );
-
+    
         if (!customerExists) {
             try {
                 const customerData = {
@@ -714,9 +685,9 @@ function Front() {
                     ...(phoneNumber && { phone: phoneNumber }),
                     ...(address && { address: address }),
                     ...(email && { email: email }),
-                    ...(watsappNumber && { watsapp_number: watsappNumber }), // Updated field name
+                    ...(watsappNumber && { whatsapp_number: watsappNumber }),
                 };
-
+    
                 const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer', {
                     method: 'POST',
                     headers: {
@@ -725,7 +696,7 @@ function Front() {
                     },
                     body: JSON.stringify(customerData),
                 });
-
+    
                 const data = await response.json();
                 if (data.status === "success") {
                     alert("Customer created successfully!");
@@ -735,7 +706,7 @@ function Front() {
                         mobile_no: phoneNumber || "",
                         primary_address: address || "",
                         email_id: email || "",
-                        custom_watsapp_no: watsappNumber || "" // Updated field name
+                        custom_watsapp_no: watsappNumber || ""
                     };
                     setCustomers((prev) => [...prev, newCustomer]);
                     setFilteredCustomers((prev) => [...prev, newCustomer]);
@@ -756,124 +727,6 @@ function Front() {
     const handleKeyPress = (e) => {
         if (e.key === "Enter") {
             handleCustomerSubmit();
-        }
-    };
-
-    const saveOrder = async () => {
-        const resolveVariantItemCode = (itemCode, selectedSize) => {
-            const menuItem = allItems.find((m) => m.item_code === itemCode);
-            if (!menuItem) return itemCode;
-            if (menuItem.has_variants && selectedSize) {
-                const variantItem = allItems.find((i) => i.item_code === `${menuItem.item_code}-${selectedSize}`);
-                return variantItem ? variantItem.item_code : itemCode;
-            }
-            return itemCode;
-        };
-    
-        const resolveComboVariantItemCode = (comboName, selectedSize) => {
-            const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
-            if (!comboItem) return comboName;
-            if (comboItem.has_variants && selectedSize) {
-                const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
-                return variantItem ? variantItem.item_code : comboItem.item_code;
-            }
-            return comboItem.item_code;
-        };
-    
-        if (deliveryType && deliveryType !== "DINE IN") {
-            if (!address || address.trim() === "") {
-                alert("Please enter a delivery address for this delivery type.");
-                return;
-            }
-            if (!watsappNumber || watsappNumber.trim() === "") { // Updated field name
-                alert("Please enter a WhatsApp number for this delivery type.");
-                return;
-            }
-            if (!email || email.trim() === "") {
-                alert("Please enter an email address for this delivery type.");
-                return;
-            }
-        }
-    
-        const orderData = {
-            customer_name: customerName,
-            phone_number: phoneNumber || "",
-            table_number: tableNumber || "",
-            time: new Date().toISOString(),
-            delivery_type: deliveryType || "",
-            items: cartItems.map(item => ({
-                item: resolveVariantItemCode(item.item_code, item.selectedSize),
-                quantity: item.quantity || 1,
-                price: item.basePrice || 0,
-                size_variants: item.selectedSize || "",
-                other_variants: item.selectedCustomVariant || "",
-                kitchen: item.kitchen || "Unknown",
-            })),
-            saved_addons: cartItems.flatMap(item =>
-                Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen }]) => ({
-                    addon_name: addonName,
-                    addon_quantity: quantity,
-                    addons_kitchen: kitchen || "Unknown",
-                    addons_price: parseFloat(price) || 0,
-                }))
-            ),
-            saved_combos: cartItems.flatMap(item =>
-                (item.selectedCombos || []).map(combo => {
-                    const comboItem = allItems.find(m => m.item_name === combo.name1 || m.item_code === combo.item_code);
-                    const comboRate = parseFloat(combo.rate) || 0;
-                    const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
-                    console.log(`Saving combo ${combo.name1}: resolvedComboItemCode=${resolvedComboItemCode}`);
-                    return {
-                        combo_name: combo.name1,
-                        combo_item_code: resolvedComboItemCode,
-                        size_variants: combo.selectedSize || "",
-                        quantity: combo.quantity || 1,
-                        other_variants: combo.selectedCustomVariant || "",
-                        combo_kitchen: combo.kitchen || comboItem?.kitchen || "Unknown",
-                        combo_rate: comboRate,
-                    };
-                })
-            ),
-            ...(deliveryType && deliveryType !== "DINE IN" && {
-                address: address || "",
-                watsapp_number: watsappNumber || "", // Updated field name
-                email: email || "",
-            }),
-        };
-    
-        const existingOrder = location.state?.existingOrder;
-        const apiMethod = existingOrder
-            ? "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_saved_order"
-            : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_saved_order";
-    
-        if (existingOrder) {
-            orderData.name = existingOrder.name;
-        }
-    
-        try {
-            const response = await fetch(apiMethod, {
-                method: "POST",
-                headers: {
-                    "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(orderData),
-            });
-    
-            if (!response.ok) throw new Error(`Failed to save order: ${response.status}`);
-            const result = await response.json();
-            console.log("Save Order Response:", JSON.stringify(result, null, 2));
-    
-            const responseData = result.message || result;
-            if (responseData.status !== "success") throw new Error(responseData.message || "Unknown error");
-    
-            alert(`Order ${existingOrder ? "updated" : "saved"} successfully!`);
-            setCartItems([]);
-            setBookedTables(prev => [...new Set([...prev, tableNumber])]);
-            navigate("/table");
-        } catch (error) {
-            console.error("Error saving order:", error.message);
-            alert(`Failed to save order: ${error.message}`);
         }
     };
 
@@ -1151,7 +1004,7 @@ function Front() {
                                                             type="text"
                                                             className="form-control"
                                                             placeholder="Enter WhatsApp number"
-                                                            value={watsappNumber} // Updated field name
+                                                            value={watsappNumber} 
                                                             onChange={(e) => setWatsappNumber(e.target.value)}
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
@@ -1328,7 +1181,7 @@ function Front() {
                                                                         {deliveryType !== "DINE IN" && (
                                                                             <div className="mt-2">
                                                                                 <p><strong>Address:</strong> {address || "N/A"}</p>
-                                                                                <p><strong>WhatsApp:</strong> {watsappNumber || "N/A"}</p> {/* Updated field name */}
+                                                                                <p><strong>WhatsApp:</strong> {watsappNumber || "N/A"}</p>
                                                                                 <p><strong>Email:</strong> {email || "N/A"}</p>
                                                                             </div>
                                                                         )}

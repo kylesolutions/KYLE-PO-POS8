@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import './card.css'; // Add custom styling
+import './card.css';
 
 function Card() {
     const [transactionNumber, setTransactionNumber] = useState("");
@@ -12,13 +12,15 @@ function Card() {
     useEffect(() => {
         if (location.state?.billDetails) {
             setBillDetails(location.state.billDetails);
+            console.log("Bill Details in Card.jsx:", location.state.billDetails); // Debug log
+        } else {
+            console.warn("No billDetails received in Card.jsx");
         }
     }, [location]);
 
     const validateFields = () => {
         let newErrors = {};
 
-        // Basic validation: Transaction number should be non-empty and alphanumeric (adjust as per your system)
         if (!transactionNumber || !/^[a-zA-Z0-9]{6,20}$/.test(transactionNumber)) {
             newErrors.transactionNumber = "Enter a valid transaction number (6-20 characters).";
         }
@@ -29,10 +31,15 @@ function Card() {
 
     const handleCardSubmit = (e) => {
         e.preventDefault();
-        if (validateFields()) {
-            alert(`Card Payment Confirmed! Transaction Number: ${transactionNumber}`);
-            navigate("/frontpage");
+        if (!validateFields()) return;
+
+        if (!billDetails) {
+            alert("No bill details available to process payment.");
+            return;
         }
+
+        alert(`Card Payment Confirmed! Transaction Number: ${transactionNumber} | Amount: ₹${(parseFloat(billDetails.grand_total) || 0).toFixed(2)}`);
+        navigate("/frontpage");
     };
 
     return (
@@ -54,59 +61,64 @@ function Card() {
                                     <div className="mb-4">
                                         <div className="customer-info mb-4">
                                             <h5 className="fw-bold">
-                                                Customer: <span className="text-primary">{billDetails.customerName}</span>
+                                                Customer: <span className="text-primary">{billDetails.customer || "N/A"}</span>
                                             </h5>
                                             <p className="mb-0">
-                                                <strong>Phone:</strong> {billDetails.phoneNumber || "N/A"}
+                                                <strong>Phone:</strong> {billDetails.contact_mobile || "N/A"}
                                             </p>
+                                            {billDetails.custom_table_number && (
+                                                <p className="mb-0">
+                                                    <strong>Table No:</strong> {billDetails.custom_table_number}
+                                                </p>
+                                            )}
+                                            {billDetails.custom_delivery_type && billDetails.custom_delivery_type !== "DINE IN" && (
+                                                <>
+                                                    <p className="mb-0">
+                                                        <strong>Delivery Type:</strong> {billDetails.custom_delivery_type}
+                                                    </p>
+                                                    <p className="mb-0">
+                                                        <strong>Address:</strong> {billDetails.customer_address || "N/A"}
+                                                    </p>
+                                                </>
+                                            )}
                                         </div>
 
                                         <h6 className="fw-bold mb-3">Items Ordered:</h6>
                                         <div className="items-list mb-4">
-                                            {billDetails.items.map((item, index) => (
-                                                <div key={index} className="item-card p-3 mb-2 rounded shadow-sm">
-                                                    <div className="d-flex justify-content-between">
-                                                        <strong>{item.name}</strong>
-                                                        <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                                            {billDetails.items && billDetails.items.length > 0 ? (
+                                                billDetails.items.map((item, index) => (
+                                                    <div key={index} className="item-card p-3 mb-2 rounded shadow-sm">
+                                                        <div className="d-flex justify-content-between">
+                                                            <strong>{item.item_name || "Unnamed Item"}</strong>
+                                                            <span>₹{(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty)).toFixed(2)}</span>
+                                                        </div>
+                                                        <small className="text-muted">
+                                                            ₹{(parseFloat(item.rate) || 0).toFixed(2)} x {item.qty || 1}
+                                                        </small>
+                                                        {(item.custom_size_variants || item.custom_other_variants) && (
+                                                            <ul className="addon-list mt-2">
+                                                                {item.custom_size_variants && <li>Size: {item.custom_size_variants}</li>}
+                                                                {item.custom_other_variants && <li>Variant: {item.custom_other_variants}</li>}
+                                                            </ul>
+                                                        )}
+                                                        <div className="item-total mt-2 fw-bold">
+                                                            Total: ₹{(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty) || 0).toFixed(2)}
+                                                        </div>
                                                     </div>
-                                                    <small className="text-muted">
-                                                        ₹{item.price} x {item.quantity}
-                                                    </small>
-                                                    {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                        <ul className="addon-list mt-2">
-                                                            {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                <li key={addonName}>
-                                                                    + {addonName} x{quantity} (₹{(price * quantity).toFixed(2)})
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    )}
-                                                    {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                        <ul className="combo-list mt-2">
-                                                            {item.selectedCombos.map((combo, idx) => (
-                                                                <li key={idx}>
-                                                                    + {combo.name1} x{combo.quantity || 1}
-                                                                    {combo.selectedVariant ? ` (${combo.selectedVariant})` : ''} 
-                                                                    - ₹{(((combo.combo_price || 0) + (combo.variantPrice || 0)) * (combo.quantity || 1)).toFixed(2)}
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    )}
-                                                    <div className="item-total mt-2 fw-bold">
-                                                        Total: ₹{item.totalPrice.toFixed(2)}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                ))
+                                            ) : (
+                                                <p>No items available for this invoice.</p>
+                                            )}
                                         </div>
 
                                         <div className="totals-section p-3 bg-light rounded">
                                             <div className="row">
                                                 <div className="col-6 text-start">Subtotal:</div>
-                                                <div className="col-6 text-end">₹{parseFloat(billDetails.subTotal).toFixed(2)}</div>
-                                                <div className="col-6 text-start">VAT ({billDetails.vatRate}%):</div>
-                                                <div className="col-6 text-end">₹{parseFloat(billDetails.vatAmount).toFixed(2)}</div>
+                                                <div className="col-6 text-end">₹{(parseFloat(billDetails.total) || 0).toFixed(2)}</div>
+                                                <div className="col-6 text-start">VAT ({((parseFloat(billDetails.grand_total) - parseFloat(billDetails.total)) / parseFloat(billDetails.total) * 100 || 0).toFixed(2)}%):</div>
+                                                <div className="col-6 text-end">₹{((parseFloat(billDetails.grand_total) - parseFloat(billDetails.total)) || 0).toFixed(2)}</div>
                                                 <div className="col-6 text-start fw-bold">Grand Total:</div>
-                                                <div className="col-6 text-end fw-bold">₹{parseFloat(billDetails.totalAmount).toFixed(2)}</div>
+                                                <div className="col-6 text-end fw-bold">₹{(parseFloat(billDetails.grand_total) || 0).toFixed(2)}</div>
                                             </div>
                                         </div>
                                     </div>

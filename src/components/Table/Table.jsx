@@ -10,10 +10,10 @@ function Table() {
     const [error, setError] = useState(null);
     const { setCartItems } = useContext(UserContext);
     const [activeOrders, setActiveOrders] = useState([]);
-    const [allItems, setAllItems] = useState([]); // Add state for all items
+    const [allItems, setAllItems] = useState([]);
     const navigate = useNavigate();
 
-    // Fetch all items (same as SavedOrder.jsx)
+    // Fetch all items (consistent with SavedOrder.jsx)
     const fetchAllItems = async () => {
         try {
             const response = await fetch(
@@ -55,30 +55,40 @@ function Table() {
         }
     };
 
+    // Fetch active POS Invoices (replacing get_saved_orders)
     const fetchActiveOrders = useCallback(async () => {
         try {
-            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
+            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices", {
                 method: "GET",
                 headers: {
-                    "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
                     "Content-Type": "application/json",
                 },
             });
-            if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
+            if (!response.ok) throw new Error(`Failed to fetch POS Invoices: ${response.status}`);
             const data = await response.json();
-            console.log("Fetched Saved Orders Response:", JSON.stringify(data, null, 2));
-            if (data.message && Array.isArray(data.message.data)) {
-                const activeTableNumbers = data.message.data
-                    .map(order => String(order.table_number))
-                    .filter(Boolean);
-                console.log("Active Table Numbers:", activeTableNumbers);
-                setActiveOrders(activeTableNumbers);
-            } else {
-                console.warn("No valid saved orders data found.");
+            console.log("Fetched POS Invoices Response:", JSON.stringify(data, null, 2));
+
+            const result = data.message || data;
+            if (result.status !== "success") throw new Error(result.message || "Unknown error");
+
+            if (!result.data || !Array.isArray(result.data)) {
+                console.warn("No valid POS Invoices data found.");
                 setActiveOrders([]);
+                return;
             }
+
+            // Filter for draft invoices without payments
+            const draftOrders = result.data.filter(order => 
+                order.custom_is_draft_without_payment === 1 || order.custom_is_draft_without_payment === "1"
+            );
+            const activeTableNumbers = draftOrders
+                .map(order => String(order.custom_table_number))
+                .filter(Boolean); // Only include non-empty table numbers
+            console.log("Active Table Numbers from POS Invoices:", activeTableNumbers);
+            setActiveOrders(activeTableNumbers);
         } catch (error) {
-            console.error("Error fetching active orders:", error);
+            console.error("Error fetching POS Invoices:", error);
             setActiveOrders([]);
         }
     }, []);
@@ -108,53 +118,39 @@ function Table() {
 
     const handleTableClick = async (tableNumber) => {
         try {
-            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
+            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices", {
                 method: "GET",
                 headers: {
-                    "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
                     "Content-Type": "application/json",
                 },
             });
-            if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
+            if (!response.ok) throw new Error(`Failed to fetch POS Invoices: ${response.status}`);
             const data = await response.json();
-            console.log("Saved Orders for Table", tableNumber, ":", JSON.stringify(data, null, 2));
-            const existingOrder = data.message.data.find(order => String(order.table_number) === String(tableNumber));
+            console.log("POS Invoices for Table", tableNumber, ":", JSON.stringify(data, null, 2));
+
+            const result = data.message || data;
+            if (result.status !== "success" || !result.data) throw new Error(result.message || "Invalid response");
+
+            const existingOrder = result.data.find(order => 
+                String(order.custom_table_number) === String(tableNumber) && 
+                (order.custom_is_draft_without_payment === 1 || order.custom_is_draft_without_payment === "1")
+            );
 
             if (existingOrder) {
                 const formattedCartItems = existingOrder.items.map(item => {
-                    const menuItem = allItems.find(m => m.item_code === item.item) || {};
+                    const menuItem = allItems.find(m => m.item_code === item.item_code) || {};
                     return {
-                        item_code: item.item,
-                        name: menuItem.item_name || item.item,
-                        basePrice: parseFloat(item.price) || 0,
-                        quantity: parseInt(item.quantity, 10) || 1,
-                        selectedSize: item.size_variants || null,
-                        selectedCustomVariant: item.other_variants || null,
-                        kitchen: item.kitchen || menuItem.custom_kitchen || "Unknown",
                         cartItemId: uuidv4(),
-                        addonCounts: (existingOrder.saved_addons || []).reduce((acc, addon) => ({
-                            ...acc,
-                            [addon.addon_name]: {
-                                price: parseFloat(addon.addons_price) || 0,
-                                quantity: parseInt(addon.addon_quantity, 10) || 0,
-                                kitchen: addon.addons_kitchen || "Unknown",
-                            },
-                        }), {}),
-                        selectedCombos: (existingOrder.saved_combos || []).map(combo => {
-                            const comboItem = allItems.find(m => m.item_name === combo.combo_name || m.item_code === combo.combo_item_code) || {};
-                            const resolvedComboItemCode = combo.combo_item_code || (comboItem.has_variants && combo.size_variants
-                                ? (allItems.find(i => i.item_code === `${comboItem.item_code}-${combo.size_variants}`)?.item_code || combo.combo_name)
-                                : combo.combo_name);
-                            return {
-                                name1: combo.combo_name,
-                                item_code: resolvedComboItemCode,
-                                rate: parseFloat(combo.combo_rate) || 0,
-                                quantity: parseInt(combo.quantity, 10) || 1,
-                                selectedSize: combo.size_variants || null,
-                                selectedCustomVariant: combo.other_variants || null,
-                                kitchen: combo.combo_kitchen || comboItem.custom_kitchen || "Unknown",
-                            };
-                        }),
+                        item_code: item.item_code,
+                        name: item.item_name,
+                        basePrice: parseFloat(item.rate) || 0,
+                        quantity: parseInt(item.qty, 10) || 1,
+                        selectedSize: item.custom_size_variants || null,
+                        selectedCustomVariant: item.custom_other_variants || null,
+                        kitchen: menuItem.custom_kitchen || item.custom_kitchen || "Unknown",
+                        addonCounts: {}, // Addons not in POS Invoice yet; adjust if backend updates
+                        selectedCombos: [], // Combos not in POS Invoice yet; adjust if backend updates
                     };
                 });
 
@@ -163,28 +159,32 @@ function Table() {
 
                 const navigationState = {
                     tableNumber,
-                    customerName: existingOrder.customer_name,
-                    phoneNumber: existingOrder.phone_number,
+                    phoneNumber: existingOrder.contact_mobile,
+                    customerName: existingOrder.customer,
                     existingOrder: {
                         name: existingOrder.name,
-                        customerName: existingOrder.customer_name,
-                        phoneNumber: existingOrder.phone_number,
-                        tableNumber: existingOrder.table_number,
-                        deliveryType: existingOrder.delivery_type,
+                        customer: existingOrder.customer,
+                        contact_mobile: existingOrder.contact_mobile,
+                        custom_table_number: existingOrder.custom_table_number,
+                        custom_delivery_type: existingOrder.custom_delivery_type,
+                        customer_address: existingOrder.customer_address,
+                        contact_email: existingOrder.contact_email,
+                        posting_date: existingOrder.posting_date,
                         cartItems: formattedCartItems,
                     },
+                    deliveryType: existingOrder.custom_delivery_type,
                 };
                 console.log("Navigating to /frontpage with state:", JSON.stringify(navigationState, null, 2));
                 navigate("/frontpage", { state: navigationState });
             } else {
                 setCartItems([]);
-                console.log("No existing order for Table", tableNumber, "- Navigating with tableNumber only");
-                navigate("/frontpage", { state: { tableNumber } });
+                console.log("No existing POS Invoice for Table", tableNumber, "- Navigating with tableNumber only");
+                navigate("/frontpage", { state: { tableNumber, deliveryType: "DINE IN" } });
             }
         } catch (error) {
-            console.error("Error fetching order for table:", error);
+            console.error("Error fetching POS Invoice for table:", error);
             setCartItems([]);
-            navigate("/frontpage", { state: { tableNumber } });
+            navigate("/frontpage", { state: { tableNumber, deliveryType: "DINE IN" } });
         }
     };
 
