@@ -1,193 +1,157 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 function Kitchen() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [savedOrders, setSavedOrders] = useState([]);
     const [preparedItems, setPreparedItems] = useState([]);
     const [selectedKitchen, setSelectedKitchen] = useState(null);
     const [showStatusPopup, setShowStatusPopup] = useState(false);
-    const [pickedUpItems, setPickedUpItems] = useState([]);
+    const [pickedUpOrders, setPickedUpOrders] = useState({}); // Changed to an object to group by order
     const [searchDate, setSearchDate] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchSavedOrders = async () => {
             try {
-                const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_saved_orders", {
-                    method: "GET",
-                    headers: {
-                        "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a",
-                        "Content-Type": "application/json",
-                    },
-                });
-                if (!response.ok) throw new Error(`Failed to fetch saved orders: ${response.status}`);
+                setLoading(true);
+                setError(null);
+
+                const response = await fetch(
+                    "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices",
+                    {
+                        method: "GET",
+                        headers: {
+                            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                            "Content-Type": "application/json",
+                            "Expect": "",
+                        },
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch POS Invoices: ${response.status} - ${response.statusText}`);
+                }
+
                 const data = await response.json();
-                console.log("Raw Server Response in Kitchen:", JSON.stringify(data, null, 2));
+                console.log("Raw response from get_pos_invoices in Kitchen:", data);
 
                 const result = data.message || data;
-                if (result.status !== "success") throw new Error(result.message || "Unknown error");
+                if (result.status !== "success") {
+                    throw new Error(result.message || "Unknown error from server");
+                }
 
                 if (!result.data || !Array.isArray(result.data)) {
-                    console.warn("No orders found or invalid data structure:", result);
+                    console.warn("No data or invalid format in response:", result);
                     setSavedOrders([]);
                     return;
                 }
 
-                // Deduplicate orders by `name` (assuming `name` is unique per order)
+                const draftOrders = result.data.filter(
+                    (order) =>
+                        order.custom_is_draft_without_payment === 1 ||
+                        order.custom_is_draft_without_payment === "1"
+                );
+                console.log("Filtered draft orders in Kitchen:", draftOrders);
+
+                const formattedOrders = draftOrders.map((order) => {
+                    const cartItems = order.items.map((item) => ({
+                        item_code: item.item_code,
+                        name: item.item_name,
+                        basePrice: parseFloat(item.rate) || 0,
+                        quantity: parseInt(item.qty, 10) || 1,
+                        selectedSize: item.custom_size_variants || "",
+                        selectedCustomVariant: item.custom_other_variants || "",
+                        kitchen: item.custom_kitchen || "Unknown",
+                        status: item.custom_status || "Pending",
+                        addonCounts: {},
+                        selectedCombos: [],
+                    }));
+
+                    return {
+                        name: order.name,
+                        customer: order.customer,
+                        custom_table_number: order.custom_table_number,
+                        contact_mobile: order.contact_mobile,
+                        custom_delivery_type: order.custom_delivery_type || "DINE IN",
+                        customer_address: order.customer_address || "",
+                        contact_email: order.contact_email || "",
+                        posting_date: order.posting_date,
+                        cartItems,
+                    };
+                });
+
                 const uniqueOrders = Array.from(
-                    new Map(result.data.map(order => [order.name, order])).values()
+                    new Map(formattedOrders.map((order) => [order.name, order])).values()
                 );
 
-                const formattedOrders = uniqueOrders.map(order => ({
-                    name: order.name,
-                    customerName: order.customer_name,
-                    tableNumber: order.table_number,
-                    phoneNumber: order.phone_number,
-                    timestamp: order.time,
-                    deliveryType: order.delivery_type,
-                    cartItems: order.items.map(item => ({
-                        item_code: item.item,
-                        name: item.item,
-                        basePrice: item.price,
-                        quantity: item.quantity,
-                        selectedSize: item.size_variants || "",
-                        selectedCustomVariant: item.other_variants || "",
-                        kitchen: item.kitchen || "Unknown",
-                        status: item.status || "Pending",
-                        addonCounts: order.saved_addons.reduce((acc, addon) => ({
-                            ...acc,
-                            [addon.addon_name]: {
-                                price: 0,
-                                quantity: addon.addon_quantity,
-                                kitchen: addon.addons_kitchen || "Unknown",
-                                status: addon.status || "Pending",
-                            },
-                        }), {}),
-                        selectedCombos: order.saved_combos.map(combo => ({
-                            name1: combo.combo_name,
-                            item_code: combo.combo_name,
-                            rate: 0,
-                            quantity: combo.quantity,
-                            selectedSize: combo.size_variants || "",
-                            selectedCustomVariant: combo.other_variants || "",
-                            kitchen: combo.combo_kitchen || "Unknown",
-                            status: combo.status || "Pending",
-                        })),
-                    })),
-                }));
-
-                console.log("Formatted Orders in Kitchen:", JSON.stringify(formattedOrders, null, 2));
-                setSavedOrders(formattedOrders); // Replace state, don’t append
+                if (location.state?.order) {
+                    const passedOrder = location.state.order;
+                    setSavedOrders([passedOrder]);
+                    setSelectedKitchen(passedOrder.cartItems[0]?.kitchen || "Unknown");
+                } else {
+                    setSavedOrders(uniqueOrders);
+                }
 
                 const storedPreparedItems = JSON.parse(localStorage.getItem("preparedItems")) || [];
-                const storedPickedUpItems = JSON.parse(localStorage.getItem("pickedUpItems")) || [];
+                const storedPickedUpOrders = JSON.parse(localStorage.getItem("pickedUpOrders")) || {};
                 setPreparedItems(storedPreparedItems);
-                setPickedUpItems(storedPickedUpItems);
+                setPickedUpOrders(storedPickedUpOrders);
             } catch (error) {
-                console.error("Error fetching saved orders:", error);
+                console.error("Error fetching POS Invoices in Kitchen:", error.message);
+                setError(`Failed to load saved orders: ${error.message}. Please try again or contact support.`);
                 setSavedOrders([]);
+            } finally {
+                setLoading(false);
             }
         };
+
         fetchSavedOrders();
-    }, []); // Empty dependency array ensures it runs once on mount
+    }, [location]);
 
     const kitchens = [
         ...new Set(
             savedOrders.flatMap((order) =>
-                [
-                    ...order.cartItems.map((item) => item.kitchen || "Unknown"),
-                    ...order.cartItems.flatMap((item) =>
-                        Object.values(item.addonCounts || {}).map((addon) => addon.kitchen || "Unknown")
-                    ),
-                    ...order.cartItems.flatMap((item) =>
-                        (item.selectedCombos || []).map((combo) => combo.kitchen || "Unknown")
-                    ),
-                ].filter((kitchen) => kitchen)
+                order.cartItems.map((item) => item.kitchen || "Unknown")
             )
         ),
     ];
 
     useEffect(() => {
-        if (kitchens.length > 0 && !selectedKitchen) {
+        if (kitchens.length > 0 && !selectedKitchen && !location.state?.order) {
             setSelectedKitchen(kitchens[0]);
         }
-    }, [kitchens, selectedKitchen]);
+    }, [kitchens, selectedKitchen, location.state]);
 
-    // Flatten and deduplicate items
-    const filteredItems = Array.from(
-        new Map(
-            savedOrders.flatMap((order) =>
-                [
-                    ...order.cartItems.map((item) => ({
-                        ...item,
-                        type: "main",
-                        customerName: order.customerName,
-                        tableNumber: order.tableNumber,
-                        id: `${order.name}-${item.item_code || item.name}`,
-                    })),
-                    ...order.cartItems.flatMap((item) =>
-                        Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity, kitchen, status }]) => ({
-                            name: addonName,
-                            quantity,
-                            kitchen: kitchen || "Unknown",
-                            type: "addon",
-                            customerName: order.customerName,
-                            tableNumber: order.tableNumber,
-                            id: `${order.name}-${item.item_code || item.name}-addon-${addonName}`, // More specific ID
-                            status,
-                        }))
-                    ),
-                    ...order.cartItems.flatMap((item) =>
-                        (item.selectedCombos || []).map((combo) => ({
-                            name: combo.name1,
-                            quantity: combo.quantity || 1,
-                            kitchen: combo.kitchen || "Unknown",
-                            type: "combo",
-                            selectedSize: combo.selectedSize,
-                            selectedCustomVariant: combo.selectedCustomVariant,
-                            customerName: order.customerName,
-                            tableNumber: order.tableNumber,
-                            id: `${order.name}-${item.item_code || item.name}-combo-${combo.name1}`, // More specific ID
-                            status: combo.status,
-                        }))
-                    ),
-                ]
-            ).filter(
-                (item) =>
-                    item.kitchen === selectedKitchen &&
-                    item.status !== "PickedUp"
-            ).map(item => [item.id, item]) // Use id as key for deduplication
-        ).values()
-    );
+    const filteredItemsMap = new Map();
+    savedOrders.forEach((order) => {
+        order.cartItems.forEach((item) => {
+            const id = `${order.name}-${item.item_code || item.name}`;
+            if (item.kitchen === selectedKitchen && item.status !== "PickedUp") {
+                filteredItemsMap.set(id, {
+                    ...item,
+                    type: "main",
+                    customerName: order.customer,
+                    tableNumber: order.custom_table_number,
+                    deliveryType: order.custom_delivery_type,
+                    id,
+                });
+            }
+        });
+    });
+    const filteredItems = Array.from(filteredItemsMap.values());
 
     const handleStatusChange = (id, newStatus) => {
         const updatedOrders = savedOrders.map((order) => ({
             ...order,
             cartItems: order.cartItems.map((item) => {
-                const updatedItem = { ...item };
                 if (`${order.name}-${item.item_code || item.name}` === id) {
-                    updatedItem.status = newStatus;
+                    return { ...item, status: newStatus };
                 }
-                if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.name}-${item.item_code || item.name}-addon-${addonName}` === id)) {
-                    const addonName = Object.keys(item.addonCounts).find(
-                        (key) => `${order.name}-${item.item_code || item.name}-addon-${key}` === id
-                    );
-                    updatedItem.addonCounts = {
-                        ...item.addonCounts,
-                        [addonName]: {
-                            ...item.addonCounts[addonName],
-                            status: newStatus,
-                        },
-                    };
-                }
-                if ((item.selectedCombos || []).some((combo) => `${order.name}-${item.item_code || item.name}-combo-${combo.name1}` === id)) {
-                    updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
-                        `${order.name}-${item.item_code || item.name}-combo-${combo.name1}` === id
-                            ? { ...combo, status: newStatus }
-                            : combo
-                    );
-                }
-                return updatedItem;
+                return item;
             }),
         }));
 
@@ -198,7 +162,6 @@ function Kitchen() {
         }
 
         setSavedOrders(updatedOrders);
-        localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
         localStorage.setItem("preparedItems", JSON.stringify(preparedItems));
     };
 
@@ -207,54 +170,50 @@ function Kitchen() {
         const updatedOrders = savedOrders.map((order) => ({
             ...order,
             cartItems: order.cartItems.map((item) => {
-                const updatedItem = { ...item };
                 if (`${order.name}-${item.item_code || item.name}` === id) {
-                    updatedItem.status = "PickedUp";
+                    return { ...item, status: "PickedUp" };
                 }
-                if (Object.keys(item.addonCounts || {}).some((addonName) => `${order.name}-${item.item_code || item.name}-addon-${addonName}` === id)) {
-                    const addonName = Object.keys(item.addonCounts).find(
-                        (key) => `${order.name}-${item.item_code || item.name}-addon-${key}` === id
-                    );
-                    updatedItem.addonCounts = {
-                        ...item.addonCounts,
-                        [addonName]: {
-                            ...item.addonCounts[addonName],
-                            status: "PickedUp",
-                        },
-                    };
-                }
-                if ((item.selectedCombos || []).some((combo) => `${order.name}-${item.item_code || item.name}-combo-${combo.name1}` === id)) {
-                    updatedItem.selectedCombos = item.selectedCombos.map((combo) =>
-                        `${order.name}-${item.item_code || item.name}-combo-${combo.name1}` === id
-                            ? { ...combo, status: "PickedUp" }
-                            : combo
-                    );
-                }
-                return updatedItem;
+                return item;
             }),
         }));
 
         const pickedItem = filteredItems.find((item) => item.id === id);
         if (pickedItem) {
-            const newPickedUpItem = {
-                ...pickedItem,
-                pickupTime,
-                kitchen: selectedKitchen,
-            };
-            setPickedUpItems((prev) => {
-                const newItems = [...prev, newPickedUpItem];
-                localStorage.setItem("pickedUpItems", JSON.stringify(newItems));
-                return newItems;
+            const orderName = pickedItem.id.split("-")[0]; // Extract order name from id
+            setPickedUpOrders((prev) => {
+                const existingOrder = prev[orderName] || {
+                    customerName: pickedItem.customerName,
+                    tableNumber: pickedItem.tableNumber,
+                    deliveryType: pickedItem.deliveryType,
+                    items: [],
+                };
+                // Only add item if not already in the order's items list
+                if (!existingOrder.items.some((i) => i.id === pickedItem.id)) {
+                    existingOrder.items.push({
+                        ...pickedItem,
+                        pickupTime,
+                        kitchen: selectedKitchen,
+                    });
+                }
+                const newPickedUpOrders = { ...prev, [orderName]: existingOrder };
+                localStorage.setItem("pickedUpOrders", JSON.stringify(newPickedUpOrders));
+                return newPickedUpOrders;
             });
         }
 
         setSavedOrders(updatedOrders);
-        localStorage.setItem("savedOrders", JSON.stringify(updatedOrders));
     };
 
-    const filteredPickedUpItems = pickedUpItems.filter((item) =>
-        item.pickupTime.toLowerCase().includes(searchDate.toLowerCase())
-    );
+    // Flatten pickedUpOrders for filtering by date
+    const filteredPickedUpOrders = Object.entries(pickedUpOrders)
+        .map(([orderName, order]) => ({
+            orderName,
+            ...order,
+            items: order.items.filter((item) =>
+                item.pickupTime.toLowerCase().includes(searchDate.toLowerCase())
+            ),
+        }))
+        .filter((order) => order.items.length > 0);
 
     const getRowStyle = (status) => {
         switch (status || "Pending") {
@@ -273,125 +232,137 @@ function Kitchen() {
         navigate(-1);
     };
 
-    const handleDeleteItem = (index) => {
-        const updatedItems = filteredPickedUpItems.filter((_, i) => i !== index);
-        setPickedUpItems(updatedItems);
-        localStorage.setItem("pickedUpItems", JSON.stringify(updatedItems));
+    const handleDeleteItem = (orderName, itemIndex) => {
+        setPickedUpOrders((prev) => {
+            const updatedOrder = { ...prev[orderName] };
+            updatedOrder.items = updatedOrder.items.filter((_, i) => i !== itemIndex);
+            const newPickedUpOrders = { ...prev, [orderName]: updatedOrder };
+            if (updatedOrder.items.length === 0) {
+                delete newPickedUpOrders[orderName]; // Remove order if no items remain
+            }
+            localStorage.setItem("pickedUpOrders", JSON.stringify(newPickedUpOrders));
+            return newPickedUpOrders;
+        });
     };
 
     return (
-        <div className="container mt-4">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-                <button className="btn btn-secondary" onClick={handleBack} style={{ marginRight: "auto" }}>
-                    Back
-                </button>
-                <h3 className="text-center" style={{ flex: "1" }}>Kitchen Note</h3>
-                <button className="btn btn-info" onClick={() => setShowStatusPopup(true)}>
-                    Status
-                </button>
-            </div>
-
-            <div className="d-flex mb-3 gap-3">
-                {kitchens.map((kitchen) => (
-                    <button
-                        key={kitchen}
-                        className={`btn btn-sm ${selectedKitchen === kitchen ? "btn-primary" : "btn-outline-primary"}`}
-                        onClick={() => setSelectedKitchen(kitchen)}
-                    >
-                        {kitchen}
+        <div className="container mt-5">
+            <div className="card shadow-lg">
+                <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <button className="btn btn-light btn-sm" onClick={handleBack}>
+                        <i className="bi bi-arrow-left"></i> Back
                     </button>
-                ))}
-            </div>
-
-            <h5>Current Orders - {selectedKitchen || "Select a Kitchen"}</h5>
-            {filteredItems.length === 0 ? (
-                <p>No orders for this kitchen.</p>
-            ) : (
-                <div className="table-responsive">
-                    <table className="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Customer</th>
-                                <th>Table</th>
-                                <th>Item</th>
-                                <th>Image</th>
-                                <th>Quantity</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredItems.map((item) => (
-                                <tr key={item.id} style={getRowStyle(item.status)}>
-                                    <td>{item.customerName || "Unknown"}</td>
-                                    <td>{item.tableNumber || "N/A"}</td>
-                                    <td>
-                                        {item.name}
-                                        {(item.type === "main" || item.type === "combo") && (
-                                            <>
-                                                {item.selectedSize && ` (${item.selectedSize})`}
-                                                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                                            </>
-                                        )}
-                                    </td>
-                                    <td>
-                                        {item.type === "main" && item.image && (
-                                            <img
-                                                src={item.image}
-                                                className="rounded"
-                                                style={{
-                                                    width: "70px",
-                                                    height: "50px",
-                                                    objectFit: "cover",
-                                                    border: "1px solid #ddd",
-                                                }}
-                                                alt={item.name}
-                                            />
-                                        )}
-                                    </td>
-                                    <td>{item.quantity}</td>
-                                    <td>{item.type}</td>
-                                    <td>
-                                        <select
-                                            value={item.status || "Pending"}
-                                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                                            className="form-select"
-                                        >
-                                            <option value="Pending">Pending</option>
-                                            <option value="Preparing">Preparing</option>
-                                            <option value="Prepared">Prepared</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        {item.status === "Prepared" && item.status !== "PickedUp" && (
-                                            <button
-                                                className="btn btn-success"
-                                                onClick={() => handlePickUp(item.id)}
-                                            >
-                                                Mark as Picked Up
-                                            </button>
-                                        )}
-                                        {item.status === "PickedUp" && (
-                                            <span className="text-success">Picked Up ✅</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <h3 className="mb-0">Kitchen Dashboard</h3>
+                    <button className="btn btn-info btn-sm" onClick={() => setShowStatusPopup(true)}>
+                        <i className="bi bi-info-circle"></i> Status
+                    </button>
                 </div>
-            )}
+                <div className="card-body">
+                    {loading ? (
+                        <div className="text-center py-5">
+                            <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <p className="mt-2 text-muted">Loading kitchen orders...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="alert alert-danger text-center" role="alert">
+                            {error}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="mb-4">
+                                <h5 className="fw-bold">Select Kitchen:</h5>
+                                <div className="btn-group flex-wrap gap-2">
+                                    {kitchens.map((kitchen) => (
+                                        <button
+                                            key={kitchen}
+                                            className={`btn btn-outline-primary ${selectedKitchen === kitchen ? "active" : ""}`}
+                                            onClick={() => setSelectedKitchen(kitchen)}
+                                        >
+                                            {kitchen}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <h5 className="mb-3">Current Orders - {selectedKitchen || "Select a Kitchen"}</h5>
+                            {filteredItems.length === 0 ? (
+                                <p className="text-muted">No orders for this kitchen.</p>
+                            ) : (
+                                <div className="table-responsive">
+                                    <table className="table table-bordered table-hover">
+                                        <thead className="table-dark">
+                                            <tr>
+                                                <th>Customer</th>
+                                                <th>Table</th>
+                                                <th>Delivery Type</th>
+                                                <th>Item</th>
+                                                <th>Kitchen</th>
+                                                <th>Quantity</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredItems.map((item) => (
+                                                <tr key={item.id} style={getRowStyle(item.status)}>
+                                                    <td>{item.customerName || "Unknown"}</td>
+                                                    <td>{item.tableNumber || "N/A"}</td>
+                                                    <td>{item.deliveryType}</td>
+                                                    <td>
+                                                        {item.name}
+                                                        {item.selectedSize && ` (${item.selectedSize})`}
+                                                        {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                    </td>
+                                                    <td>{item.kitchen}</td>
+                                                    <td>{item.quantity}</td>
+                                                    <td>{item.type}</td>
+                                                    <td>
+                                                        <select
+                                                            value={item.status || "Pending"}
+                                                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                                                            className="form-select form-select-sm"
+                                                        >
+                                                            <option value="Pending">Pending</option>
+                                                            <option value="Preparing">Preparing</option>
+                                                            <option value="Prepared">Prepared</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        {item.status === "Prepared" && item.status !== "PickedUp" && (
+                                                            <button
+                                                                className="btn btn-success btn-sm"
+                                                                onClick={() => handlePickUp(item.id)}
+                                                            >
+                                                                Mark as Picked Up
+                                                            </button>
+                                                        )}
+                                                        {item.status === "PickedUp" && (
+                                                            <span className="text-success">Picked Up ✅</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
 
             {showStatusPopup && (
-                <div className="modal" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
-                    <div className="modal-dialog modal-lg">
+                <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
+                    <div className="modal-dialog modal-xl">
                         <div className="modal-content">
-                            <div className="modal-header">
+                            <div className="modal-header bg-info text-white">
                                 <h5 className="modal-title">Picked Up Items Status</h5>
                                 <button
                                     type="button"
-                                    className="btn-close"
+                                    className="btn-close bg-white"
                                     onClick={() => setShowStatusPopup(false)}
                                 ></button>
                             </div>
@@ -400,56 +371,62 @@ function Kitchen() {
                                     <input
                                         type="text"
                                         className="form-control"
-                                        placeholder="Search by Date"
+                                        placeholder="Search by Date (e.g., MM/DD/YYYY)"
                                         value={searchDate}
                                         onChange={(e) => setSearchDate(e.target.value)}
                                     />
                                 </div>
-                                {filteredPickedUpItems.length === 0 ? (
-                                    <p>No items have been picked up yet.</p>
+                                {filteredPickedUpOrders.length === 0 ? (
+                                    <p className="text-muted">No items have been picked up yet.</p>
                                 ) : (
                                     <div className="table-responsive">
-                                        <table className="table table-bordered">
-                                            <thead>
+                                        <table className="table table-bordered table-striped">
+                                            <thead className="table-dark">
                                                 <tr>
+                                                    <th>Order</th>
                                                     <th>Customer</th>
                                                     <th>Table</th>
+                                                    <th>Delivery Type</th>
                                                     <th>Item</th>
+                                                    <th>Kitchen</th>
                                                     <th>Quantity</th>
                                                     <th>Type</th>
-                                                    <th>Kitchen</th>
                                                     <th>Pickup Time</th>
                                                     <th>Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {filteredPickedUpItems.map((item, index) => (
-                                                    <tr key={index}>
-                                                        <td>{item.customerName || "Unknown"}</td>
-                                                        <td>{item.tableNumber || "N/A"}</td>
-                                                        <td>
-                                                            {item.name}
-                                                            {(item.type === "main" || item.type === "combo") && (
+                                                {filteredPickedUpOrders.map((order) =>
+                                                    order.items.map((item, itemIndex) => (
+                                                        <tr key={`${order.orderName}-${itemIndex}`}>
+                                                            {itemIndex === 0 && (
                                                                 <>
-                                                                    {item.selectedSize && ` (${item.selectedSize})`}
-                                                                    {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                                    <td rowSpan={order.items.length}>{order.orderName}</td>
+                                                                    <td rowSpan={order.items.length}>{order.customerName || "Unknown"}</td>
+                                                                    <td rowSpan={order.items.length}>{order.tableNumber || "N/A"}</td>
+                                                                    <td rowSpan={order.items.length}>{order.deliveryType}</td>
                                                                 </>
                                                             )}
-                                                        </td>
-                                                        <td>{item.quantity}</td>
-                                                        <td>{item.type}</td>
-                                                        <td>{item.kitchen}</td>
-                                                        <td>{item.pickupTime}</td>
-                                                        <td>
-                                                            <button
-                                                                className="btn btn-danger btn-sm"
-                                                                onClick={() => handleDeleteItem(index)}
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                            <td>
+                                                                {item.name}
+                                                                {item.selectedSize && ` (${item.selectedSize})`}
+                                                                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                            </td>
+                                                            <td>{item.kitchen}</td>
+                                                            <td>{item.quantity}</td>
+                                                            <td>{item.type}</td>
+                                                            <td>{item.pickupTime}</td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-danger btn-sm"
+                                                                    onClick={() => handleDeleteItem(order.orderName, itemIndex)}
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
@@ -473,3 +450,4 @@ function Kitchen() {
 }
 
 export default Kitchen;
+

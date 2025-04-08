@@ -75,6 +75,14 @@ function SalesInvoice() {
     });
   };
 
+  const formatDiscount = (invoice) => {
+    const percentage = parseFloat(invoice.additional_discount_percentage) || 0;
+    const amount = parseFloat(invoice.discount_amount) || 0;
+    if (amount > 0) return `₹${amount.toFixed(2)}`;
+    if (percentage > 0) return `${percentage}%`;
+    return "N/A";
+  };
+
   const generateInvoiceHTML = (invoice) => {
     return `
       <html>
@@ -182,8 +190,10 @@ function SalesInvoice() {
             <div class="footer">
               <div class="totals">
                 <p><strong>Total Taxes:</strong> ₹${invoice.total_taxes_and_charges || 0}</p>
+                <p><strong>Discount:</strong> ${formatDiscount(invoice)} (${invoice.apply_discount_on || "Grand Total"})</p>
                 <p><strong>Currency:</strong> ${invoice.currency || "INR"}</p>
                 <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>
+                <p><strong>Grand Total:</strong> ₹${invoice.grand_total || 0}</p>
               </div>
             </div>
           </div>
@@ -273,6 +283,7 @@ function SalesInvoice() {
                 <th>Invoice ID</th>
                 <th>Customer Name</th>
                 <th>Grand Total</th>
+                <th>Discount</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -282,6 +293,10 @@ function SalesInvoice() {
                   <td>{invoice.name}</td>
                   <td>{invoice.customer_details?.customer_name || "N/A"}</td>
                   <td>₹{invoice.grand_total || 0}</td>
+                  <td>
+                    {formatDiscount(invoice)}
+                    {invoice.apply_discount_on ? ` (${invoice.apply_discount_on})` : ""}
+                  </td>
                   <td>
                     <button
                       className="btn btn-sm btn-info"
@@ -350,6 +365,7 @@ function SalesInvoice() {
               )}
               <div className="mt-3">
                 <p><strong>Total Taxes:</strong> ₹{selectedInvoice.total_taxes_and_charges || 0}</p>
+                <p><strong>Discount:</strong> {formatDiscount(selectedInvoice)} ({selectedInvoice.apply_discount_on || "Grand Total"})</p>
                 <p><strong>Currency:</strong> {selectedInvoice.currency || "INR"}</p>
                 <p><strong>Paid Amount:</strong> ₹{selectedInvoice.paid_amount || 0}</p>
                 <p><strong>Grand Total:</strong> ₹{selectedInvoice.grand_total || 0}</p>
@@ -452,13 +468,13 @@ function SalesInvoice() {
         </div>
         <div className="row">
           <div className="col-md-4 px-2">
-            {renderInvoiceTable(part1, "Part 1")}
+            {renderInvoiceTable(part1, "")}
           </div>
           <div className="col-md-4 px-2">
-            {renderInvoiceTable(part2, "Part 2")}
+            {renderInvoiceTable(part2, "")}
           </div>
           <div className="col-md-4 px-2">
-            {renderInvoiceTable(part3, "Part 3")}
+            {renderInvoiceTable(part3, "")}
           </div>
         </div>
         {renderInvoicePopup()}

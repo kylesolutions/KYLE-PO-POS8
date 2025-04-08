@@ -21,7 +21,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     headers: {
                         Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
                         "Content-Type": "application/json",
-                        "Expect": "", // Suppress Expect header to avoid 417
+                        "Expect": "",
                     },
                 }
             );
@@ -63,8 +63,8 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                         selectedSize: item.custom_size_variants || null,
                         selectedCustomVariant: item.custom_other_variants || null,
                         kitchen: menuItem.custom_kitchen || item.custom_kitchen || "Unknown",
-                        addonCounts: {}, // Add logic if addons are supported
-                        selectedCombos: [], // Add logic if combos are supported
+                        addonCounts: {},
+                        selectedCombos: [],
                     };
                 });
 
@@ -78,6 +78,10 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     contact_email: order.contact_email || "",
                     posting_date: order.posting_date,
                     cartItems,
+                    // Add discount fields
+                    apply_discount_on: order.apply_discount_on || "Grand Total",
+                    additional_discount_percentage: parseFloat(order.additional_discount_percentage) || 0,
+                    discount_amount: parseFloat(order.discount_amount) || 0,
                 };
             });
 
@@ -122,7 +126,12 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                 tableNumber: order.custom_table_number,
                 phoneNumber: order.contact_mobile,
                 customerName: order.customer,
-                existingOrder: order,
+                existingOrder: {
+                    ...order,
+                    apply_discount_on: order.apply_discount_on,
+                    additional_discount_percentage: order.additional_discount_percentage,
+                    discount_amount: order.discount_amount,
+                },
                 deliveryType: order.custom_delivery_type,
                 address: order.customer_address,
                 email: order.contact_email,
@@ -130,9 +139,24 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
         });
     };
 
+    const handleViewInKitchen = (order) => {
+        navigate("/kitchen", {
+            state: {
+                order: {
+                    ...order,
+                    cartItems: order.cartItems.map((item) => ({
+                        ...item,
+                        kitchen: item.kitchen || "Unknown",
+                    })),
+                    custom_delivery_type: order.custom_delivery_type || "DINE IN",
+                },
+            },
+        });
+    };
+
     return (
         <div className="container mt-4">
-            <h2 className="text-center">Saved Orders (Draft Invoices Without Payments)</h2>
+            <h2 className="text-center mb-4">Saved Orders</h2>
             {loading ? (
                 <p className="text-center text-muted">Loading saved orders...</p>
             ) : error ? (
@@ -141,8 +165,8 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                 <p className="text-center text-muted">No draft invoices without payments found.</p>
             ) : (
                 <div className="table-responsive">
-                    <table className="table table-bordered">
-                        <thead>
+                    <table className="table table-bordered table-hover">
+                        <thead className="table-dark">
                             <tr>
                                 <th>#</th>
                                 <th>Customer Name</th>
@@ -153,7 +177,8 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                 <th>Email</th>
                                 <th>Items</th>
                                 <th>Timestamp</th>
-                                <th>Action</th>
+                                <th>Discount</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -168,9 +193,9 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                     <td>{order.contact_email || "N/A"}</td>
                                     <td>
                                         {order.cartItems.map((item, i) => (
-                                            <div key={i}>
+                                            <div key={i} className="mb-2">
                                                 <div>
-                                                    {item.name}
+                                                    <strong>{item.name}</strong>
                                                     {item.selectedSize && ` (${item.selectedSize})`}
                                                     {item.selectedCustomVariant &&
                                                         ` (${item.selectedCustomVariant})`}
@@ -203,11 +228,26 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                     </td>
                                     <td>{new Date(order.posting_date).toLocaleString()}</td>
                                     <td>
+                                        {order.discount_amount > 0
+                                            ? `₹${order.discount_amount.toFixed(2)}`
+                                            : order.additional_discount_percentage > 0
+                                            ? `${order.additional_discount_percentage}%`
+                                            : "N/A"}
+                                        <br />
+                                        <small>({order.apply_discount_on})</small>
+                                    </td>
+                                    <td>
                                         <button
-                                            className="btn btn-primary btn-sm"
+                                            className="btn btn-primary btn-sm me-2"
                                             onClick={() => handleSelectOrder(order)}
                                         >
                                             Select
+                                        </button>
+                                        <button
+                                            className="btn btn-info btn-sm"
+                                            onClick={() => handleViewInKitchen(order)}
+                                        >
+                                            View in Kitchen
                                         </button>
                                     </td>
                                 </tr>

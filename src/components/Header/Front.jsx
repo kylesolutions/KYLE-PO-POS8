@@ -38,11 +38,17 @@ function Front() {
     const [address, setAddress] = useState("");
     const [watsappNumber, setWatsappNumber] = useState(""); 
     const [email, setEmail] = useState("");
-    const [bearer,setBearer] = useState(userData.user)
+    const [bearer, setBearer] = useState(userData.user);
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [tableNumber, setTableNumber] = useState(initialTableNumber || "");
     const [deliveryType, setDeliveryType] = useState(initialDeliveryType || "");
+
+    // Discount-related states
+    const [showDiscountModal, setShowDiscountModal] = useState(false);
+    const [applyDiscountOn, setApplyDiscountOn] = useState("Grand Total"); // Options: "Grand Total", "Net Total"
+    const [discountPercentage, setDiscountPercentage] = useState(0);
+    const [discountAmount, setDiscountAmount] = useState(0);
 
     useEffect(() => {
         if (location.state) {
@@ -66,6 +72,13 @@ function Front() {
             setEmail(finalEmail);
             setIsPhoneNumberSet(!!finalPhoneNumber);
             setCartItems(finalCartItems);
+
+            // Load discount from existing order if present
+            if (existingOrder) {
+                setApplyDiscountOn(existingOrder.apply_discount_on || "Grand Total");
+                setDiscountPercentage(parseFloat(existingOrder.additional_discount_percentage) || 0);
+                setDiscountAmount(parseFloat(existingOrder.discount_amount) || 0);
+            }
         } else {
             setCustomerName("One Time Customer");
             setCustomerInput("");
@@ -77,6 +90,9 @@ function Front() {
             setEmail("");
             setIsPhoneNumberSet(false);
             setCartItems([]);
+            setApplyDiscountOn("Grand Total");
+            setDiscountPercentage(0);
+            setDiscountAmount(0);
         }
     }, [location.state, setCartItems]);
 
@@ -92,7 +108,7 @@ function Front() {
                     body: JSON.stringify({
                         doctype: "Company",
                         name: company,
-                        fieldname: ["default_income_account", "custom_tax_type"]
+                        fieldname: ["default_income_account", "custom_tax_type","default_currency"]
                     }),
                 });
                 const data = await response.json();
@@ -290,7 +306,23 @@ function Front() {
         return subTotal > 0 && taxRate > 0 ? (subTotal * taxRate) / 100 : 0;
     };
 
-    const getGrandTotal = () => getSubTotal() + getTaxAmount();
+    const getDiscountAmount = () => {
+        const subTotal = getSubTotal();
+        const taxAmount = getTaxAmount();
+        let baseAmount = applyDiscountOn === "Grand Total" ? (subTotal + taxAmount) : subTotal;
+
+        if (discountPercentage > 0) {
+            return (baseAmount * parseFloat(discountPercentage)) / 100;
+        }
+        return parseFloat(discountAmount) || 0;
+    };
+
+    const getGrandTotal = () => {
+        const subTotal = getSubTotal();
+        const taxAmount = getTaxAmount();
+        const discount = getDiscountAmount();
+        return (subTotal + taxAmount) - discount;
+    };
 
     const handleCheckoutClick = () => setShowButtons(true);
 
@@ -309,6 +341,18 @@ function Front() {
         } else {
             alert("No table selected.");
         }
+    };
+
+    const handleApplyDiscount = () => {
+        if (discountPercentage < 0 || discountPercentage > 100) {
+            alert("Discount percentage must be between 0 and 100.");
+            return;
+        }
+        if (discountAmount < 0) {
+            alert("Discount amount cannot be negative.");
+            return;
+        }
+        setShowDiscountModal(false);
     };
 
     const handlePaymentSelection = async (method) => {
@@ -345,10 +389,14 @@ function Front() {
             customer_address: address || "",
             contact_email: email || "",
             custom_bearer: bearer || "",
+            apply_discount_on: applyDiscountOn,
+            additional_discount_percentage: parseFloat(discountPercentage) || 0,
+            discount_amount: parseFloat(discountAmount) || 0,
             items: cartItems.flatMap((item) => {
                 const variantPrice = parseFloat(item.customVariantPrice) || 0;
                 const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
-    
+                const kitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
+
                 const mainItem = {
                     item_code: resolvedItemCode,
                     item_name: item.name,
@@ -358,6 +406,7 @@ function Front() {
                     income_account: defaultIncomeAccount || "Sales - P",
                     custom_size_variants: item.selectedSize || "",
                     custom_other_variants: item.selectedCustomVariant || "",
+                    custom_kitchen: kitchen,
                 };
     
                 const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
@@ -367,6 +416,7 @@ function Front() {
                     rate: parseFloat(price) || 0,
                     amount: (parseFloat(price) || 0) * (quantity || 0),
                     income_account: defaultIncomeAccount || "Sales - P",
+                    custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
                 }));
     
                 const comboItems = (item.selectedCombos || []).map((combo) => {
@@ -380,6 +430,7 @@ function Front() {
                         income_account: defaultIncomeAccount || "Sales - P",
                         custom_size_variants: combo.selectedSize || "",
                         custom_other_variants: combo.selectedCustomVariant || "",
+                        custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
                     };
                 });
     
@@ -418,6 +469,7 @@ function Front() {
             alert("Failed to process payment. Please try again.");
         }
     };
+
     const resolveVariantItemCode = (itemCode, selectedSize) => {
         const menuItem = allItems.find((m) => m.item_code === itemCode);
         if (!menuItem) return itemCode;
@@ -439,26 +491,6 @@ function Front() {
     };
 
     const saveOrder = async () => {
-        const resolveVariantItemCode = (itemCode, selectedSize) => {
-            const menuItem = allItems.find((m) => m.item_code === itemCode);
-            if (!menuItem) return itemCode;
-            if (menuItem.has_variants && selectedSize) {
-                const variantItem = allItems.find((i) => i.item_code === `${menuItem.item_code}-${selectedSize}`);
-                return variantItem ? variantItem.item_code : itemCode;
-            }
-            return itemCode;
-        };
-    
-        const resolveComboVariantItemCode = (comboName, selectedSize) => {
-            const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
-            if (!comboItem) return comboName;
-            if (comboItem.has_variants && selectedSize) {
-                const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
-                return variantItem ? variantItem.item_code : comboItem.item_code;
-            }
-            return comboItem.item_code;
-        };
-    
         if (cartItems.length === 0) {
             alert("Cart is empty. Please add items before saving.");
             return;
@@ -485,7 +517,8 @@ function Front() {
         const allCartItems = cartItems.flatMap((item) => {
             const variantPrice = parseFloat(item.customVariantPrice) || 0;
             let resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
-    
+            const kitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
+
             const mainItem = {
                 item_code: resolvedItemCode,
                 item_name: item.name,
@@ -495,6 +528,7 @@ function Front() {
                 income_account: defaultIncomeAccount || "Sales - P",
                 custom_size_variants: item.selectedSize || "",
                 custom_other_variants: item.selectedCustomVariant || "",
+                custom_kitchen: kitchen,
             };
     
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
@@ -504,6 +538,7 @@ function Front() {
                 rate: parseFloat(price) || 0,
                 amount: (parseFloat(price) || 0) * (quantity || 0),
                 income_account: defaultIncomeAccount || "Sales - P",
+                custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
             }));
     
             const comboItems = (item.selectedCombos || []).map((combo) => {
@@ -517,6 +552,7 @@ function Front() {
                     income_account: defaultIncomeAccount || "Sales - P",
                     custom_size_variants: combo.selectedSize || "",
                     custom_other_variants: combo.selectedCustomVariant || "",
+                    custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
                 };
             });
     
@@ -550,6 +586,9 @@ function Front() {
             contact_mobile: phoneNumber || watsappNumber || "",
             contact_email: email || "",
             custom_bearer: bearer || "",
+            apply_discount_on: applyDiscountOn,
+            additional_discount_percentage: parseFloat(discountPercentage) || 0,
+            discount_amount: parseFloat(discountAmount) || 0,
             items: allCartItems,
         };
     
@@ -579,7 +618,7 @@ function Front() {
     
             if (response.ok && result.message && result.message.status === "success") {
                 alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: ₹${result.message.data.grand_total}`);
-                setCartItems([]); // Clear cart after saving
+                setCartItems([]);
                 if (tableNumber && !existingOrder) {
                     setBookedTables(prev => [...new Set([...prev, tableNumber])]);
                 }
@@ -587,12 +626,12 @@ function Front() {
             } else {
                 const errorMsg = result.message?.exception || result.message?.message || result.exception || result.message || "Unknown error";
                 alert(`Failed to ${existingOrder ? "update" : "save"} POS Invoice: ${errorMsg}`);
+            }
+        } catch (error) {
+            console.error(`Error ${existingOrder ? "updating" : "saving"} POS Invoice:`, error);
+            alert("A network error occurred. Please check your connection and try again.");
         }
-    } catch (error) {
-        console.error(`Error ${existingOrder ? "updating" : "saving"} POS Invoice:`, error);
-        alert("A network error occurred. Please check your connection and try again.");
-    }
-};
+    };
 
     const handleShow = () => setShowPaymentModal(true);
     const handleClose = () => setShowPaymentModal(false);
@@ -766,7 +805,6 @@ function Front() {
                                 </div>
                             ))}
                         </div>
-                        <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} />
                     </div>
 
                     <div className="col-lg-5 col-xl-4 row1 px-4">
@@ -1093,6 +1131,91 @@ function Front() {
                             </div>
 
                             <div className="row p-2 mt-2 border shadow rounded" style={{ flexShrink: 0 }}>
+                                <div className='col-12'>
+                                    <div className='row'>
+                                        <div className='col-12'>
+                                            <button
+                                                className='btn w-100'
+                                                onClick={() => setShowDiscountModal(true)}
+                                                style={{
+                                                    padding: "10px",
+                                                    backgroundColor: "#000000",
+                                                    color: "white",
+                                                    border: "none",
+                                                    borderRadius: "5px",
+                                                    fontWeight: "bold",
+                                                    cursor: "pointer",
+                                                }}
+                                            >
+                                                Discount
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Modal show={showDiscountModal} onHide={() => setShowDiscountModal(false)} centered>
+                                <Modal.Header closeButton>
+                                    <Modal.Title>Apply Discount</Modal.Title>
+                                </Modal.Header>
+                                <Modal.Body>
+                                    <div className="mb-3">
+                                        <label className="form-label">Apply Discount On</label>
+                                        <select
+                                            className="form-select"
+                                            value={applyDiscountOn}
+                                            onChange={(e) => setApplyDiscountOn(e.target.value)}
+                                        >
+                                            <option value="Grand Total">Grand Total</option>
+                                            <option value="Net Total">Net Total</option>
+                                        </select>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">Discount Percentage (%)</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            value={discountPercentage}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                setDiscountPercentage(value);
+                                                if (value > 0) setDiscountAmount(0); // Reset amount if percentage is set
+                                            }}
+                                            min="0"
+                                            max="100"
+                                            step="0.01"
+                                            placeholder="Enter percentage"
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">Discount Amount ($)</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            value={discountAmount}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                setDiscountAmount(value);
+                                                if (value > 0) setDiscountPercentage(0); // Reset percentage if amount is set
+                                            }}
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="Enter amount"
+                                        />
+                                    </div>
+                                    <p><strong>Discount Applied:</strong> ${getDiscountAmount().toFixed(2)}</p>
+                                </Modal.Body>
+                                <Modal.Footer>
+                                    <Button variant="secondary" onClick={() => setShowDiscountModal(false)}>
+                                        Cancel
+                                    </Button>
+                                    <Button variant="primary" onClick={handleApplyDiscount}>
+                                        Apply
+                                    </Button>
+                                </Modal.Footer>
+                            </Modal>
+
+                            <div className="row p-2 mt-2 border shadow rounded" style={{ flexShrink: 0 }}>
                                 <div className="col-12">
                                     <div className="row">
                                         <div className="col-12 col-lg-6">
@@ -1116,6 +1239,12 @@ function Front() {
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
+                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Discount</h5>
+                                                    <div className='grand-tot-div justify-content-end'>
+                                                        <span>-${getDiscountAmount().toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-12 mb-2 col-12 col-lg-12 col-xl-12">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
                                                     <div className='grand-tot-div justify-content-end'>
                                                         <span>${getGrandTotal().toFixed(2)}</span>
@@ -1236,6 +1365,8 @@ function Front() {
                                                                             <div className="col-6 text-end">${getSubTotal().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
                                                                             <div className="col-6 text-end">${getTaxAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-start"><strong>Discount:</strong></div>
+                                                                            <div className="col-6 text-end">-${getDiscountAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Grand Total:</strong></div>
                                                                             <div className="col-6 text-end"><strong>${getGrandTotal().toFixed(2)}</strong></div>
                                                                         </div>
@@ -1321,6 +1452,7 @@ function Front() {
                             </div>
                         </div>
                     </div>
+                    <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} />
                 </div>
 
                 {selectedItem && (

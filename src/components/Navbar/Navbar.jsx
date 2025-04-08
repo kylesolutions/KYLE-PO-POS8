@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
+import { useNavigate, useLocation } from 'react-router-dom';
 import { persistor } from '../../Redux/store';
 import { logout } from '../../Redux/Slices/userSlice';
 import './navbar.css';
@@ -8,7 +8,7 @@ import './navbar.css';
 function Navbar() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const location = useLocation(); // To track current route
+  const location = useLocation(); 
   const user = useSelector((state) => state.user.user);
   const posProfile = useSelector((state) => state.user.posProfile);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -69,7 +69,6 @@ function Navbar() {
           >
             <span className="navbar-toggler-icon"></span>
           </button>
-
           <div className="collapse navbar-collapse" id="navbarSupportedContent">
             <ul className="navbar-nav mb-2 mb-lg-0">
               <li className="nav-item">
@@ -145,3 +144,4 @@ function Navbar() {
 }
 
 export default Navbar;
+

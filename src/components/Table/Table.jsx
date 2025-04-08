@@ -171,6 +171,10 @@ function Table() {
                         contact_email: existingOrder.contact_email,
                         posting_date: existingOrder.posting_date,
                         cartItems: formattedCartItems,
+                        // Add discount fields
+                        apply_discount_on: existingOrder.apply_discount_on || "Grand Total",
+                        additional_discount_percentage: parseFloat(existingOrder.additional_discount_percentage) || 0,
+                        discount_amount: parseFloat(existingOrder.discount_amount) || 0,
                     },
                     deliveryType: existingOrder.custom_delivery_type,
                 };
