@@ -142,8 +142,10 @@ function Table() {
                     const menuItem = allItems.find(m => m.item_code === item.item_code) || {};
                     return {
                         cartItemId: uuidv4(),
+                        id: item.item_code, // Ensure id is included for Front
                         item_code: item.item_code,
                         name: item.item_name,
+                        custom_customer_description: item.custom_customer_description || "", // Include description
                         basePrice: parseFloat(item.rate) || 0,
                         quantity: parseInt(item.qty, 10) || 1,
                         selectedSize: item.custom_size_variants || null,
@@ -160,18 +162,26 @@ function Table() {
                 const navigationState = {
                     tableNumber,
                     phoneNumber: existingOrder.contact_mobile,
-                    customerName: existingOrder.customer,
+                    customerName: existingOrder.customer_name,
                     existingOrder: {
                         name: existingOrder.name,
-                        customer: existingOrder.customer,
+                        customer: existingOrder.customer_name,
                         contact_mobile: existingOrder.contact_mobile,
                         custom_table_number: existingOrder.custom_table_number,
                         custom_delivery_type: existingOrder.custom_delivery_type,
                         customer_address: existingOrder.customer_address,
                         contact_email: existingOrder.contact_email,
                         posting_date: existingOrder.posting_date,
-                        cartItems: formattedCartItems,
-                        // Add discount fields
+                        items: existingOrder.items.map(item => ({
+                            item_code: item.item_code,
+                            item_name: item.item_name,
+                            custom_customer_description: item.custom_customer_description || "", 
+                            rate: parseFloat(item.rate) || 0,
+                            qty: parseInt(item.qty, 10) || 1,
+                            custom_size_variants: item.custom_size_variants || "",
+                            custom_other_variants: item.custom_other_variants || "",
+                            custom_kitchen: item.custom_kitchen || "Unknown",
+                        })),
                         apply_discount_on: existingOrder.apply_discount_on || "Grand Total",
                         additional_discount_percentage: parseFloat(existingOrder.additional_discount_percentage) || 0,
                         discount_amount: parseFloat(existingOrder.discount_amount) || 0,

@@ -25,7 +25,6 @@ function Front() {
     const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount);
     const [taxTemplateName, setTaxTemplateName] = useState("");
     const [taxRate, setTaxRate] = useState(null);
-    const [isPhoneNumberSet, setIsPhoneNumberSet] = useState(false);
     const [savedOrders, setSavedOrders] = useState([]);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [customers, setCustomers] = useState([]);
@@ -36,30 +35,41 @@ function Front() {
     const [bookedTables, setBookedTables] = useState([]);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
     const [address, setAddress] = useState("");
-    const [watsappNumber, setWatsappNumber] = useState(""); 
+    const [watsappNumber, setWatsappNumber] = useState("");
     const [email, setEmail] = useState("");
     const [bearer, setBearer] = useState(userData.user);
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [tableNumber, setTableNumber] = useState(initialTableNumber || "");
     const [deliveryType, setDeliveryType] = useState(initialDeliveryType || "");
-
-    // Discount-related states
     const [showDiscountModal, setShowDiscountModal] = useState(false);
-    const [applyDiscountOn, setApplyDiscountOn] = useState("Grand Total"); // Options: "Grand Total", "Net Total"
+    const [applyDiscountOn, setApplyDiscountOn] = useState("Grand Total");
     const [discountPercentage, setDiscountPercentage] = useState(0);
     const [discountAmount, setDiscountAmount] = useState(0);
 
     useEffect(() => {
         if (location.state) {
             const { customerName: stateCustomerName, phoneNumber: statePhoneNumber, tableNumber: stateTableNumber, existingOrder } = location.state;
-            const finalCustomerName = stateCustomerName || existingOrder?.customer || "One Time Customer";
+            const finalCustomerName = stateCustomerName || existingOrder?.customer_name || "One Time Customer";
             const finalPhoneNumber = statePhoneNumber || existingOrder?.contact_mobile || "";
             const finalTableNumber = stateTableNumber || existingOrder?.custom_table_number || "";
             const finalDeliveryType = location.state.deliveryType || existingOrder?.custom_delivery_type || "";
-            const finalCartItems = existingOrder?.cartItems || [];
+            const finalCartItems = existingOrder?.items?.map(item => ({
+                cartItemId: uuidv4(),
+                id: item.item_code,
+                item_code: item.item_code,
+                name: item.item_name,
+                basePrice: parseFloat(item.rate) || 0,
+                quantity: item.qty || 1,
+                selectedSize: item.custom_size_variants || "",
+                selectedCustomVariant: item.custom_other_variants || "",
+                custom_customer_description: item.custom_customer_description || "",
+                addonCounts: {},
+                selectedCombos: [],
+                kitchen: item.custom_kitchen || "Unknown",
+            })) || [];
             const finalAddress = existingOrder?.customer_address || "";
-            const finalWatsappNumber = existingOrder?.contact_mobile || ""; 
+            const finalWatsappNumber = existingOrder?.contact_mobile || "";
             const finalEmail = existingOrder?.contact_email || "";
 
             setCustomerName(finalCustomerName);
@@ -68,12 +78,10 @@ function Front() {
             setTableNumber(finalTableNumber);
             setDeliveryType(finalDeliveryType);
             setAddress(finalAddress);
-            setWatsappNumber(finalWatsappNumber); 
+            setWatsappNumber(finalWatsappNumber);
             setEmail(finalEmail);
-            setIsPhoneNumberSet(!!finalPhoneNumber);
             setCartItems(finalCartItems);
 
-            // Load discount from existing order if present
             if (existingOrder) {
                 setApplyDiscountOn(existingOrder.apply_discount_on || "Grand Total");
                 setDiscountPercentage(parseFloat(existingOrder.additional_discount_percentage) || 0);
@@ -86,9 +94,8 @@ function Front() {
             setTableNumber("");
             setDeliveryType("");
             setAddress("");
-            setWatsappNumber(""); 
+            setWatsappNumber("");
             setEmail("");
-            setIsPhoneNumberSet(false);
             setCartItems([]);
             setApplyDiscountOn("Grand Total");
             setDiscountPercentage(0);
@@ -108,7 +115,7 @@ function Front() {
                     body: JSON.stringify({
                         doctype: "Company",
                         name: company,
-                        fieldname: ["default_income_account", "custom_tax_type","default_currency"]
+                        fieldname: ["default_income_account", "custom_tax_type", "default_currency"]
                     }),
                 });
                 const data = await response.json();
@@ -267,18 +274,14 @@ function Front() {
 
     const handlePhoneNumberChange = (e) => setPhoneNumber(e.target.value);
 
-    const handleSetPhoneNumber = () => {
-        if (phoneNumber.trim() === "") {
-            alert("Please enter a valid phone number.");
-            return;
-        }
-        setIsPhoneNumberSet(true);
-    };
-
     const handleItemClick = (item) => setSelectedItem(item);
 
     const handleItemUpdate = (updatedItem) => {
-        updateCartItem(updatedItem);
+        updateCartItem({
+            ...updatedItem,
+            custom_customer_description: updatedItem.custom_customer_description || updatedItem.description || "",
+        });
+        updateKitchenNoteForOrder();
         setSelectedItem(null);
     };
 
@@ -333,6 +336,7 @@ function Front() {
         } else {
             updateCartItem({ ...item, quantity });
         }
+        updateKitchenNoteForOrder();
     };
 
     const handleNavigation = () => {
@@ -362,15 +366,15 @@ function Front() {
             mode_of_payment: method,
             amount: grandTotal.toFixed(2),
         };
-    
+
         const existingOrder = location.state?.existingOrder;
         const invoiceName = existingOrder?.name;
-    
+
         if (!invoiceName) {
             alert("No existing draft invoice selected. Please save the order first.");
             return;
         }
-    
+
         const payload = {
             name: invoiceName,
             payments: [{
@@ -382,7 +386,7 @@ function Front() {
             base_net_total: subTotal.toFixed(2),
             grand_total: grandTotal.toFixed(2),
             taxes_and_charges: taxTemplateName || "",
-            customer: customerName || "CUST-2025-00001",
+            customer: customerName,
             contact_mobile: phoneNumber || watsappNumber || "",
             custom_table_number: tableNumber || "",
             custom_delivery_type: deliveryType || "DINE IN",
@@ -400,6 +404,7 @@ function Front() {
                 const mainItem = {
                     item_code: resolvedItemCode,
                     item_name: item.name,
+                    custom_customer_description: item.custom_customer_description || "",
                     qty: item.quantity || 1,
                     rate: (parseFloat(item.basePrice) || 0) + variantPrice,
                     amount: ((parseFloat(item.basePrice) || 0) + variantPrice) * (item.quantity || 1),
@@ -408,22 +413,24 @@ function Front() {
                     custom_other_variants: item.selectedCustomVariant || "",
                     custom_kitchen: kitchen,
                 };
-    
+
                 const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
                     item_code: addonName,
                     item_name: addonName,
+                    custom_customer_description: "",
                     qty: quantity || 0,
                     rate: parseFloat(price) || 0,
                     amount: (parseFloat(price) || 0) * (quantity || 0),
                     income_account: defaultIncomeAccount || "Sales - P",
                     custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
                 }));
-    
+
                 const comboItems = (item.selectedCombos || []).map((combo) => {
                     const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
                     return {
                         item_code: resolvedComboItemCode,
                         item_name: combo.name1,
+                        custom_customer_description: combo.custom_customer_description || "",
                         qty: combo.quantity || 1,
                         rate: parseFloat(combo.rate) || 0,
                         amount: (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
@@ -433,11 +440,11 @@ function Front() {
                         custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
                     };
                 });
-    
+
                 return [mainItem, ...addonItems, ...comboItems];
             }),
         };
-    
+
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice", {
                 method: "POST",
@@ -448,7 +455,7 @@ function Front() {
                 },
                 body: JSON.stringify(payload),
             });
-    
+
             const result = await response.json();
             if (response.ok && result.message?.status === "success") {
                 if (method === "CASH") {
@@ -479,7 +486,7 @@ function Front() {
         }
         return itemCode;
     };
-    
+
     const resolveComboVariantItemCode = (comboName, selectedSize) => {
         const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
         if (!comboItem) return comboName;
@@ -490,12 +497,169 @@ function Front() {
         return comboItem.item_code;
     };
 
+    const createKitchenNote = async (posInvoiceId) => {
+        const kitchenNotePayload = {
+            pos_invoice_id: posInvoiceId,
+            customer_name: customerName || "One Time Customer",
+            table_number: tableNumber || "",
+            delivery_type: deliveryType || "DINE IN",
+            items: cartItems.flatMap((item) => {
+                const variantPrice = parseFloat(item.customVariantPrice) || 0;
+                const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
+                const mainItemKitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
+                const mainItemVariants = [item.selectedCustomVariant].filter(Boolean).join(" - ") || "";
+
+                const mainItem = {
+                    item_name: item.name,
+                    kitchen: mainItemKitchen,
+                    quantity: item.quantity || 1,
+                    customer_description: item.custom_customer_description || "",
+                    custom_variants: mainItemVariants
+                };
+
+                const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                    item_name: addonName,
+                    kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
+                    quantity: quantity || 0,
+                    customer_description: "",
+                    custom_variants: ""
+                }));
+
+                const comboItems = (item.selectedCombos || []).map((combo) => {
+                    const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
+                    const comboVariants = [combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ") || "";
+                    return {
+                        item_name: combo.name1,
+                        kitchen: allItems.find(i => i.item_code === resolvedComboItemCode || i.name === combo.name1)?.kitchen || "Unknown",
+                        quantity: combo.quantity || 1,
+                        customer_description: combo.custom_customer_description || "",
+                        custom_variants: comboVariants
+                    };
+                });
+
+                return [mainItem, ...addonItems.filter(addon => addon.quantity > 0), ...comboItems];
+            }),
+        };
+
+        console.log("Kitchen Note Payload:", JSON.stringify(kitchenNotePayload, null, 2));
+
+        try {
+            const response = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_kitchen_note",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    },
+                    body: JSON.stringify(kitchenNotePayload),
+                }
+            );
+
+            const result = await response.json();
+            console.log("Kitchen Note Response:", result);
+
+            if (response.ok && result.message?.status === "success") {
+                console.log(`Kitchen Note created for POS Invoice ${posInvoiceId}`);
+                return true;
+            } else {
+                const errorMsg = result.message?.message || result.exception || "Unknown error";
+                console.error("Failed to create Kitchen Note:", errorMsg);
+                return false;
+            }
+        } catch (error) {
+            console.error("Error creating Kitchen Note:", error);
+            return false;
+        }
+    };
+
+    const updateKitchenNoteForOrder = async () => {
+        const existingOrder = location.state?.existingOrder;
+        if (!existingOrder || !existingOrder.name) {
+            return;
+        }
+
+        const posInvoiceId = existingOrder.name;
+        const kitchenNotePayload = {
+            pos_invoice_id: posInvoiceId,
+            customer_name: customerName || "One Time Customer",
+            table_number: tableNumber || "",
+            delivery_type: deliveryType || "DINE IN",
+            items: cartItems.flatMap((item) => {
+                const variantPrice = parseFloat(item.customVariantPrice) || 0;
+                const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
+                const mainItemKitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
+                const mainItemVariants = [item.selectedCustomVariant].filter(Boolean).join(" - ") || "";
+
+                const mainItem = {
+                    item_name: item.name,
+                    kitchen: mainItemKitchen,
+                    quantity: item.quantity || 1,
+                    customer_description: item.custom_customer_description || "",
+                    custom_variants: mainItemVariants
+                };
+
+                const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                    item_name: addonName,
+                    kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
+                    quantity: quantity || 0,
+                    customer_description: "",
+                    custom_variants: ""
+                }));
+
+                const comboItems = (item.selectedCombos || []).map((combo) => {
+                    const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
+                    const comboVariants = [combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ") || "";
+                    return {
+                        item_name: combo.name1,
+                        kitchen: allItems.find(i => i.item_code === resolvedComboItemCode || i.name === combo.name1)?.kitchen || "Unknown",
+                        quantity: combo.quantity || 1,
+                        customer_description: combo.custom_customer_description || "",
+                        custom_variants: comboVariants
+                    };
+                });
+
+                return [mainItem, ...addonItems.filter(addon => addon.quantity > 0), ...comboItems];
+            }),
+        };
+
+        console.log("Update Kitchen Note Payload:", JSON.stringify(kitchenNotePayload, null, 2));
+
+        try {
+            const response = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    },
+                    body: JSON.stringify(kitchenNotePayload),
+                }
+            );
+
+            const result = await response.json();
+            console.log("Update Kitchen Note Response:", result);
+
+            if (response.ok && result.message?.status === "success") {
+                console.log(`Kitchen Note updated for POS Invoice ${posInvoiceId}`);
+            } else {
+                const errorMsg = result.message?.message || result.exception || "Unknown error";
+                console.error("Failed to update Kitchen Note:", errorMsg);
+                alert(`Failed to update Kitchen Note for POS Invoice ${posInvoiceId}: ${errorMsg}`);
+            }
+        } catch (error) {
+            console.error("Error updating Kitchen Note:", error);
+            alert(`Error updating Kitchen Note: ${error.message || "Please try again."}`);
+        }
+    };
+
     const saveOrder = async () => {
         if (cartItems.length === 0) {
             alert("Cart is empty. Please add items before saving.");
             return;
         }
-    
+
         if (deliveryType && deliveryType !== "DINE IN") {
             if (!address || address.trim() === "") {
                 alert("Please enter a delivery address for this delivery type.");
@@ -510,10 +674,7 @@ function Front() {
                 return;
             }
         }
-    
-        const selectedCustomer = customers.find((c) => c.customer_name === customerName);
-        const customerId = selectedCustomer ? selectedCustomer.name : "CUST-2025-00001";
-    
+
         const allCartItems = cartItems.flatMap((item) => {
             const variantPrice = parseFloat(item.customVariantPrice) || 0;
             let resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
@@ -522,6 +683,7 @@ function Front() {
             const mainItem = {
                 item_code: resolvedItemCode,
                 item_name: item.name,
+                custom_customer_description: item.custom_customer_description || "",
                 qty: item.quantity || 1,
                 rate: (parseFloat(item.basePrice) || 0) + variantPrice,
                 amount: ((parseFloat(item.basePrice) || 0) + variantPrice) * (item.quantity || 1),
@@ -530,22 +692,24 @@ function Front() {
                 custom_other_variants: item.selectedCustomVariant || "",
                 custom_kitchen: kitchen,
             };
-    
+
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
                 item_code: addonName,
                 item_name: addonName,
+                custom_customer_description: "",
                 qty: quantity || 0,
                 rate: parseFloat(price) || 0,
                 amount: (parseFloat(price) || 0) * (quantity || 0),
                 income_account: defaultIncomeAccount || "Sales - P",
                 custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
             }));
-    
+
             const comboItems = (item.selectedCombos || []).map((combo) => {
                 const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
                 return {
                     item_code: resolvedComboItemCode,
                     item_name: combo.name1,
+                    custom_customer_description: combo.custom_customer_description || "",
                     qty: combo.quantity || 1,
                     rate: parseFloat(combo.rate) || 0,
                     amount: (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
@@ -555,16 +719,16 @@ function Front() {
                     custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
                 };
             });
-    
+
             return [mainItem, ...addonItems, ...comboItems];
         });
-    
+
         const subTotal = getSubTotal();
         const grandTotal = getGrandTotal();
         const existingOrder = location.state?.existingOrder;
-    
+
         const payload = {
-            customer: customerId,
+            customer: customerName,
             posting_date: new Date().toISOString().split("T")[0],
             due_date: new Date().toISOString().split("T")[0],
             is_pos: 1,
@@ -591,33 +755,35 @@ function Front() {
             discount_amount: parseFloat(discountAmount) || 0,
             items: allCartItems,
         };
-    
+
         if (existingOrder && existingOrder.name) {
             payload.name = existingOrder.name;
         }
-    
-        console.log("Saving payload:", JSON.stringify(payload, null, 2));
-    
+
+        console.log("Saving POS Invoice payload:", JSON.stringify(payload, null, 2));
+
         try {
             const apiEndpoint = existingOrder && existingOrder.name
                 ? "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice_draft"
                 : "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice";
-    
+
             const response = await fetch(apiEndpoint, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                    "Expect": "",
                 },
                 body: JSON.stringify(payload),
             });
-    
+
             const result = await response.json();
-            console.log("Response from API:", result);
-    
+            console.log("Response from POS Invoice API:", result);
+
             if (response.ok && result.message && result.message.status === "success") {
-                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: ₹${result.message.data.grand_total}`);
+                const posInvoiceId = result.message.data.name;
+                const kitchenNoteSuccess = existingOrder ? await updateKitchenNoteForOrder() : await createKitchenNote(posInvoiceId);
+                
+                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: ₹${result.message.data.grand_total}${kitchenNoteSuccess === false ? " (Kitchen Note creation failed)" : ""}`);
                 setCartItems([]);
                 if (tableNumber && !existingOrder) {
                     setBookedTables(prev => [...new Set([...prev, tableNumber])]);
@@ -700,8 +866,7 @@ function Front() {
             setPhoneNumber(selectedCustomer.mobile_no);
             setAddress(selectedCustomer.primary_address);
             setEmail(selectedCustomer.email_id);
-            setWatsappNumber(selectedCustomer.custom_watsapp_no); 
-            setIsPhoneNumberSet(!!selectedCustomer.mobile_no);
+            setWatsappNumber(selectedCustomer.custom_watsapp_no);
         }
         setShowCustomerSuggestions(false);
     };
@@ -712,11 +877,11 @@ function Front() {
             alert("Customer name is required.");
             return;
         }
-    
+
         const customerExists = customers.some(
             (customer) => customer.customer_name.toLowerCase() === trimmedInput.toLowerCase()
         );
-    
+
         if (!customerExists) {
             try {
                 const customerData = {
@@ -726,7 +891,7 @@ function Front() {
                     ...(email && { email: email }),
                     ...(watsappNumber && { whatsapp_number: watsappNumber }),
                 };
-    
+
                 const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer', {
                     method: 'POST',
                     headers: {
@@ -735,7 +900,7 @@ function Front() {
                     },
                     body: JSON.stringify(customerData),
                 });
-    
+
                 const data = await response.json();
                 if (data.status === "success") {
                     alert("Customer created successfully!");
@@ -770,6 +935,11 @@ function Front() {
     };
 
     const cancelCart = () => setCartItems([]);
+
+    const handleAddToCart = (item) => {
+        addToCart(item);
+        updateKitchenNoteForOrder();
+    };
 
     return (
         <>
@@ -896,6 +1066,16 @@ function Front() {
                                                             </ul>
                                                         )}
                                                     </div>
+                                                    <div className='col-10 col-lg-4 mb-2'>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="Enter phone number"
+                                                            value={phoneNumber}
+                                                            onChange={handlePhoneNumberChange}
+                                                            style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
+                                                        />
+                                                    </div>
                                                     <div className='col-2 col-lg-1 mb-2' style={{ background: "rgb(58 56 56)", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                         <span
                                                             onClick={handleCustomerSubmit}
@@ -904,33 +1084,6 @@ function Front() {
                                                             <i className="bi bi-check"></i>
                                                         </span>
                                                     </div>
-
-                                                    {!isPhoneNumberSet ? (
-                                                        <>
-                                                            <div className='col-10 col-lg-4 mb-2'>
-                                                                <input
-                                                                    type="text"
-                                                                    className="form-control"
-                                                                    placeholder="Enter phone number"
-                                                                    value={phoneNumber}
-                                                                    onChange={handlePhoneNumberChange}
-                                                                    style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
-                                                                />
-                                                            </div>
-                                                            <div className='col-2 col-lg-1 mb-2' style={{ background: "rgb(58 56 56)", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                                <span
-                                                                    onClick={handleSetPhoneNumber}
-                                                                    style={{ fontWeight: "bold", cursor: "pointer" }}
-                                                                >
-                                                                    <i className="bi bi-send"></i>
-                                                                </span>
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <div className='col-10 col-lg-5 mb-2 d-flex align-items-center'>
-                                                            <p className="text-muted mb-0">Ph: {phoneNumber}</p>
-                                                        </div>
-                                                    )}
                                                 </>
                                             ) : (
                                                 <>
@@ -964,8 +1117,8 @@ function Front() {
                                                                     border: "1px solid #ccc",
                                                                     borderRadius: "5px",
                                                                     listStyleType: "none",
-                                                                    padding: "0",
-                                                                    margin: "0",
+                                                                    padding: 0,
+                                                                    margin: 0,
                                                                     zIndex: 1000,
                                                                 }}
                                                             >
@@ -987,6 +1140,16 @@ function Front() {
                                                             </ul>
                                                         )}
                                                     </div>
+                                                    <div className='col-10 col-lg-5 mb-2'>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="Enter phone number"
+                                                            value={phoneNumber}
+                                                            onChange={handlePhoneNumberChange}
+                                                            style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
+                                                        />
+                                                    </div>
                                                     <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                         <span
                                                             onClick={handleCustomerSubmit}
@@ -995,33 +1158,6 @@ function Front() {
                                                             <i className="bi bi-check"></i>
                                                         </span>
                                                     </div>
-
-                                                    {!isPhoneNumberSet ? (
-                                                        <>
-                                                            <div className='col-10 col-lg-5 mb-2'>
-                                                                <input
-                                                                    type="text"
-                                                                    className="form-control"
-                                                                    placeholder="Enter phone number"
-                                                                    value={phoneNumber}
-                                                                    onChange={handlePhoneNumberChange}
-                                                                    style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
-                                                                />
-                                                            </div>
-                                                            <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                                <span
-                                                                    onClick={handleSetPhoneNumber}
-                                                                    style={{ fontWeight: "bold", cursor: "pointer" }}
-                                                                >
-                                                                    <i className="bi bi-send"></i>
-                                                                </span>
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <div className='col-10 col-lg-5 mb-2 d-flex align-items-center'>
-                                                            <p className="text-muted mb-0">Ph: {phoneNumber}</p>
-                                                        </div>
-                                                    )}
                                                 </>
                                             )}
 
@@ -1042,7 +1178,7 @@ function Front() {
                                                             type="text"
                                                             className="form-control"
                                                             placeholder="Enter WhatsApp number"
-                                                            value={watsappNumber} 
+                                                            value={watsappNumber}
                                                             onChange={(e) => setWatsappNumber(e.target.value)}
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
@@ -1069,7 +1205,6 @@ function Front() {
                                                         <th>Item Name</th>
                                                         <th>Qty</th>
                                                         <th>Price</th>
-                                                        <th>Total</th>
                                                         <th></th>
                                                     </tr>
                                                 </thead>
@@ -1081,8 +1216,28 @@ function Front() {
                                                                 {item.name}
                                                                 {item.selectedSize && ` (${item.selectedSize})`}
                                                                 {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                                {item.custom_customer_description && (
+                                                                    <p
+                                                                        style={{
+                                                                            fontSize: "12px",
+                                                                            color: "#666",
+                                                                            marginTop: "5px",
+                                                                            marginBottom: "0",
+                                                                        }}
+                                                                    >
+                                                                        <strong>Note:</strong> {item.custom_customer_description}
+                                                                    </p>
+                                                                )}
                                                                 {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                    <ul
+                                                                        style={{
+                                                                            listStyleType: "none",
+                                                                            padding: 0,
+                                                                            marginTop: "5px",
+                                                                            fontSize: "12px",
+                                                                            color: "#888",
+                                                                        }}
+                                                                    >
                                                                         {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
                                                                             <li key={addonName}>
                                                                                 + {addonName} x{quantity} (${(parseFloat(price) || 0).toFixed(2)})
@@ -1091,7 +1246,15 @@ function Front() {
                                                                     </ul>
                                                                 )}
                                                                 {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                    <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                    <ul
+                                                                        style={{
+                                                                            listStyleType: "none",
+                                                                            padding: 0,
+                                                                            marginTop: "5px",
+                                                                            fontSize: "12px",
+                                                                            color: "#555",
+                                                                        }}
+                                                                    >
                                                                         {item.selectedCombos.map((combo, idx) => (
                                                                             <li key={idx}>
                                                                                 + {combo.name1} x{combo.quantity || 1}
@@ -1099,6 +1262,11 @@ function Front() {
                                                                                     ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
                                                                                 )}
                                                                                 - ${(parseFloat(combo.rate) || 0).toFixed(2)}
+                                                                                {combo.custom_customer_description && (
+                                                                                    <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
+                                                                                        <strong>Note:</strong> {combo.custom_customer_description}
+                                                                                    </p>
+                                                                                )}
                                                                             </li>
                                                                         ))}
                                                                     </ul>
@@ -1115,7 +1283,6 @@ function Front() {
                                                                 />
                                                             </td>
                                                             <td>${(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
-                                                            <td>${getItemTotal(item).toFixed(2)}</td>
                                                             <td>
                                                                 <button className="btn btn-sm" onClick={() => removeFromCart(item)}>
                                                                     <i className="bi bi-trash"></i>
@@ -1179,7 +1346,7 @@ function Front() {
                                             onChange={(e) => {
                                                 const value = e.target.value;
                                                 setDiscountPercentage(value);
-                                                if (value > 0) setDiscountAmount(0); // Reset amount if percentage is set
+                                                if (value > 0) setDiscountAmount(0);
                                             }}
                                             min="0"
                                             max="100"
@@ -1196,7 +1363,7 @@ function Front() {
                                             onChange={(e) => {
                                                 const value = e.target.value;
                                                 setDiscountAmount(value);
-                                                if (value > 0) setDiscountPercentage(0); // Reset percentage if amount is set
+                                                if (value > 0) setDiscountPercentage(0);
                                             }}
                                             min="0"
                                             step="0.01"
@@ -1330,6 +1497,11 @@ function Front() {
                                                                                             {item.name}
                                                                                             {item.selectedSize && ` (${item.selectedSize})`}
                                                                                             {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                                                            {item.custom_customer_description && (
+                                                                                                <p style={{ fontSize: "12px", color: "#666", marginTop: "5px", marginBottom: "0" }}>
+                                                                                                    <strong>Note:</strong> {item.custom_customer_description}
+                                                                                                </p>
+                                                                                            )}
                                                                                             {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
@@ -1346,6 +1518,11 @@ function Front() {
                                                                                                                 ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
                                                                                                             )}
                                                                                                             - ${(parseFloat(combo.rate) || 0).toFixed(2)}
+                                                                                                            {combo.custom_customer_description && (
+                                                                                                                <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
+                                                                                                                    <strong>Note:</strong> {combo.custom_customer_description}
+                                                                                                                </p>
+                                                                                                            )}
                                                                                                         </li>
                                                                                                     ))}
                                                                                                 </ul>
@@ -1461,6 +1638,7 @@ function Front() {
                         allItems={allItems}
                         onClose={() => setSelectedItem(null)}
                         onUpdate={handleItemUpdate}
+                        onAddToCart={handleAddToCart}
                     />
                 )}
             </div>

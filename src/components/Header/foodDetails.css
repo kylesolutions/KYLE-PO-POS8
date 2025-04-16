@@ -1,4 +1,4 @@
-/* Existing styles unchanged unless noted */
+
 .addons-list {
   list-style: none;
   padding: 0;
@@ -6,14 +6,10 @@
 }
 
 .image-i {
-  position: relative;
   display: inline-block;
 }
 
 .info-icon {
-  position: absolute;
-  top: 5px;
-  right: 5px;
   background: white;
   color: black;
   padding: 5px;
@@ -283,3 +279,8 @@
   gap: 10px;
 }
 
+.image-icons{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

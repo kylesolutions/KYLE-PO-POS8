@@ -126,7 +126,7 @@ function Cash() {
         }
 
         const calculatedChange = cashGiven ? (cash - grandTotal) : 0;
-        alert(`Payment confirmed! Change: ₹${calculatedChange.toFixed(2)}`);
+        alert("Payment confirmed!");
         navigate("/frontpage");
     };
 

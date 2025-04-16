@@ -16,6 +16,8 @@ const FoodDetails = ({ item, onClose }) => {
     const [fetchedItem, setFetchedItem] = useState(null);
     const [allItems, setAllItems] = useState([]);
     const [showModal, setShowModal] = useState(false);
+    const [showDescriptionModal, setShowDescriptionModal] = useState(false); // Renamed for consistency
+    const [description, setDescription] = useState(""); // New state for description
     const [mainQuantity, setMainQuantity] = useState(1);
     const [itemTotal, setItemTotal] = useState(0);
 
@@ -78,7 +80,6 @@ const FoodDetails = ({ item, onClose }) => {
                         ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
                     );
                     if (hasSizeVariants && !selectedSize) setSelectedSize("M");
-                    if (formattedVariantData.length > 0 && !selectedCustomVariant) setSelectedCustomVariant(formattedVariantData[0].type_of_variants);
                 }
             } catch (error) {
                 console.error("Error fetching item details:", error);
@@ -172,7 +173,10 @@ const FoodDetails = ({ item, onClose }) => {
 
     const handleSizeChange = (size) => setSelectedSize(size);
 
-    const handleCustomVariantChange = (variant) => setSelectedCustomVariant(variant);
+    const handleCustomVariantChange = (e) => {
+        const value = e.target.value;
+        setSelectedCustomVariant(value === "" ? null : value);
+    };
 
     const toggleAddonSelection = (addon, qtyChange) => {
         setAddonCounts((prev) => {
@@ -224,23 +228,31 @@ const FoodDetails = ({ item, onClose }) => {
         );
     };
 
+    const handleComboCustomVariantChange = (comboName, e) => {
+        const value = e.target.value;
+        setComboVariants((prev) => ({
+            ...prev,
+            [comboName]: { ...prev[comboName], custom: value === "" ? null : value },
+        }));
+    };
+
     const handleAddToCart = () => {
         if (!fetchedItem) return;
-
+    
         const sizePrices = getSizePrices();
         const selectedItemCode = getItemCodeForSize(selectedSize);
         const selectedItemName = getItemNameForSize(selectedSize);
         const selectedItem = allItems.find((i) => i.item_code === selectedItemCode) || fetchedItem;
-
+    
         if (fetchedItem.has_variants && !selectedSize) {
             alert("Please select a size for this item.");
             return;
         }
-
+    
         const customVariantPrice = selectedCustomVariant
             ? (fetchedItem.variants.find((v) => v.type_of_variants === selectedCustomVariant)?.variant_price || 0)
             : 0;
-
+    
         const customizedItem = {
             cartItemId: `${selectedItemCode}-${Date.now()}`,
             id: selectedItemCode,
@@ -268,12 +280,14 @@ const FoodDetails = ({ item, onClose }) => {
                     item_code: variantItemCode,
                     rate,
                     kitchen: comboItem.custom_kitchen || combo.kitchen || "Unknown",
+                    custom_customer_description: description || "", // Add description for combos too
                 };
             }),
             kitchen: selectedItem.custom_kitchen || fetchedItem.kitchen,
             quantity: mainQuantity,
+            custom_customer_description: description || "", // Rename to match backend field
         };
-
+    
         console.log("Adding to cart:", JSON.stringify(customizedItem, null, 2));
         addToCart(customizedItem);
         onClose();
@@ -313,6 +327,14 @@ const FoodDetails = ({ item, onClose }) => {
                         <div className="modal-body">
                             <div className="image-i-wrapper d-flex justify-content-center">
                                 <div className="image-i">
+                                    <div className="image-icons">
+                                        <i
+                                            className="bi bi-pencil-square"
+                                            onClick={() => setShowDescriptionModal(true)}
+                                            style={{ cursor: "pointer" }}
+                                        ></i>
+                                        <i className="fa-solid fa-info info-icon" onClick={() => setShowModal(true)}></i>
+                                    </div>
                                     <img
                                         src={fetchedItem?.image || "default-image.jpg"}
                                         alt={fetchedItem?.name || "Item"}
@@ -320,7 +342,6 @@ const FoodDetails = ({ item, onClose }) => {
                                         height={150}
                                         className="mb-3 rounded d-flex mx-auto"
                                     />
-                                    <i className="fa-solid fa-info info-icon" onClick={() => setShowModal(true)}></i>
                                 </div>
                             </div>
 
@@ -356,23 +377,19 @@ const FoodDetails = ({ item, onClose }) => {
                                 )}
                                 {fetchedItem?.variants?.length > 0 && (
                                     <div className="mt-3">
-                                        <strong>Custom Variants:</strong>
-                                        <div className="radio-inputs" role="group" aria-label="Custom variant selection">
+                                        <strong>Custom Variants (Optional):</strong>
+                                        <select
+                                            className="form-select"
+                                            value={selectedCustomVariant || ""}
+                                            onChange={handleCustomVariantChange}
+                                        >
+                                            <option value="">Select Variant</option>
                                             {fetchedItem.variants.map((variant, index) => (
-                                                <label key={index} className="radio">
-                                                    <input
-                                                        type="radio"
-                                                        name="customVariant"
-                                                        value={variant.type_of_variants}
-                                                        checked={selectedCustomVariant === variant.type_of_variants}
-                                                        onChange={() => handleCustomVariantChange(variant.type_of_variants)}
-                                                    />
-                                                    <span className="name">
-                                                        {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price.toFixed(2)})` : ''}
-                                                    </span>
-                                                </label>
+                                                <option key={index} value={variant.type_of_variants}>
+                                                    {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price.toFixed(2)})` : ''}
+                                                </option>
                                             ))}
-                                        </div>
+                                        </select>
                                     </div>
                                 )}
                                 {fetchedItem?.addons?.length > 0 && (
@@ -490,31 +507,19 @@ const FoodDetails = ({ item, onClose }) => {
                                             </div>
                                             {allItems.find((i) => i.item_name === selectedCombo.name1)?.variants?.length > 0 && (
                                                 <div className="mt-3">
-                                                    <strong>Custom Variants (Optional):</strong>
-                                                    <div className="radio-inputs" role="group">
+                                                    <strong>Custom Variants</strong>
+                                                    <select
+                                                        className="form-select"
+                                                        value={comboVariants[selectedCombo.name1]?.custom || ""}
+                                                        onChange={(e) => handleComboCustomVariantChange(selectedCombo.name1, e)}
+                                                    >
+                                                        <option value="">Select Variant</option>
                                                         {allItems.find((i) => i.item_name === selectedCombo.name1).variants.map((variant, index) => (
-                                                            <label key={index} className="radio">
-                                                                <input
-                                                                    type="radio"
-                                                                    name={`customVariant-${selectedCombo.name1}`}
-                                                                    value={variant.type_of_variants}
-                                                                    checked={comboVariants[selectedCombo.name1]?.custom === variant.type_of_variants}
-                                                                    onChange={() => setComboVariants((prev) => ({ ...prev, [selectedCombo.name1]: { ...prev[selectedCombo.name1], custom: variant.type_of_variants } }))}
-                                                                />
-                                                                <span className="name">{variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price.toFixed(2)})` : ''}</span>
-                                                            </label>
+                                                            <option key={index} value={variant.type_of_variants}>
+                                                                {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price.toFixed(2)})` : ''}
+                                                            </option>
                                                         ))}
-                                                        <label className="radio">
-                                                            <input
-                                                                type="radio"
-                                                                name={`customVariant-${selectedCombo.name1}`}
-                                                                value=""
-                                                                checked={!comboVariants[selectedCombo.name1]?.custom}
-                                                                onChange={() => setComboVariants((prev) => ({ ...prev, [selectedCombo.name1]: { ...prev[selectedCombo.name1], custom: null } }))}
-                                                            />
-                                                            <span className="name">None</span>
-                                                        </label>
-                                                    </div>
+                                                    </select>
                                                 </div>
                                             )}
                                             <div className="text-center mt-4">
@@ -576,6 +581,39 @@ const FoodDetails = ({ item, onClose }) => {
                                                         <tr><td><strong>Total Protein:</strong></td><td>{fetchedItem?.protein || 0}</td></tr>
                                                     </tbody>
                                                 </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {showDescriptionModal && (
+                                    <div className="modal-overlay">
+                                        <div className="modal-content p-3">
+                                            <span className="close-btn" role="button" onClick={() => setShowDescriptionModal(false)}>×</span>
+                                            <h3 className="modal-title text-center mb-3">Add Description</h3>
+                                            <textarea
+                                                className="form-control"
+                                                rows="4"
+                                                placeholder="Enter special instructions or notes for this item..."
+                                                value={description}
+                                                onChange={(e) => setDescription(e.target.value)}
+                                            ></textarea>
+                                            <div className="text-center mt-3">
+                                                <button
+                                                    className="btn btn-primary"
+                                                    onClick={() => setShowDescriptionModal(false)}
+                                                >
+                                                    Save
+                                                </button>
+                                                <button
+                                                    className="btn btn-secondary ml-2"
+                                                    onClick={() => {
+                                                        setDescription(""); 
+                                                        setShowDescriptionModal(false);
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </button>
                                             </div>
                                         </div>
                                     </div>

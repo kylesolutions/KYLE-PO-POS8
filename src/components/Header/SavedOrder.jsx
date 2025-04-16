@@ -58,19 +58,20 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                         cartItemId: uuidv4(),
                         item_code: item.item_code,
                         name: item.item_name,
+                        description: item.custom_customer_description || "", // Map backend field to description
                         basePrice: parseFloat(item.rate) || 0,
                         quantity: parseInt(item.qty, 10) || 1,
                         selectedSize: item.custom_size_variants || null,
                         selectedCustomVariant: item.custom_other_variants || null,
                         kitchen: menuItem.custom_kitchen || item.custom_kitchen || "Unknown",
-                        addonCounts: {},
-                        selectedCombos: [],
+                        addonCounts: {}, // Addons not fetched here, adjust if needed
+                        selectedCombos: [], // Combos not fetched here, adjust if needed
                     };
                 });
 
                 return {
                     name: order.name,
-                    customer: order.customer,
+                    customer: order.customer_name,
                     custom_table_number: order.custom_table_number,
                     contact_mobile: order.contact_mobile,
                     custom_delivery_type: order.custom_delivery_type || "DINE IN",
@@ -78,7 +79,6 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     contact_email: order.contact_email || "",
                     posting_date: order.posting_date,
                     cartItems,
-                    // Add discount fields
                     apply_discount_on: order.apply_discount_on || "Grand Total",
                     additional_discount_percentage: parseFloat(order.additional_discount_percentage) || 0,
                     discount_amount: parseFloat(order.discount_amount) || 0,
@@ -103,8 +103,10 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
     const handleSelectOrder = (order) => {
         const formattedCartItems = order.cartItems.map((item) => ({
             cartItemId: item.cartItemId || uuidv4(),
+            id: item.item_code, // Ensure id is included for Front
             item_code: item.item_code,
             name: item.name,
+            custom_customer_description: item.description || "", // Map to backend field name expected by Front
             basePrice: item.basePrice || 0,
             quantity: item.quantity || 1,
             selectedSize: item.selectedSize || null,
@@ -113,7 +115,10 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
             selectedCombos: item.selectedCombos || [],
             kitchen: item.kitchen || "Unknown",
         }));
+
+        console.log("Formatted cart items for Front:", formattedCartItems); // Debug log
         setCartItems(formattedCartItems);
+
         alert(
             `You selected ${
                 order.custom_delivery_type === "DINE IN"
@@ -121,6 +126,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     : `Order (${order.custom_delivery_type})`
             }`
         );
+
         navigate("/frontpage", {
             state: {
                 tableNumber: order.custom_table_number,
@@ -128,6 +134,16 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                 customerName: order.customer,
                 existingOrder: {
                     ...order,
+                    items: order.cartItems.map((item) => ({
+                        item_code: item.item_code,
+                        item_name: item.name,
+                        custom_customer_description: item.description || "",
+                        rate: item.basePrice || 0,
+                        qty: item.quantity || 1,
+                        custom_size_variants: item.selectedSize || "",
+                        custom_other_variants: item.selectedCustomVariant || "",
+                        custom_kitchen: item.kitchen || "Unknown",
+                    })),
                     apply_discount_on: order.apply_discount_on,
                     additional_discount_percentage: order.additional_discount_percentage,
                     discount_amount: order.discount_amount,
@@ -146,6 +162,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     ...order,
                     cartItems: order.cartItems.map((item) => ({
                         ...item,
+                        custom_customer_description: item.description || "", // Map to backend field for kitchen
                         kitchen: item.kitchen || "Unknown",
                     })),
                     custom_delivery_type: order.custom_delivery_type || "DINE IN",
@@ -177,7 +194,6 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                 <th>Email</th>
                                 <th>Items</th>
                                 <th>Timestamp</th>
-                                <th>Discount</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -202,6 +218,18 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                                     - Qty: {item.quantity} - ₹
                                                     {(item.basePrice * item.quantity).toFixed(2)}
                                                 </div>
+                                                {item.description && (
+                                                    <p
+                                                        style={{
+                                                            fontSize: "12px",
+                                                            color: "#666",
+                                                            marginTop: "5px",
+                                                            marginBottom: "0",
+                                                        }}
+                                                    >
+                                                        <strong>Note:</strong> {item.description}
+                                                    </p>
+                                                )}
                                                 {item.addonCounts &&
                                                     Object.keys(item.addonCounts).length > 0 && (
                                                         <ul
@@ -227,15 +255,6 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                         ))}
                                     </td>
                                     <td>{new Date(order.posting_date).toLocaleString()}</td>
-                                    <td>
-                                        {order.discount_amount > 0
-                                            ? `₹${order.discount_amount.toFixed(2)}`
-                                            : order.additional_discount_percentage > 0
-                                            ? `${order.additional_discount_percentage}%`
-                                            : "N/A"}
-                                        <br />
-                                        <small>({order.apply_discount_on})</small>
-                                    </td>
                                     <td>
                                         <button
                                             className="btn btn-primary btn-sm me-2"
