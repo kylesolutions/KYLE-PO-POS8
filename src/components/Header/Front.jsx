@@ -359,142 +359,25 @@ function Front() {
         setShowDiscountModal(false);
     };
 
-    const handlePaymentSelection = async (method) => {
-        const subTotal = getSubTotal();
-        const grandTotal = getGrandTotal();
-        const paymentDetails = {
-            mode_of_payment: method,
-            amount: grandTotal.toFixed(2),
-        };
-
-        const existingOrder = location.state?.existingOrder;
-        const invoiceName = existingOrder?.name;
-
-        if (!invoiceName) {
-            alert("No existing draft invoice selected. Please save the order first.");
-            return;
-        }
-
-        const payload = {
-            name: invoiceName,
-            payments: [{
-                mode_of_payment: paymentDetails.mode_of_payment,
-                amount: paymentDetails.amount,
-            }],
-            total: subTotal.toFixed(2),
-            net_total: subTotal.toFixed(2),
-            base_net_total: subTotal.toFixed(2),
-            grand_total: grandTotal.toFixed(2),
-            taxes_and_charges: taxTemplateName || "",
-            customer: customerName,
-            contact_mobile: phoneNumber || watsappNumber || "",
-            custom_table_number: tableNumber || "",
-            custom_delivery_type: deliveryType || "DINE IN",
-            customer_address: address || "",
-            contact_email: email || "",
-            custom_bearer: bearer || "",
-            apply_discount_on: applyDiscountOn,
-            additional_discount_percentage: parseFloat(discountPercentage) || 0,
-            discount_amount: parseFloat(discountAmount) || 0,
-            items: cartItems.flatMap((item) => {
-                const variantPrice = parseFloat(item.customVariantPrice) || 0;
-                const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
-                const kitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
-
-                const mainItem = {
-                    item_code: resolvedItemCode,
-                    item_name: item.name,
-                    custom_customer_description: item.custom_customer_description || "",
-                    qty: item.quantity || 1,
-                    rate: (parseFloat(item.basePrice) || 0) + variantPrice,
-                    amount: ((parseFloat(item.basePrice) || 0) + variantPrice) * (item.quantity || 1),
-                    income_account: defaultIncomeAccount || "Sales - P",
-                    custom_size_variants: item.selectedSize || "",
-                    custom_other_variants: item.selectedCustomVariant || "",
-                    custom_kitchen: kitchen,
-                };
-
-                const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
-                    item_code: addonName,
-                    item_name: addonName,
-                    custom_customer_description: "",
-                    qty: quantity || 0,
-                    rate: parseFloat(price) || 0,
-                    amount: (parseFloat(price) || 0) * (quantity || 0),
-                    income_account: defaultIncomeAccount || "Sales - P",
-                    custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
-                }));
-
-                const comboItems = (item.selectedCombos || []).map((combo) => {
-                    const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
-                    return {
-                        item_code: resolvedComboItemCode,
-                        item_name: combo.name1,
-                        custom_customer_description: combo.custom_customer_description || "",
-                        qty: combo.quantity || 1,
-                        rate: parseFloat(combo.rate) || 0,
-                        amount: (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
-                        income_account: defaultIncomeAccount || "Sales - P",
-                        custom_size_variants: combo.selectedSize || "",
-                        custom_other_variants: combo.selectedCustomVariant || "",
-                        custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
-                    };
-                });
-
-                return [mainItem, ...addonItems, ...comboItems];
-            }),
-        };
-
+    const checkKitchenNoteExists = async (posInvoiceId) => {
         try {
-            const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice", {
-                method: "POST",
+            const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kitchen_note', {
+                method: 'POST',
                 headers: {
-                    "Content-Type": "application/json",
-                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                    "Expect": "",
+                    'Content-Type': 'application/json',
+                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({ pos_invoice_id: posInvoiceId }),
             });
-
             const result = await response.json();
-            if (response.ok && result.message?.status === "success") {
-                if (method === "CASH") {
-                    navigate("/cash", { state: { billDetails: result.message.data } });
-                } else if (method === "CREDIT CARD") {
-                    navigate("/card", { state: { billDetails: result.message.data } });
-                } else if (method === "UPI") {
-                    alert("Redirecting to UPI payment...");
-                }
-                setCartItems([]);
-                alert(`Payment completed for Invoice ${invoiceName}. Status: ${result.message.data.status}`);
-            } else {
-                const errorMsg = result.message?.exception || result.message?.message || "Unknown error";
-                alert(`Failed to process payment for POS Invoice: ${errorMsg}`);
+            if (response.ok && result.message?.status === 'success' && result.message.data) {
+                return true;
             }
+            return false;
         } catch (error) {
-            console.error("Error processing payment:", error);
-            alert("Failed to process payment. Please try again.");
+            console.error('Error checking kitchen note existence:', error);
+            return false;
         }
-    };
-
-    const resolveVariantItemCode = (itemCode, selectedSize) => {
-        const menuItem = allItems.find((m) => m.item_code === itemCode);
-        if (!menuItem) return itemCode;
-        if (menuItem.has_variants && selectedSize) {
-            const variantItem = allItems.find((i) => i.item_code === `${menuItem.item_code}-${selectedSize}`);
-            return variantItem ? variantItem.item_code : itemCode;
-        }
-        return itemCode;
-    };
-
-    const resolveComboVariantItemCode = (comboName, selectedSize) => {
-        const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
-        if (!comboItem) return comboName;
-        if (comboItem.has_variants && selectedSize) {
-            const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
-            return variantItem ? variantItem.item_code : comboItem.item_code;
-        }
-        return comboItem.item_code;
     };
 
     const createKitchenNote = async (posInvoiceId) => {
@@ -573,13 +456,7 @@ function Front() {
         }
     };
 
-    const updateKitchenNoteForOrder = async () => {
-        const existingOrder = location.state?.existingOrder;
-        if (!existingOrder || !existingOrder.name) {
-            return;
-        }
-
-        const posInvoiceId = existingOrder.name;
+    const updateKitchenNote = async (posInvoiceId) => {
         const kitchenNotePayload = {
             pos_invoice_id: posInvoiceId,
             customer_name: customerName || "One Time Customer",
@@ -643,15 +520,270 @@ function Front() {
 
             if (response.ok && result.message?.status === "success") {
                 console.log(`Kitchen Note updated for POS Invoice ${posInvoiceId}`);
+                return true;
             } else {
                 const errorMsg = result.message?.message || result.exception || "Unknown error";
                 console.error("Failed to update Kitchen Note:", errorMsg);
-                alert(`Failed to update Kitchen Note for POS Invoice ${posInvoiceId}: ${errorMsg}`);
+                return false;
             }
         } catch (error) {
             console.error("Error updating Kitchen Note:", error);
-            alert(`Error updating Kitchen Note: ${error.message || "Please try again."}`);
+            return false;
         }
+    };
+
+    const updateKitchenNoteForOrder = async () => {
+        const existingOrder = location.state?.existingOrder;
+        if (!existingOrder || !existingOrder.name) {
+            return;
+        }
+
+        const posInvoiceId = existingOrder.name;
+        const kitchenNoteSuccess = await updateKitchenNote(posInvoiceId);
+        if (!kitchenNoteSuccess) {
+            console.warn(`Failed to update Kitchen Note for POS Invoice ${posInvoiceId}`);
+        }
+    };
+
+    // Helper function to update invoice status
+const updateInvoiceStatus = async (posInvoiceId) => {
+    try {
+        const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.set_invoice_status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+            },
+            body: JSON.stringify({
+                pos_invoice_id: posInvoiceId,
+                status: 'Paid',
+            }),
+        });
+        const result = await response.json();
+        if (response.ok && result.message?.status === 'success') {
+            console.log(`Status updated to Paid for POS Invoice ${posInvoiceId}`);
+            return true;
+        } else {
+            console.warn(`Failed to update status for POS Invoice ${posInvoiceId}: ${result.message?.message || 'Unknown error'}`);
+            return false;
+        }
+    } catch (error) {
+        console.error('Error updating invoice status:', error);
+        return false;
+    }
+};
+
+const handlePaymentSelection = async (method) => {
+    if (cartItems.length === 0) {
+        alert("Cart is empty. Please add items before proceeding to payment.");
+        return;
+    }
+
+    if (deliveryType && deliveryType !== "DINE IN") {
+        if (!address || address.trim() === "") {
+            alert("Please enter a delivery address for this delivery type.");
+            return;
+        }
+        if (!watsappNumber || watsappNumber.trim() === "") {
+            alert("Please enter a WhatsApp number for this delivery type.");
+            return;
+        }
+        if (!email || email.trim() === "") {
+            alert("Please enter an email address for this delivery type.");
+            return;
+        }
+    }
+
+    const subTotal = getSubTotal();
+    const grandTotal = getGrandTotal();
+    const paymentDetails = {
+        mode_of_payment: method,
+        amount: grandTotal.toFixed(2),
+    };
+
+    const allCartItems = cartItems.flatMap((item) => {
+        const variantPrice = parseFloat(item.customVariantPrice) || 0;
+        let resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
+        const kitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
+
+        const mainItem = {
+            item_code: resolvedItemCode,
+            item_name: item.name,
+            custom_customer_description: item.custom_customer_description || "",
+            qty: item.quantity || 1,
+            rate: (parseFloat(item.basePrice) || 0) + variantPrice,
+            amount: ((parseFloat(item.basePrice) || 0) + variantPrice) * (item.quantity || 1),
+            income_account: defaultIncomeAccount || "Sales - P",
+            custom_size_variants: item.selectedSize || "",
+            custom_other_variants: item.selectedCustomVariant || "",
+            custom_kitchen: kitchen,
+        };
+
+        const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+            item_code: addonName,
+            item_name: addonName,
+            custom_customer_description: "",
+            qty: quantity || 0,
+            rate: parseFloat(price) || 0,
+            amount: (parseFloat(price) || 0) * (quantity || 0),
+            income_account: defaultIncomeAccount || "Sales - P",
+            custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
+        }));
+
+        const comboItems = (item.selectedCombos || []).map((combo) => {
+            const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
+            return {
+                item_code: resolvedComboItemCode,
+                item_name: combo.name1,
+                custom_customer_description: combo.custom_customer_description || "",
+                qty: combo.quantity || 1,
+                rate: parseFloat(combo.rate) || 0,
+                amount: (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
+                income_account: defaultIncomeAccount || "Sales - P",
+                custom_size_variants: combo.selectedSize || "",
+                custom_other_variants: combo.selectedCustomVariant || "",
+                custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
+            };
+        });
+
+        return [mainItem, ...addonItems, ...comboItems];
+    });
+
+    const payload = {
+        customer: customerName,
+        posting_date: new Date().toISOString().split("T")[0],
+        due_date: new Date().toISOString().split("T")[0],
+        is_pos: 1,
+        company: company,
+        currency: "INR",
+        conversion_rate: 1,
+        selling_price_list: "Standard Selling",
+        price_list_currency: "INR",
+        plc_conversion_rate: 1,
+        total: subTotal.toFixed(2),
+        net_total: subTotal.toFixed(2),
+        base_net_total: subTotal.toFixed(2),
+        taxes_and_charges: taxTemplateName || "",
+        grand_total: grandTotal.toFixed(2),
+        paid_amount: grandTotal.toFixed(2), // Added to indicate full payment
+        outstanding_amount: "0.00", // Added to indicate no outstanding balance
+        status: "Paid", // Set status to Paid
+        custom_table_number: tableNumber || "",
+        custom_delivery_type: deliveryType || "DINE IN",
+        customer_address: address || "",
+        contact_mobile: phoneNumber || watsappNumber || "",
+        contact_email: email || "",
+        custom_bearer: bearer || "",
+        apply_discount_on: applyDiscountOn,
+        additional_discount_percentage: parseFloat(discountPercentage) || 0,
+        discount_amount: parseFloat(discountAmount) || 0,
+        items: allCartItems,
+        payments: [{
+            mode_of_payment: paymentDetails.mode_of_payment,
+            amount: paymentDetails.amount,
+        }],
+    };
+
+    const existingOrder = location.state?.existingOrder;
+    if (existingOrder && existingOrder.name) {
+        payload.name = existingOrder.name;
+    }
+
+    try {
+        const apiEndpoint = existingOrder && existingOrder.name
+            ? "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice"
+            : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice";
+
+        const response = await fetch(apiEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                "Expect": "",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+        if (response.ok && result.message?.status === "success") {
+            const posInvoiceId = result.message.data.name;
+            let kitchenNoteSuccess = true;
+
+            // Only handle kitchen note for immediate payments (no existingOrder)
+            if (!existingOrder) {
+                const kitchenNoteExists = await checkKitchenNoteExists(posInvoiceId);
+                if (!kitchenNoteExists) {
+                    kitchenNoteSuccess = await createKitchenNote(posInvoiceId);
+                    if (!kitchenNoteSuccess) {
+                        console.warn("Kitchen Note creation failed for POS Invoice:", posInvoiceId);
+                    }
+                }
+            }
+
+            // For immediate payments, ensure status is Paid
+            if (!existingOrder && result.message.data.status !== "Paid") {
+                console.log(`Initial status is ${result.message.data.status}. Attempting to update to Paid for POS Invoice ${posInvoiceId}`);
+                // Fallback to update_pos_invoice
+                payload.name = posInvoiceId;
+                payload.status = "Paid";
+                const updateResponse = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                        'Expect': '',
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const updateResult = await updateResponse.json();
+                if (updateResponse.ok && updateResult.message?.status === 'success') {
+                    console.log(`Status updated to Paid for POS Invoice ${posInvoiceId}`);
+                    result.message.data.status = "Paid"; // Update local result to reflect new status
+                } else {
+                    const errorMsg = updateResult.message?.exception || updateResult.message?.message || "Unknown error";
+                    console.warn(`Failed to update status to Paid for POS Invoice ${posInvoiceId}: ${errorMsg}`);
+                }
+            }
+
+            if (method === "CASH") {
+                navigate("/cash", { state: { billDetails: result.message.data } });
+            } else if (method === "CREDIT CARD") {
+                navigate("/card", { state: { billDetails: result.message.data } });
+            } else if (method === "UPI") {
+                alert("Redirecting to UPI payment...");
+            }
+            setCartItems([]);
+            if (tableNumber) {
+                setBookedTables(prev => [...new Set([...prev, tableNumber])]);
+            }
+            alert(`Payment completed for Invoice ${posInvoiceId}. Status: ${result.message.data.status}${!kitchenNoteSuccess ? " (Kitchen Note creation failed)" : ""}`);
+        } else {
+            const errorMsg = result.message?.exception || result.message?.message || "Unknown error";
+            alert(`Failed to process payment for POS Invoice: ${errorMsg}`);
+        }
+    } catch (error) {
+        console.error("Error processing payment:", error);
+        alert("Failed to process payment. Please try again.");
+    }
+};
+    const resolveVariantItemCode = (itemCode, selectedSize) => {
+        const menuItem = allItems.find((m) => m.item_code === itemCode);
+        if (!menuItem) return itemCode;
+        if (menuItem.has_variants && selectedSize) {
+            const variantItem = allItems.find((i) => i.item_code === `${menuItem.item_code}-${selectedSize}`);
+            return variantItem ? variantItem.item_code : itemCode;
+        }
+        return itemCode;
+    };
+
+    const resolveComboVariantItemCode = (comboName, selectedSize) => {
+        const comboItem = allItems.find((m) => m.item_name === comboName || m.item_code === comboName);
+        if (!comboItem) return comboName;
+        if (comboItem.has_variants && selectedSize) {
+            const variantItem = allItems.find((i) => i.item_code === `${comboItem.item_code}-${selectedSize}`);
+            return variantItem ? variantItem.item_code : comboItem.item_code;
+        }
+        return comboItem.item_code;
     };
 
     const saveOrder = async () => {
@@ -781,9 +913,17 @@ function Front() {
 
             if (response.ok && result.message && result.message.status === "success") {
                 const posInvoiceId = result.message.data.name;
-                const kitchenNoteSuccess = existingOrder ? await updateKitchenNoteForOrder() : await createKitchenNote(posInvoiceId);
-                
-                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: ₹${result.message.data.grand_total}${kitchenNoteSuccess === false ? " (Kitchen Note creation failed)" : ""}`);
+                let kitchenNoteSuccess;
+                const kitchenNoteExists = await checkKitchenNoteExists(posInvoiceId);
+                if (kitchenNoteExists) {
+                    kitchenNoteSuccess = await updateKitchenNote(posInvoiceId);
+                } else {
+                    kitchenNoteSuccess = await createKitchenNote(posInvoiceId);
+                }
+                if (!kitchenNoteSuccess) {
+                    console.warn("Kitchen Note creation/update failed for POS Invoice:", posInvoiceId);
+                }
+                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: ₹${result.message.data.grand_total}`);
                 setCartItems([]);
                 if (tableNumber && !existingOrder) {
                     setBookedTables(prev => [...new Set([...prev, tableNumber])]);
