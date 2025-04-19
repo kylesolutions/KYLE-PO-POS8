@@ -1,57 +1,61 @@
 /* Category Sidebar */
+/* Category Sidebar */
 .category-sidebar {
-    background: rgb(255, 255, 255);
+    background: #ffffff; /* White background */
     height: 90vh;
     padding: 10px 5px;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 2px 0 8px rgba(0, 123, 255, 0.15); /* Subtle blue shadow */
     border-radius: 10px 0 0 10px;
     overflow-y: auto;
-}
-
-/* Category Button */
-.category-btn {
-    background: #ecf0f1;
-    color: black;
-    border: none;
+  }
+  
+  /* Category Button */
+  .category-btn {
+    background: #ffffff; /* White background */
+    color: #007bff; /* Primary blue text */
+    border: 1px solid #007bff; /* Blue border */
     padding: 12px 10px;
     font-size: 16px;
     font-weight: 600;
     text-transform: capitalize;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1); /* Light blue shadow */
     border-radius: 8px;
-}
-
-.category-btn:hover {
-    background: #3498db;
-    color: #fff;
+  }
+  
+  .category-btn:hover {
+    background: #007bff; /* Primary blue on hover */
+    color: #ffffff; /* White text */
+    border-color: #007bff; /* Ensure border matches */
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-.category-btn.active {
-    background: #2980b9;
-    color: #fff;
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.category-btn i {
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2); /* Stronger blue shadow */
+  }
+  
+  .category-btn.active {
+    background: #0056b3; /* Darker blue for active state */
+    color: #ffffff; /* White text */
+    border-color: #0056b3; /* Match border to background */
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inset shadow for pressed effect */
+  }
+  
+  .category-btn i {
     font-size: 16px;
-    color: inherit;
-}
-
-.category-sidebar::-webkit-scrollbar {
+    color: inherit; /* Inherit blue or white from parent */
+  }
+  
+  /* Scrollbar */
+  .category-sidebar::-webkit-scrollbar {
     width: 6px;
-}
-
-.category-sidebar::-webkit-scrollbar-thumb {
-    background: #222d35;
+  }
+  
+  .category-sidebar::-webkit-scrollbar-thumb {
+    background: #007bff; /* Blue thumb */
     border-radius: 10px;
-}
-
-.category-sidebar::-webkit-scrollbar-track {
-    background: #34495e;
-}
+  }
+  
+  .category-sidebar::-webkit-scrollbar-track {
+    background: #e9ecef; /* Light grayish-white track */
+  }
 
 /* Card Styling */
 .card {

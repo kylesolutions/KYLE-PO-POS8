@@ -16,10 +16,11 @@ const FoodDetails = ({ item, onClose }) => {
     const [fetchedItem, setFetchedItem] = useState(null);
     const [allItems, setAllItems] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [showDescriptionModal, setShowDescriptionModal] = useState(false); // Renamed for consistency
-    const [description, setDescription] = useState(""); // New state for description
+    const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+    const [description, setDescription] = useState("");
     const [mainQuantity, setMainQuantity] = useState(1);
     const [itemTotal, setItemTotal] = useState(0);
+    const [ingredientQuantities, setIngredientQuantities] = useState({});
 
     useEffect(() => {
         const fetchItemDetails = async () => {
@@ -42,24 +43,31 @@ const FoodDetails = ({ item, onClose }) => {
                 if (!itemList.length) throw new Error("Invalid data structure");
 
                 const baseUrl = "http://109.199.100.136:6060/";
-                setAllItems(
-                    itemList.map((item) => ({
-                        ...item,
-                        variants: item.variants ? item.variants.map((v) => ({
-                            type_of_variants: v.type_of_variants,
-                            variant_price: parseFloat(v.variants_price) || 0,
-                        })) : [],
-                        price_list_rate: parseFloat(item.price_list_rate) || 0,
-                        image: item.image ? `${baseUrl}${item.image}` : "default-image.jpg",
-                    }))
-                );
-                const selectedItem = itemList.find((i) => i.item_name === item.name);
+                const formattedItems = itemList.map((item) => ({
+                    ...item,
+                    variants: item.variants ? item.variants.map((v) => ({
+                        type_of_variants: v.type_of_variants,
+                        variant_price: parseFloat(v.variants_price) || 0,
+                    })) : [],
+                    price_list_rate: parseFloat(item.price_list_rate) || 0,
+                    image: item.image ? `${baseUrl}${item.image}` : "default-image.jpg",
+                }));
+                setAllItems(formattedItems);
 
+                const selectedItem = itemList.find((i) => i.item_name === item.name);
                 if (selectedItem) {
                     const formattedVariantData = (selectedItem.variants || []).map((v) => ({
                         type_of_variants: v.type_of_variants,
                         variant_price: parseFloat(v.variants_price) || 0,
                     }));
+                    // Map ingredient_name from ingredients_name
+                    const ingredientsWithNames = selectedItem.ingredients?.map((ing) => {
+                        const ingredientItem = formattedItems.find((i) => i.item_code === ing.ingredients_name);
+                        return {
+                            ...ing,
+                            ingredient_name: ingredientItem ? ingredientItem.item_name : ing.ingredients_name,
+                        };
+                    }) || [];
                     setFetchedItem({
                         item_code: selectedItem.item_code,
                         name: selectedItem.item_name,
@@ -70,11 +78,17 @@ const FoodDetails = ({ item, onClose }) => {
                         addons: selectedItem.addons || [],
                         combos: selectedItem.combos || [],
                         variants: formattedVariantData,
-                        ingredients: selectedItem.ingredients || [],
-                        calories: selectedItem.custom_total_calories,
-                        protein: selectedItem.custom_total_protein,
+                        ingredients: ingredientsWithNames,
                         has_variants: selectedItem.has_variants || false,
                     });
+                    // Initialize ingredient quantities (default 100g)
+                    const initialQuantities = {};
+                    ingredientsWithNames.forEach((ing) => {
+                        if (ing.ingredient_name && !initialQuantities[ing.ingredient_name]) {
+                            initialQuantities[ing.ingredient_name] = 100;
+                        }
+                    });
+                    setIngredientQuantities(initialQuantities);
                     const hasSizeVariants = itemList.some((i) =>
                         i.item_code.startsWith(selectedItem.item_code.replace(/-[SML]$/, '')) &&
                         ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
@@ -100,7 +114,6 @@ const FoodDetails = ({ item, onClose }) => {
             (sum, [_, { price, quantity }]) => sum + (parseFloat(price) || 0) * quantity,
             0
         );
-
         const comboPrice = selectedCombos.reduce((sum, combo) => {
             const comboItem = allItems.find((i) => i.item_name === combo.name1);
             const sizePrice = combo.selectedSize && comboItem
@@ -114,11 +127,17 @@ const FoodDetails = ({ item, onClose }) => {
             console.log(`Combo ${combo.name1}: Size=${sizePrice}, Custom=${customPrice}, Base=${baseComboPrice}, Qty=${combo.quantity}, Total=${comboTotal}`);
             return sum + comboTotal;
         }, 0);
+        // Calculate ingredient price based on quantity difference from 100g
+        const ingredientPrice = fetchedItem.ingredients.reduce((sum, ing) => {
+            const qty = ingredientQuantities[ing.ingredient_name] || 100;
+            const qtyDifference = qty - 100; // Difference from default 100g
+            return sum + (parseFloat(ing.ingredient_price) || 0) * qtyDifference / 100;
+        }, 0) * mainQuantity;
 
-        const finalPrice = basePrice + customVariantPrice + addonsPrice + comboPrice;
-        console.log("Total Price Breakdown:", { basePrice, customVariantPrice, addonsPrice, comboPrice, finalPrice });
+        const finalPrice = basePrice + customVariantPrice + addonsPrice + comboPrice + ingredientPrice;
+        console.log("Total Price Breakdown:", { basePrice, customVariantPrice, addonsPrice, comboPrice, ingredientPrice, finalPrice });
         setItemTotal(finalPrice);
-    }, [fetchedItem, selectedSize, selectedCustomVariant, addonCounts, selectedCombos, mainQuantity, allItems]);
+    }, [fetchedItem, selectedSize, selectedCustomVariant, addonCounts, selectedCombos, mainQuantity, ingredientQuantities, allItems]);
 
     const getSizePrices = () => {
         if (!fetchedItem?.item_code) return { S: 0, M: 0, L: 0 };
@@ -236,23 +255,47 @@ const FoodDetails = ({ item, onClose }) => {
         }));
     };
 
+    const handleIngredientQuantityChange = (ingredientName, value) => {
+        const parsedValue = parseFloat(value);
+        if (isNaN(parsedValue) || parsedValue < 1) {
+            setIngredientQuantities((prev) => ({ ...prev, [ingredientName]: 1 }));
+        } else {
+            setIngredientQuantities((prev) => ({ ...prev, [ingredientName]: parsedValue }));
+        }
+    };
+
     const handleAddToCart = () => {
         if (!fetchedItem) return;
-    
+
         const sizePrices = getSizePrices();
         const selectedItemCode = getItemCodeForSize(selectedSize);
         const selectedItemName = getItemNameForSize(selectedSize);
         const selectedItem = allItems.find((i) => i.item_code === selectedItemCode) || fetchedItem;
-    
+
         if (fetchedItem.has_variants && !selectedSize) {
             alert("Please select a size for this item.");
             return;
         }
-    
+
         const customVariantPrice = selectedCustomVariant
             ? (fetchedItem.variants.find((v) => v.type_of_variants === selectedCustomVariant)?.variant_price || 0)
             : 0;
-    
+
+        // Prepare adjusted ingredients with quantities and prices
+        const adjustedIngredients = fetchedItem.ingredients.map((ing) => ({
+            ingredient_name: ing.ingredient_name,
+            ingredients_name: ing.ingredients_name,
+            quantity: ingredientQuantities[ing.ingredient_name] || 100,
+            price: (parseFloat(ing.ingredient_price) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
+            nutrition: {
+                calories: (parseFloat(ing.calories) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
+                protein: (parseFloat(ing.protein) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
+                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
+                fiber: (parseFloat(ing.fiber) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
+                fat: (parseFloat(ing.fat) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
+            },
+        }));
+
         const customizedItem = {
             cartItemId: `${selectedItemCode}-${Date.now()}`,
             id: selectedItemCode,
@@ -280,14 +323,15 @@ const FoodDetails = ({ item, onClose }) => {
                     item_code: variantItemCode,
                     rate,
                     kitchen: comboItem.custom_kitchen || combo.kitchen || "Unknown",
-                    custom_customer_description: description || "", // Add description for combos too
+                    custom_customer_description: description || "",
                 };
             }),
             kitchen: selectedItem.custom_kitchen || fetchedItem.kitchen,
             quantity: mainQuantity,
-            custom_customer_description: description || "", // Rename to match backend field
+            custom_customer_description: description || "",
+            ingredients: adjustedIngredients,
         };
-    
+
         console.log("Adding to cart:", JSON.stringify(customizedItem, null, 2));
         addToCart(customizedItem);
         onClose();
@@ -314,6 +358,9 @@ const FoodDetails = ({ item, onClose }) => {
         i.item_code.startsWith(fetchedItem.item_code.replace(/-[SML]$/, '')) &&
         ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
     );
+
+    // Prepare ingredients data for table
+    const nutritionFields = ['calories', 'protein', 'carbohydrates', 'fiber', 'fat'];
 
     return (
         <div className="food-detail bg-dark">
@@ -349,7 +396,7 @@ const FoodDetails = ({ item, onClose }) => {
                                 <strong>Category:</strong> {fetchedItem?.category || "N/A"}
                             </p>
                             <p className="text-center">
-                                <strong>Item Total:</strong> ${itemTotal.toFixed(2)}
+                                <strong>Item Total:</strong> ₹{itemTotal.toFixed(2)}
                             </p>
                             <div className="quantity-container">
                                 <button className="quantity-btn minus" onClick={decreaseMainQuantity}>-</button>
@@ -369,7 +416,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                     className={`btn ${selectedSize === size ? 'btn-primary' : 'btn-outline-primary'}`}
                                                     onClick={() => handleSizeChange(size)}
                                                 >
-                                                    {size} (${(getSizePrices()[size] || 0).toFixed(2)})
+                                                    {size} (₹{(getSizePrices()[size] || 0).toFixed(2)})
                                                 </button>
                                             ))}
                                         </div>
@@ -386,7 +433,7 @@ const FoodDetails = ({ item, onClose }) => {
                                             <option value="">Select Variant</option>
                                             {fetchedItem.variants.map((variant, index) => (
                                                 <option key={index} value={variant.type_of_variants}>
-                                                    {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price.toFixed(2)})` : ''}
+                                                    {variant.type_of_variants} {variant.variant_price ? `(₹${variant.variant_price.toFixed(2)})` : ''}
                                                 </option>
                                             ))}
                                         </select>
@@ -408,7 +455,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                             alt={addon.name1}
                                                         />
                                                         <span>{addon.name1}</span>
-                                                        <span>${addonData.price.toFixed(2)}</span>
+                                                        <span>₹{addonData.price.toFixed(2)}</span>
                                                         <div className="quantity-container mt-2">
                                                             <button className="quantity-btn minus" onClick={() => toggleAddonSelection(addon, -1)} disabled={addonData.quantity <= 0}>-</button>
                                                             <span className="quantity-value">{addonData.quantity}</span>
@@ -456,7 +503,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                                         className="rounded mb-2"
                                                                     />
                                                                     <p>{combo.name1}</p>
-                                                                    <p>${getComboPriceDisplay(combo)}</p>
+                                                                    <p>₹{getComboPriceDisplay(combo)}</p>
                                                                     {isSelected && (
                                                                         <div>
                                                                             {hasVariants && (
@@ -500,7 +547,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                             className={`btn ${comboVariants[selectedCombo.name1]?.size === size ? 'btn-primary' : 'btn-outline-primary'}`}
                                                             onClick={() => setComboVariants((prev) => ({ ...prev, [selectedCombo.name1]: { ...prev[selectedCombo.name1], size } }))}
                                                         >
-                                                            {size} (${getComboSizePrices(selectedCombo.name1)[size].toFixed(2)})
+                                                            {size} (₹{getComboSizePrices(selectedCombo.name1)[size].toFixed(2)})
                                                         </button>
                                                     ))}
                                                 </div>
@@ -516,7 +563,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                         <option value="">Select Variant</option>
                                                         {allItems.find((i) => i.item_name === selectedCombo.name1).variants.map((variant, index) => (
                                                             <option key={index} value={variant.type_of_variants}>
-                                                                {variant.type_of_variants} {variant.variant_price ? `($${variant.variant_price.toFixed(2)})` : ''}
+                                                                {variant.type_of_variants} {variant.variant_price ? `(₹${variant.variant_price.toFixed(2)})` : ''}
                                                             </option>
                                                         ))}
                                                     </select>
@@ -537,9 +584,19 @@ const FoodDetails = ({ item, onClose }) => {
                                                     Confirm
                                                 </button>
                                                 {selectedCombos.some((c) => c.name1 === selectedCombo.name1) && (
-                                                    <button className="btn btn-danger ml-2" onClick={() => updateComboSelection(selectedCombo, null, null, true)}>Remove</button>
+                                                    <button
+                                                        className="btn btn-danger ml-2"
+                                                        onClick={() => updateComboSelection(selectedCombo, null, null, true)}
+                                                    >
+                                                        Remove
+                                                    </button>
                                                 )}
-                                                <button className="btn btn-secondary ml-2" onClick={() => setSelectedCombo(null)}>Cancel</button>
+                                                <button
+                                                    className="btn btn-secondary ml-2"
+                                                    onClick={() => setSelectedCombo(null)}
+                                                >
+                                                    Cancel
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -547,41 +604,62 @@ const FoodDetails = ({ item, onClose }) => {
 
                                 {showModal && (
                                     <div className="modal-overlay">
-                                        <div className="modal-content p-3">
-                                            <span className="close-btn" role="button" onClick={() => setShowModal(false)}>×</span>
+                                        <div className="modal-content p-3" style={{ backgroundColor: "#ffffff", border: "2px solid #007bff", borderRadius: "8px" }}>
+                                            <span className="close-btn" role="button" onClick={() => setShowModal(false)} style={{ color: "#007bff", fontSize: "1.5rem" }}>×</span>
                                             {fetchedItem?.ingredients?.length > 0 ? (
                                                 <div className="ingredient-container">
-                                                    <h3 className="ingredient-title">Ingredients</h3>
-                                                    <table className="ingredient-table">
-                                                        <thead>
+                                                    <h3 className="ingredient-title" style={{ color: "#007bff", fontWeight: "600" }}>Ingredients</h3>
+                                                    <table className="ingredient-table" style={{ border: "1px solid #007bff", backgroundColor: "#ffffff" }}>
+                                                        <thead style={{ backgroundColor: "#007bff", color: "#ffffff" }}>
                                                             <tr>
-                                                                <th>Ingredient Name</th>
+                                                                <th>Ingredient</th>
                                                                 <th>Calories</th>
                                                                 <th>Protein</th>
+                                                                <th>Carbohydrates</th>
+                                                                <th>Fiber</th>
+                                                                <th>Fat</th>
+                                                                <th>Price</th>
+                                                                <th>Quantity (g)</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {fetchedItem.ingredients.map((ingredient, index) => (
-                                                                <tr key={index}>
-                                                                    <td>{ingredient.ingredients_name || 'N/A'}</td>
-                                                                    <td>{ingredient.calories || 0}</td>
-                                                                    <td>{ingredient.protein || 0}</td>
+                                                                <tr key={index} style={{ transition: "background-color 0.2s" }} className="ingredient-row">
+                                                                    <td>{ingredient.ingredient_name || 'N/A'}</td>
+                                                                    {nutritionFields.map((field) => (
+                                                                        <td key={field}>
+                                                                            {ingredient[field]
+                                                                                ? ((parseFloat(ingredient[field]) * (ingredientQuantities[ingredient.ingredient_name] || 100) / 100).toFixed(2))
+                                                                                : '0.00'}
+                                                                        </td>
+                                                                    ))}
+                                                                    <td>
+                                                                        ₹{(parseFloat(ingredient.ingredient_price || 0) * (ingredientQuantities[ingredient.ingredient_name] || 100) / 100).toFixed(2)}
+                                                                    </td>
+                                                                    <td>
+                                                                        <input
+                                                                            type="number"
+                                                                            min="1"
+                                                                            value={ingredientQuantities[ingredient.ingredient_name] || 100}
+                                                                            onChange={(e) => handleIngredientQuantityChange(ingredient.ingredient_name, e.target.value)}
+                                                                            style={{
+                                                                                width: "60px",
+                                                                                border: "1px solid #007bff",
+                                                                                borderRadius: "4px",
+                                                                                padding: "2px",
+                                                                                backgroundColor: "#ffffff",
+                                                                                color: "#007bff",
+                                                                            }}
+                                                                        />
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
                                                     </table>
                                                 </div>
                                             ) : (
-                                                <p className="no-ingredients">No ingredients available</p>
+                                                <p className="no-ingredients" style={{ color: "#007bff" }}>No ingredients available</p>
                                             )}
-                                            <div className="total-info">
-                                                <table className="total-table">
-                                                    <tbody>
-                                                        <tr><td><strong>Total Calories:</strong></td><td>{fetchedItem?.calories || 0}</td></tr>
-                                                        <tr><td><strong>Total Protein:</strong></td><td>{fetchedItem?.protein || 0}</td></tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -608,7 +686,7 @@ const FoodDetails = ({ item, onClose }) => {
                                                 <button
                                                     className="btn btn-secondary ml-2"
                                                     onClick={() => {
-                                                        setDescription(""); 
+                                                        setDescription("");
                                                         setShowDescriptionModal(false);
                                                     }}
                                                 >

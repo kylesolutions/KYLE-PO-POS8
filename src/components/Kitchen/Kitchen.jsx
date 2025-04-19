@@ -10,7 +10,7 @@ function Kitchen() {
     const [selectedKitchen, setSelectedKitchen] = useState(null);
     const [showStatusPopup, setShowStatusPopup] = useState(false);
     const [pickedUpOrders, setPickedUpOrders] = useState({});
-    const [searchDate, setSearchDate] = useState("");
+    const [searchInvoiceId, setSearchInvoiceId] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -42,7 +42,6 @@ function Kitchen() {
                     throw new Error(data.message?.message || data.exception || "Invalid response from server");
                 }
 
-                // Handle empty data gracefully
                 if (!data.message?.data || !Array.isArray(data.message.data) || data.message.data.length === 0) {
                     console.warn("No kitchen notes found in response:", data);
                     setKitchenNotes([]);
@@ -147,7 +146,7 @@ function Kitchen() {
             if (item.kitchen === selectedKitchen && item.status !== "PickedUp") {
                 filteredItemsMap.set(item.id, {
                     ...item,
-                    customerName: order.customer,
+                    pos_invoice_id: order.pos_invoice_id,
                     tableNumber: order.custom_table_number,
                     deliveryType: order.custom_delivery_type,
                 });
@@ -242,12 +241,13 @@ function Kitchen() {
 
             const pickedItem = filteredItems.find((item) => item.id === id);
             if (pickedItem) {
-                const orderName = pickedItem.id.split("-")[0];
+                const orderName = pickedItem.pos_invoice_id || pickedItem.id.split("-")[0];
                 setPickedUpOrders((prev) => {
                     const existingOrder = prev[orderName] || {
-                        customerName: pickedItem.customerName,
-                        tableNumber: pickedItem.tableNumber,
-                        deliveryType: pickedItem.deliveryType,
+                        customerName: pickedItem.customer || "Unknown",
+                        tableNumber: pickedItem.tableNumber || "N/A",
+                        deliveryType: pickedItem.deliveryType || "DINE IN",
+                        pos_invoice_id: orderName,
                         items: [],
                     };
                     if (!existingOrder.items.some((i) => i.id === pickedItem.id)) {
@@ -272,14 +272,13 @@ function Kitchen() {
     };
 
     const filteredPickedUpOrders = Object.entries(pickedUpOrders)
+        .filter(([orderName]) =>
+            orderName.toLowerCase().includes(searchInvoiceId.toLowerCase())
+        )
         .map(([orderName, order]) => ({
             orderName,
             ...order,
-            items: order.items.filter((item) =>
-                item.pickupTime.toLowerCase().includes(searchDate.toLowerCase())
-            ),
-        }))
-        .filter((order) => order.items.length > 0);
+        }));
 
     const getRowStyle = (status) => {
         switch (status || "Prepare") {
@@ -298,10 +297,10 @@ function Kitchen() {
         navigate(-1);
     };
 
-    const handleDeleteItem = (orderName, itemIndex) => {
+    const handleDeleteItem = (orderName, itemId) => {
         setPickedUpOrders((prev) => {
             const updatedOrder = { ...prev[orderName] };
-            updatedOrder.items = updatedOrder.items.filter((_, i) => i !== itemIndex);
+            updatedOrder.items = updatedOrder.items.filter((item) => item.id !== itemId);
             const newPickedUpOrders = { ...prev, [orderName]: updatedOrder };
             if (updatedOrder.items.length === 0) {
                 delete newPickedUpOrders[orderName];
@@ -357,18 +356,16 @@ function Kitchen() {
                             </div>
 
                             <h5 className="mb-3">Current Orders - {selectedKitchen || "Select a Kitchen"}</h5>
-                            <div className="table-responsive">
+                            <div className="table-responsive text-center">
                                 <table className="table table-bordered table-hover">
                                     <thead className="table-dark">
                                         <tr>
-                                            <th>Customer</th>
+                                            <th>Invoice</th>
                                             <th>Table</th>
                                             <th>Delivery Type</th>
                                             <th>Item</th>
                                             <th>Variants</th>
-                                            <th>Kitchen</th>
                                             <th>Quantity</th>
-                                            <th>Type</th>
                                             <th>Status</th>
                                             <th>Action</th>
                                         </tr>
@@ -376,7 +373,7 @@ function Kitchen() {
                                     <tbody>
                                         {filteredItems.map((item) => (
                                             <tr key={item.id} style={getRowStyle(item.status)}>
-                                                <td>{item.customerName || "Unknown"}</td>
+                                                <td>{item.pos_invoice_id || "Unknown"}</td>
                                                 <td>{item.tableNumber || "N/A"}</td>
                                                 <td>{item.deliveryType}</td>
                                                 <td>
@@ -395,9 +392,7 @@ function Kitchen() {
                                                     )}
                                                 </td>
                                                 <td>{item.custom_variants || "None"}</td>
-                                                <td>{item.kitchen}</td>
                                                 <td>{item.quantity}</td>
-                                                <td>{item.type}</td>
                                                 <td>
                                                     <select
                                                         value={item.status || "Prepare"}
@@ -415,7 +410,7 @@ function Kitchen() {
                                                             className="btn btn-success btn-sm"
                                                             onClick={() => handlePickUp(item.id)}
                                                         >
-                                                            Mark as Picked Up
+                                                            Pick Up
                                                         </button>
                                                     )}
                                                 </td>
@@ -443,79 +438,106 @@ function Kitchen() {
                             </div>
                             <div className="modal-body">
                                 <div className="mb-3">
+                                    <label htmlFor="searchInvoiceId" className="form-label fw-bold" style={{ color: "#007bff" }}>
+                                        Filter by POS Invoice ID
+                                    </label>
                                     <input
                                         type="text"
+                                        id="searchInvoiceId"
                                         className="form-control"
-                                        placeholder="Search by Date (e.g., MM/DD/YYYY)"
-                                        value={searchDate}
-                                        onChange={(e) => setSearchDate(e.target.value)}
+                                        placeholder="Enter POS Invoice ID (e.g., POS-12345)"
+                                        value={searchInvoiceId}
+                                        onChange={(e) => setSearchInvoiceId(e.target.value)}
+                                        style={{
+                                            borderColor: "#007bff",
+                                            backgroundColor: "#ffffff",
+                                            color: "#333",
+                                            boxShadow: "0 2px 4px rgba(0, 123, 255, 0.1)",
+                                            transition: "all 0.3s ease",
+                                        }}
+                                        onMouseEnter={(e) => e.target.style.boxShadow = "0 4px 8px rgba(0, 123, 255, 0.2)"}
+                                        onMouseLeave={(e) => e.target.style.boxShadow = "0 2px 4px rgba(0, 123, 255, 0.1)"}
                                     />
                                 </div>
                                 {filteredPickedUpOrders.length === 0 ? (
-                                    <p className="text-muted">No items have been picked up yet.</p>
+                                    <p className="text-muted">No picked-up orders match the entered POS Invoice ID.</p>
                                 ) : (
-                                    <div className="table-responsive">
-                                        <table className="table table-bordered table-striped">
-                                            <thead className="table-dark">
-                                                <tr>
-                                                    <th>Order</th>
-                                                    <th>Customer</th>
-                                                    <th>Table</th>
-                                                    <th>Delivery Type</th>
-                                                    <th>Item</th>
-                                                    <th>Variants</th>
-                                                    <th>Kitchen</th>
-                                                    <th>Quantity</th>
-                                                    <th>Type</th>
-                                                    <th>Pickup Time</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredPickedUpOrders.map((order) =>
-                                                    order.items.map((item, itemIndex) => (
-                                                        <tr key={`${order.orderName}-${itemIndex}`}>
-                                                            {itemIndex === 0 && (
-                                                                <>
-                                                                    <td rowSpan={order.items.length}>{order.orderName}</td>
-                                                                    <td rowSpan={order.items.length}>{order.customerName || "Unknown"}</td>
-                                                                    <td rowSpan={order.items.length}>{order.tableNumber || "N/A"}</td>
-                                                                    <td rowSpan={order.items.length}>{order.deliveryType}</td>
-                                                                </>
-                                                            )}
-                                                            <td>
-                                                                {item.name}
-                                                                {item.custom_customer_description && (
-                                                                    <p
-                                                                        style={{
-                                                                            fontSize: "12px",
-                                                                            color: "#666",
-                                                                            marginTop: "5px",
-                                                                            marginBottom: "0",
-                                                                        }}
-                                                                    >
-                                                                        <strong>Note:</strong> {item.custom_customer_description}
-                                                                    </p>
-                                                                )}
-                                                            </td>
-                                                            <td>{item.custom_variants || "None"}</td>
-                                                            <td>{item.kitchen}</td>
-                                                            <td>{item.quantity}</td>
-                                                            <td>{item.type}</td>
-                                                            <td>{item.pickupTime}</td>
-                                                            <td>
-                                                                <button
-                                                                    className="btn btn-danger btn-sm"
-                                                                    onClick={() => handleDeleteItem(order.orderName, itemIndex)}
-                                                                >
-                                                                    Delete
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
+                                    <div className="accordion" id="pickedUpOrdersAccordion">
+                                        {filteredPickedUpOrders.map((order, index) => (
+                                            <div key={order.orderName} className="accordion-item mb-3" style={{ border: "1px solid #007bff", borderRadius: "8px" }}>
+                                                <h2 className="accordion-header" id={`heading-${order.orderName}`}>
+                                                    <button
+                                                        className="accordion-button"
+                                                        type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target={`#collapse-${order.orderName}`}
+                                                        aria-expanded={index === 0 ? "true" : "false"}
+                                                        aria-controls={`collapse-${order.orderName}`}
+                                                        style={{ backgroundColor: "#007bff", color: "#ffffff", fontWeight: "600" }}
+                                                    >
+                                                        Order: {order.orderName} (Table: {order.tableNumber || "N/A"}, Delivery: {order.deliveryType})
+                                                    </button>
+                                                </h2>
+                                                <div
+                                                    id={`collapse-${order.orderName}`}
+                                                    className={`accordion-collapse collapse ${index === 0 ? "show" : ""}`}
+                                                    aria-labelledby={`heading-${order.orderName}`}
+                                                    data-bs-parent="#pickedUpOrdersAccordion"
+                                                >
+                                                    <div className="accordion-body p-0">
+                                                        <div className="table-responsive">
+                                                            <table className="table table-bordered table-striped mb-0">
+                                                                <thead className="table-dark">
+                                                                    <tr>
+                                                                        <th>Item</th>
+                                                                        <th>Variants</th>
+                                                                        <th>Kitchen</th>
+                                                                        <th>Quantity</th>
+                                                                        <th>Type</th>
+                                                                        <th>Pickup Time</th>
+                                                                        <th>Action</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {order.items.map((item) => (
+                                                                        <tr key={item.id}>
+                                                                            <td>
+                                                                                {item.name}
+                                                                                {item.custom_customer_description && (
+                                                                                    <p
+                                                                                        style={{
+                                                                                            fontSize: "12px",
+                                                                                            color: "#666",
+                                                                                            marginTop: "5px",
+                                                                                            marginBottom: "0",
+                                                                                        }}
+                                                                                    >
+                                                                                        <strong>Note:</strong> {item.custom_customer_description}
+                                                                                    </p>
+                                                                                )}
+                                                                            </td>
+                                                                            <td>{item.custom_variants || "None"}</td>
+                                                                            <td>{item.kitchen}</td>
+                                                                            <td>{item.quantity}</td>
+                                                                            <td>{item.type}</td>
+                                                                            <td>{item.pickupTime}</td>
+                                                                            <td>
+                                                                                <button
+                                                                                    className="btn btn-danger btn-sm"
+                                                                                    onClick={() => handleDeleteItem(order.orderName, item.id)}
+                                                                                >
+                                                                                    Delete
+                                                                                </button>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>

@@ -67,6 +67,7 @@ function Front() {
                 addonCounts: {},
                 selectedCombos: [],
                 kitchen: item.custom_kitchen || "Unknown",
+                ingredients: item.ingredients || []
             })) || [];
             const finalAddress = existingOrder?.customer_address || "";
             const finalWatsappNumber = existingOrder?.contact_mobile || "";
@@ -285,6 +286,14 @@ function Front() {
         setSelectedItem(null);
     };
 
+    const calculateIngredientPrice = (ingredients) => {
+        return (ingredients || []).reduce((sum, ing) => {
+            const qtyDifference = (ing.quantity || 100) - 100;
+            const basePricePer100g = ing.quantity ? (ing.price * 100 / ing.quantity) || 0 : 0;
+            return sum + basePricePer100g * qtyDifference / 100;
+        }, 0);
+    };
+
     const getItemTotal = (item) => {
         const mainPrice = (parseFloat(item.basePrice) || 0) * (item.quantity || 1);
         const customVariantPrice = (parseFloat(item.customVariantPrice) || 0) * (item.quantity || 1);
@@ -296,7 +305,8 @@ function Front() {
             (sum, combo) => sum + (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
             0
         );
-        return mainPrice + customVariantPrice + addonPrice + comboPrice;
+        const ingredientPrice = calculateIngredientPrice(item.ingredients) * (item.quantity || 1);
+        return mainPrice + customVariantPrice + addonPrice + comboPrice + ingredientPrice;
     };
 
     const getSubTotal = () => cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
@@ -545,227 +555,225 @@ function Front() {
         }
     };
 
-    // Helper function to update invoice status
-const updateInvoiceStatus = async (posInvoiceId) => {
-    try {
-        const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.set_invoice_status', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-            },
-            body: JSON.stringify({
-                pos_invoice_id: posInvoiceId,
-                status: 'Paid',
-            }),
-        });
-        const result = await response.json();
-        if (response.ok && result.message?.status === 'success') {
-            console.log(`Status updated to Paid for POS Invoice ${posInvoiceId}`);
-            return true;
-        } else {
-            console.warn(`Failed to update status for POS Invoice ${posInvoiceId}: ${result.message?.message || 'Unknown error'}`);
+    const updateInvoiceStatus = async (posInvoiceId) => {
+        try {
+            const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.set_invoice_status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                },
+                body: JSON.stringify({
+                    pos_invoice_id: posInvoiceId,
+                    status: 'Paid',
+                }),
+            });
+            const result = await response.json();
+            if (response.ok && result.message?.status === 'success') {
+                console.log(`Status updated to Paid for POS Invoice ${posInvoiceId}`);
+                return true;
+            } else {
+                console.warn(`Failed to update status for POS Invoice ${posInvoiceId}: ${result.message?.message || 'Unknown error'}`);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error updating invoice status:', error);
             return false;
         }
-    } catch (error) {
-        console.error('Error updating invoice status:', error);
-        return false;
-    }
-};
-
-const handlePaymentSelection = async (method) => {
-    if (cartItems.length === 0) {
-        alert("Cart is empty. Please add items before proceeding to payment.");
-        return;
-    }
-
-    if (deliveryType && deliveryType !== "DINE IN") {
-        if (!address || address.trim() === "") {
-            alert("Please enter a delivery address for this delivery type.");
-            return;
-        }
-        if (!watsappNumber || watsappNumber.trim() === "") {
-            alert("Please enter a WhatsApp number for this delivery type.");
-            return;
-        }
-        if (!email || email.trim() === "") {
-            alert("Please enter an email address for this delivery type.");
-            return;
-        }
-    }
-
-    const subTotal = getSubTotal();
-    const grandTotal = getGrandTotal();
-    const paymentDetails = {
-        mode_of_payment: method,
-        amount: grandTotal.toFixed(2),
     };
 
-    const allCartItems = cartItems.flatMap((item) => {
-        const variantPrice = parseFloat(item.customVariantPrice) || 0;
-        let resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
-        const kitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
+    const handlePaymentSelection = async (method) => {
+        if (cartItems.length === 0) {
+            alert("Cart is empty. Please add items before proceeding to payment.");
+            return;
+        }
 
-        const mainItem = {
-            item_code: resolvedItemCode,
-            item_name: item.name,
-            custom_customer_description: item.custom_customer_description || "",
-            qty: item.quantity || 1,
-            rate: (parseFloat(item.basePrice) || 0) + variantPrice,
-            amount: ((parseFloat(item.basePrice) || 0) + variantPrice) * (item.quantity || 1),
-            income_account: defaultIncomeAccount || "Sales - P",
-            custom_size_variants: item.selectedSize || "",
-            custom_other_variants: item.selectedCustomVariant || "",
-            custom_kitchen: kitchen,
+        if (deliveryType && deliveryType !== "DINE IN") {
+            if (!address || address.trim() === "") {
+                alert("Please enter a delivery address for this delivery type.");
+                return;
+            }
+            if (!watsappNumber || watsappNumber.trim() === "") {
+                alert("Please enter a WhatsApp number for this delivery type.");
+                return;
+            }
+            if (!email || email.trim() === "") {
+                alert("Please enter an email address for this delivery type.");
+                return;
+            }
+        }
+
+        const subTotal = getSubTotal();
+        const grandTotal = getGrandTotal();
+        const paymentDetails = {
+            mode_of_payment: method,
+            amount: grandTotal.toFixed(2),
         };
 
-        const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
-            item_code: addonName,
-            item_name: addonName,
-            custom_customer_description: "",
-            qty: quantity || 0,
-            rate: parseFloat(price) || 0,
-            amount: (parseFloat(price) || 0) * (quantity || 0),
-            income_account: defaultIncomeAccount || "Sales - P",
-            custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
-        }));
+        const allCartItems = cartItems.flatMap((item) => {
+            const variantPrice = parseFloat(item.customVariantPrice) || 0;
+            const ingredientPrice = calculateIngredientPrice(item.ingredients);
+            const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
+            const kitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
 
-        const comboItems = (item.selectedCombos || []).map((combo) => {
-            const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
-            return {
-                item_code: resolvedComboItemCode,
-                item_name: combo.name1,
-                custom_customer_description: combo.custom_customer_description || "",
-                qty: combo.quantity || 1,
-                rate: parseFloat(combo.rate) || 0,
-                amount: (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
+            const mainItem = {
+                item_code: resolvedItemCode,
+                item_name: item.name,
+                custom_customer_description: item.custom_customer_description || "",
+                qty: item.quantity || 1,
+                rate: (parseFloat(item.basePrice) || 0) + variantPrice + ingredientPrice,
+                amount: ((parseFloat(item.basePrice) || 0) + variantPrice + ingredientPrice) * (item.quantity || 1),
                 income_account: defaultIncomeAccount || "Sales - P",
-                custom_size_variants: combo.selectedSize || "",
-                custom_other_variants: combo.selectedCustomVariant || "",
-                custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
+                custom_size_variants: item.selectedSize || "",
+                custom_other_variants: item.selectedCustomVariant || "",
+                custom_kitchen: kitchen,
             };
+
+            const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                item_code: addonName,
+                item_name: addonName,
+                custom_customer_description: "",
+                qty: quantity || 0,
+                rate: parseFloat(price) || 0,
+                amount: (parseFloat(price) || 0) * (quantity || 0),
+                income_account: defaultIncomeAccount || "Sales - P",
+                custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
+            }));
+
+            const comboItems = (item.selectedCombos || []).map((combo) => {
+                const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
+                return {
+                    item_code: resolvedComboItemCode,
+                    item_name: combo.name1,
+                    custom_customer_description: combo.custom_customer_description || "",
+                    qty: combo.quantity || 1,
+                    rate: parseFloat(combo.rate) || 0,
+                    amount: (parseFloat(combo.rate) || 0) * (combo.quantity || 1),
+                    income_account: defaultIncomeAccount || "Sales - P",
+                    custom_size_variants: combo.selectedSize || "",
+                    custom_other_variants: combo.selectedCustomVariant || "",
+                    custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
+                };
+            });
+
+            return [mainItem, ...addonItems, ...comboItems];
         });
 
-        return [mainItem, ...addonItems, ...comboItems];
-    });
+        const payload = {
+            customer: customerName,
+            posting_date: new Date().toISOString().split("T")[0],
+            due_date: new Date().toISOString().split("T")[0],
+            is_pos: 1,
+            company: company,
+            currency: "INR",
+            conversion_rate: 1,
+            selling_price_list: "Standard Selling",
+            price_list_currency: "INR",
+            plc_conversion_rate: 1,
+            total: subTotal.toFixed(2),
+            net_total: subTotal.toFixed(2),
+            base_net_total: subTotal.toFixed(2),
+            taxes_and_charges: taxTemplateName || "",
+            grand_total: grandTotal.toFixed(2),
+            paid_amount: grandTotal.toFixed(2),
+            outstanding_amount: "0.00",
+            status: "Paid",
+            custom_table_number: tableNumber || "",
+            custom_delivery_type: deliveryType || "DINE IN",
+            customer_address: address || "",
+            contact_mobile: phoneNumber || watsappNumber || "",
+            contact_email: email || "",
+            custom_bearer: bearer || "",
+            apply_discount_on: applyDiscountOn,
+            additional_discount_percentage: parseFloat(discountPercentage) || 0,
+            discount_amount: parseFloat(discountAmount) || 0,
+            items: allCartItems,
+            payments: [{
+                mode_of_payment: paymentDetails.mode_of_payment,
+                amount: paymentDetails.amount,
+            }],
+        };
 
-    const payload = {
-        customer: customerName,
-        posting_date: new Date().toISOString().split("T")[0],
-        due_date: new Date().toISOString().split("T")[0],
-        is_pos: 1,
-        company: company,
-        currency: "INR",
-        conversion_rate: 1,
-        selling_price_list: "Standard Selling",
-        price_list_currency: "INR",
-        plc_conversion_rate: 1,
-        total: subTotal.toFixed(2),
-        net_total: subTotal.toFixed(2),
-        base_net_total: subTotal.toFixed(2),
-        taxes_and_charges: taxTemplateName || "",
-        grand_total: grandTotal.toFixed(2),
-        paid_amount: grandTotal.toFixed(2), // Added to indicate full payment
-        outstanding_amount: "0.00", // Added to indicate no outstanding balance
-        status: "Paid", // Set status to Paid
-        custom_table_number: tableNumber || "",
-        custom_delivery_type: deliveryType || "DINE IN",
-        customer_address: address || "",
-        contact_mobile: phoneNumber || watsappNumber || "",
-        contact_email: email || "",
-        custom_bearer: bearer || "",
-        apply_discount_on: applyDiscountOn,
-        additional_discount_percentage: parseFloat(discountPercentage) || 0,
-        discount_amount: parseFloat(discountAmount) || 0,
-        items: allCartItems,
-        payments: [{
-            mode_of_payment: paymentDetails.mode_of_payment,
-            amount: paymentDetails.amount,
-        }],
-    };
+        const existingOrder = location.state?.existingOrder;
+        if (existingOrder && existingOrder.name) {
+            payload.name = existingOrder.name;
+        }
 
-    const existingOrder = location.state?.existingOrder;
-    if (existingOrder && existingOrder.name) {
-        payload.name = existingOrder.name;
-    }
+        try {
+            const apiEndpoint = existingOrder && existingOrder.name
+                ? "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice"
+                : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice";
 
-    try {
-        const apiEndpoint = existingOrder && existingOrder.name
-            ? "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice"
-            : "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_pos_invoice";
+            const response = await fetch(apiEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                    "Expect": "",
+                },
+                body: JSON.stringify(payload),
+            });
 
-        const response = await fetch(apiEndpoint, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                "Expect": "",
-            },
-            body: JSON.stringify(payload),
-        });
+            const result = await response.json();
+            if (response.ok && result.message?.status === "success") {
+                const posInvoiceId = result.message.data.name;
+                let kitchenNoteSuccess = true;
 
-        const result = await response.json();
-        if (response.ok && result.message?.status === "success") {
-            const posInvoiceId = result.message.data.name;
-            let kitchenNoteSuccess = true;
-
-            // Only handle kitchen note for immediate payments (no existingOrder)
-            if (!existingOrder) {
-                const kitchenNoteExists = await checkKitchenNoteExists(posInvoiceId);
-                if (!kitchenNoteExists) {
-                    kitchenNoteSuccess = await createKitchenNote(posInvoiceId);
-                    if (!kitchenNoteSuccess) {
-                        console.warn("Kitchen Note creation failed for POS Invoice:", posInvoiceId);
+                if (!existingOrder) {
+                    const kitchenNoteExists = await checkKitchenNoteExists(posInvoiceId);
+                    if (!kitchenNoteExists) {
+                        kitchenNoteSuccess = await createKitchenNote(posInvoiceId);
+                        if (!kitchenNoteSuccess) {
+                            console.warn("Kitchen Note creation failed for POS Invoice:", posInvoiceId);
+                        }
                     }
                 }
-            }
 
-            // For immediate payments, ensure status is Paid
-            if (!existingOrder && result.message.data.status !== "Paid") {
-                console.log(`Initial status is ${result.message.data.status}. Attempting to update to Paid for POS Invoice ${posInvoiceId}`);
-                // Fallback to update_pos_invoice
-                payload.name = posInvoiceId;
-                payload.status = "Paid";
-                const updateResponse = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                        'Expect': '',
-                    },
-                    body: JSON.stringify(payload),
-                });
-                const updateResult = await updateResponse.json();
-                if (updateResponse.ok && updateResult.message?.status === 'success') {
-                    console.log(`Status updated to Paid for POS Invoice ${posInvoiceId}`);
-                    result.message.data.status = "Paid"; // Update local result to reflect new status
-                } else {
-                    const errorMsg = updateResult.message?.exception || updateResult.message?.message || "Unknown error";
-                    console.warn(`Failed to update status to Paid for POS Invoice ${posInvoiceId}: ${errorMsg}`);
+                if (!existingOrder && result.message.data.status !== "Paid") {
+                    console.log(`Initial status is ${result.message.data.status}. Attempting to update to Paid for POS Invoice ${posInvoiceId}`);
+                    payload.name = posInvoiceId;
+                    payload.status = "Paid";
+                    const updateResponse = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                            'Expect': '',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    const updateResult = await updateResponse.json();
+                    if (updateResponse.ok && updateResult.message?.status === 'success') {
+                        console.log(`Status updated to Paid for POS Invoice ${posInvoiceId}`);
+                        result.message.data.status = "Paid";
+                    } else {
+                        const errorMsg = updateResult.message?.exception || updateResult.message?.message || "Unknown error";
+                        console.warn(`Failed to update status to Paid for POS Invoice ${posInvoiceId}: ${errorMsg}`);
+                    }
                 }
-            }
 
-            if (method === "CASH") {
-                navigate("/cash", { state: { billDetails: result.message.data } });
-            } else if (method === "CREDIT CARD") {
-                navigate("/card", { state: { billDetails: result.message.data } });
-            } else if (method === "UPI") {
-                alert("Redirecting to UPI payment...");
+                if (method === "CASH") {
+                    navigate("/cash", { state: { billDetails: result.message.data } });
+                } else if (method === "CREDIT CARD") {
+                    navigate("/card", { state: { billDetails: result.message.data } });
+                } else if (method === "UPI") {
+                    alert("Redirecting to UPI payment...");
+                }
+                setCartItems([]);
+                if (tableNumber) {
+                    setBookedTables(prev => [...new Set([...prev, tableNumber])]);
+                }
+                alert(`Payment completed for Invoice ${posInvoiceId}. Status: ${result.message.data.status}${!kitchenNoteSuccess ? " (Kitchen Note creation failed)" : ""}`);
+            } else {
+                const errorMsg = result.message?.exception || result.message?.message || "Unknown error";
+                alert(`Failed to process payment for POS Invoice: ${errorMsg}`);
             }
-            setCartItems([]);
-            if (tableNumber) {
-                setBookedTables(prev => [...new Set([...prev, tableNumber])]);
-            }
-            alert(`Payment completed for Invoice ${posInvoiceId}. Status: ${result.message.data.status}${!kitchenNoteSuccess ? " (Kitchen Note creation failed)" : ""}`);
-        } else {
-            const errorMsg = result.message?.exception || result.message?.message || "Unknown error";
-            alert(`Failed to process payment for POS Invoice: ${errorMsg}`);
+        } catch (error) {
+            console.error("Error processing payment:", error);
+            alert("Failed to process payment. Please try again.");
         }
-    } catch (error) {
-        console.error("Error processing payment:", error);
-        alert("Failed to process payment. Please try again.");
-    }
-};
+    };
+
     const resolveVariantItemCode = (itemCode, selectedSize) => {
         const menuItem = allItems.find((m) => m.item_code === itemCode);
         if (!menuItem) return itemCode;
@@ -809,7 +817,8 @@ const handlePaymentSelection = async (method) => {
 
         const allCartItems = cartItems.flatMap((item) => {
             const variantPrice = parseFloat(item.customVariantPrice) || 0;
-            let resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
+            const ingredientPrice = calculateIngredientPrice(item.ingredients);
+            const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
             const kitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
 
             const mainItem = {
@@ -817,8 +826,8 @@ const handlePaymentSelection = async (method) => {
                 item_name: item.name,
                 custom_customer_description: item.custom_customer_description || "",
                 qty: item.quantity || 1,
-                rate: (parseFloat(item.basePrice) || 0) + variantPrice,
-                amount: ((parseFloat(item.basePrice) || 0) + variantPrice) * (item.quantity || 1),
+                rate: (parseFloat(item.basePrice) || 0) + variantPrice + ingredientPrice,
+                amount: ((parseFloat(item.basePrice) || 0) + variantPrice + ingredientPrice) * (item.quantity || 1),
                 income_account: defaultIncomeAccount || "Sales - P",
                 custom_size_variants: item.selectedSize || "",
                 custom_other_variants: item.selectedCustomVariant || "",
@@ -1101,7 +1110,7 @@ const handlePaymentSelection = async (method) => {
                     </div>
 
                     <div className="col-lg-5 col-xl-7 row2">
-                        <div className="row" style={{ height: '90vh', overflowY: 'auto' }}>
+                        <div className="row" style={{ overflowY: 'auto' }}>
                             {filteredItems.map((item, index) => (
                                 <div className="col-xl-3 col-lg-6 col-md-4 col-6 align-items-center my-2" key={item.id}>
                                     <div className="card" onClick={() => handleItemClick(item)}>
@@ -1216,7 +1225,7 @@ const handlePaymentSelection = async (method) => {
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
                                                     </div>
-                                                    <div className='col-2 col-lg-1 mb-2' style={{ background: "rgb(58 56 56)", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <div className='col-2 col-lg-2 mb-2' style={{ background: "rgb(58 56 56)", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                         <span
                                                             onClick={handleCustomerSubmit}
                                                             style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
@@ -1290,7 +1299,7 @@ const handlePaymentSelection = async (method) => {
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
                                                     </div>
-                                                    <div className='col-2 col-lg-1 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <div className='col-2 col-lg-2 mb-2' style={{ background: "black", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                         <span
                                                             onClick={handleCustomerSubmit}
                                                             style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
@@ -1344,92 +1353,87 @@ const handlePaymentSelection = async (method) => {
                                                         <th>T.No.</th>
                                                         <th>Item Name</th>
                                                         <th>Qty</th>
-                                                        <th>Price</th>
+                                                        <th className="text-end">Price</th>
                                                         <th></th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {cartItems.map((item) => (
-                                                        <tr key={item.cartItemId}>
-                                                            <td>{tableNumber}</td>
-                                                            <td>
-                                                                {item.name}
-                                                                {item.selectedSize && ` (${item.selectedSize})`}
-                                                                {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                                                                {item.custom_customer_description && (
-                                                                    <p
-                                                                        style={{
-                                                                            fontSize: "12px",
-                                                                            color: "#666",
-                                                                            marginTop: "5px",
-                                                                            marginBottom: "0",
-                                                                        }}
+                                                    {cartItems.flatMap((item) => {
+                                                        const rows = [
+                                                            {
+                                                                type: "main",
+                                                                name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}${item.selectedCustomVariant ? ` (${item.selectedCustomVariant})` : ""
+                                                                    }`,
+                                                                quantity: item.quantity || 1,
+                                                                price: (parseFloat(item.basePrice) || 0) + (parseFloat(item.customVariantPrice) || 0),
+                                                                note: item.custom_customer_description,
+                                                                isMain: true,
+                                                                cartItem: item,
+                                                            },
+                                                            ...Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                                                                type: "addon",
+                                                                name: `+ ${addonName} x${quantity}`,
+                                                                quantity: null,
+                                                                price: parseFloat(price) || 0,
+                                                                note: null,
+                                                                isMain: false,
+                                                            })),
+                                                            ...(item.selectedCombos || []).map((combo, idx) => ({
+                                                                type: "combo",
+                                                                name: `+ ${combo.name1} x${combo.quantity || 1}${combo.selectedSize || combo.selectedCustomVariant
+                                                                    ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ")})`
+                                                                    : ""
+                                                                    }`,
+                                                                quantity: null,
+                                                                price: parseFloat(combo.rate) || 0,
+                                                                note: combo.custom_customer_description,
+                                                                isMain: false,
+                                                            })),
+                                                        ];
+
+                                                        return rows.map((row, idx) => (
+                                                            <tr key={`${item.cartItemId}-${idx}`}>
+                                                                <td>{row.isMain ? tableNumber : ""}</td>
+                                                                <td>
+                                                                    <span style={{ marginLeft: row.isMain ? "0" : "10px" }}>{row.name}</span>
+                                                                    {row.note && (
+                                                                        <p
+                                                                            style={{
+                                                                                fontSize: "12px",
+                                                                                color: "#666",
+                                                                                marginTop: "5px",
+                                                                                marginBottom: "0",
+                                                                                marginLeft: row.isMain ? "0" : "10px",
+                                                                            }}
+                                                                        >
+                                                                            <strong>Note:</strong> {row.note}
+                                                                        </p>
+                                                                    )}
+                                                                </td>
+                                                                <td>
+                                                                    {row.quantity && (
+                                                                        <input
+                                                                            type="number"
+                                                                            className="form-control form-control-sm"
+                                                                            value={row.quantity}
+                                                                            onChange={(e) => handleQuantityChange(item, e.target.value)}
+                                                                            min="1"
+                                                                            style={{ width: "60px", padding: "2px", textAlign: "center" }}
+                                                                        />
+                                                                    )}
+                                                                </td>
+                                                                <td className="text-end">₹{(row.price || 0).toFixed(2)}</td>
+                                                                <td>{row.isMain && (
+                                                                    <button
+                                                                        className="btn btn-sm"
+                                                                        onClick={() => removeFromCart(row.cartItem)}
                                                                     >
-                                                                        <strong>Note:</strong> {item.custom_customer_description}
-                                                                    </p>
-                                                                )}
-                                                                {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                    <ul
-                                                                        style={{
-                                                                            listStyleType: "none",
-                                                                            padding: 0,
-                                                                            marginTop: "5px",
-                                                                            fontSize: "12px",
-                                                                            color: "#888",
-                                                                        }}
-                                                                    >
-                                                                        {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                            <li key={addonName}>
-                                                                                + {addonName} x{quantity} (${(parseFloat(price) || 0).toFixed(2)})
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                )}
-                                                                {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                    <ul
-                                                                        style={{
-                                                                            listStyleType: "none",
-                                                                            padding: 0,
-                                                                            marginTop: "5px",
-                                                                            fontSize: "12px",
-                                                                            color: "#555",
-                                                                        }}
-                                                                    >
-                                                                        {item.selectedCombos.map((combo, idx) => (
-                                                                            <li key={idx}>
-                                                                                + {combo.name1} x{combo.quantity || 1}
-                                                                                {(combo.selectedSize || combo.selectedCustomVariant) && (
-                                                                                    ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
-                                                                                )}
-                                                                                - ${(parseFloat(combo.rate) || 0).toFixed(2)}
-                                                                                {combo.custom_customer_description && (
-                                                                                    <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
-                                                                                        <strong>Note:</strong> {combo.custom_customer_description}
-                                                                                    </p>
-                                                                                )}
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                )}
-                                                            </td>
-                                                            <td>
-                                                                <input
-                                                                    type="number"
-                                                                    className="form-control form-control-sm"
-                                                                    value={item.quantity}
-                                                                    onChange={(e) => handleQuantityChange(item, e.target.value)}
-                                                                    min="1"
-                                                                    style={{ width: "60px", padding: "2px", textAlign: "center" }}
-                                                                />
-                                                            </td>
-                                                            <td>${(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
-                                                            <td>
-                                                                <button className="btn btn-sm" onClick={() => removeFromCart(item)}>
-                                                                    <i className="bi bi-trash"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
+                                                                        <i className="bi bi-trash"></i>
+                                                                    </button>
+                                                                )}</td>
+                                                            </tr>
+                                                        ));
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1495,7 +1499,7 @@ const handlePaymentSelection = async (method) => {
                                         />
                                     </div>
                                     <div className="mb-3">
-                                        <label className="form-label">Discount Amount ($)</label>
+                                        <label className="form-label">Discount Amount (₹)</label>
                                         <input
                                             type="number"
                                             className="form-control"
@@ -1510,7 +1514,7 @@ const handlePaymentSelection = async (method) => {
                                             placeholder="Enter amount"
                                         />
                                     </div>
-                                    <p><strong>Discount Applied:</strong> ${getDiscountAmount().toFixed(2)}</p>
+                                    <p><strong>Discount Applied:</strong> ₹{getDiscountAmount().toFixed(2)}</p>
                                 </Modal.Body>
                                 <Modal.Footer>
                                     <Button variant="secondary" onClick={() => setShowDiscountModal(false)}>
@@ -1525,7 +1529,7 @@ const handlePaymentSelection = async (method) => {
                             <div className="row p-2 mt-2 border shadow rounded" style={{ flexShrink: 0 }}>
                                 <div className="col-12">
                                     <div className="row">
-                                        <div className="col-12 col-lg-6">
+                                        <div className="col-12 col-lg-12">
                                             <div className="row">
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
@@ -1536,30 +1540,30 @@ const handlePaymentSelection = async (method) => {
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
                                                     <div className='grand-tot-div'>
-                                                        <span>$</span><span>{getSubTotal().toFixed(2)}</span>
+                                                        <span>₹</span><span>{getSubTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
                                                     <div className='grand-tot-div justify-content-end'>
-                                                        <span>${getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
+                                                        <span>₹{getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Discount</h5>
                                                     <div className='grand-tot-div justify-content-end'>
-                                                        <span>-${getDiscountAmount().toFixed(2)}</span>
+                                                        <span>-₹{getDiscountAmount().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-12 mb-2 col-12 col-lg-12 col-xl-12">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
                                                     <div className='grand-tot-div justify-content-end'>
-                                                        <span>${getGrandTotal().toFixed(2)}</span>
+                                                        <span>₹{getGrandTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="col-12 col-lg-6">
+                                        <div className="col-12 col-lg-12">
                                             <div className="row mt-3">
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <button
@@ -1623,7 +1627,7 @@ const handlePaymentSelection = async (method) => {
                                                                         )}
                                                                         <table className="table border text-start mt-2">
                                                                             <thead>
-                                                                                <tr>
+                                                                                <tr className='text-center'>
                                                                                     <th>Item</th>
                                                                                     <th>Qty</th>
                                                                                     <th>Rate</th>
@@ -1645,8 +1649,8 @@ const handlePaymentSelection = async (method) => {
                                                                                             {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (${(parseFloat(price) || 0).toFixed(2)})</li>
-                                                                                                    ))}
+                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (₹{(parseFloat(price) || 0).toFixed(2)})</li>
+                                                                                                        ))}
                                                                                                 </ul>
                                                                                             )}
                                                                                             {item.selectedCombos && item.selectedCombos.length > 0 && (
@@ -1657,7 +1661,7 @@ const handlePaymentSelection = async (method) => {
                                                                                                             {(combo.selectedSize || combo.selectedCustomVariant) && (
                                                                                                                 ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
                                                                                                             )}
-                                                                                                            - ${(parseFloat(combo.rate) || 0).toFixed(2)}
+                                                                                                            - ₹{(parseFloat(combo.rate) || 0).toFixed(2)}
                                                                                                             {combo.custom_customer_description && (
                                                                                                                 <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
                                                                                                                     <strong>Note:</strong> {combo.custom_customer_description}
@@ -1669,8 +1673,8 @@ const handlePaymentSelection = async (method) => {
                                                                                             )}
                                                                                         </td>
                                                                                         <td>{item.quantity || 1}</td>
-                                                                                        <td>${(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
-                                                                                        <td>${getItemTotal(item).toFixed(2)}</td>
+                                                                                        <td className='text-end'>₹{(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
+                                                                                        <td className='text-end'>₹{getItemTotal(item).toFixed(2)}</td>
                                                                                     </tr>
                                                                                 ))}
                                                                             </tbody>
@@ -1679,13 +1683,13 @@ const handlePaymentSelection = async (method) => {
                                                                             <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
                                                                             <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
                                                                             <div className="col-6 text-start"><strong>Subtotal:</strong></div>
-                                                                            <div className="col-6 text-end">${getSubTotal().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">₹{getSubTotal().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
-                                                                            <div className="col-6 text-end">${getTaxAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">₹{getTaxAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Discount:</strong></div>
-                                                                            <div className="col-6 text-end">-${getDiscountAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">-₹{getDiscountAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Grand Total:</strong></div>
-                                                                            <div className="col-6 text-end"><strong>${getGrandTotal().toFixed(2)}</strong></div>
+                                                                            <div className="col-6 text-end"><strong>₹{getGrandTotal().toFixed(2)}</strong></div>
                                                                         </div>
                                                                     </div>
                                                                 </div>

@@ -255,7 +255,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                         ))}
                                     </td>
                                     <td>{new Date(order.posting_date).toLocaleString()}</td>
-                                    <td>
+                                    <td className="d-flex">
                                         <button
                                             className="btn btn-primary btn-sm me-2"
                                             onClick={() => handleSelectOrder(order)}
@@ -266,7 +266,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                             className="btn btn-info btn-sm"
                                             onClick={() => handleViewInKitchen(order)}
                                         >
-                                            View in Kitchen
+                                            Kitchen
                                         </button>
                                     </td>
                                 </tr>
