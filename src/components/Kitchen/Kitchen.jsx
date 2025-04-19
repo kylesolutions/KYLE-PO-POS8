@@ -79,6 +79,11 @@ function Kitchen() {
                             addonCounts: {},
                             selectedCombos: [],
                             type: "main",
+                            ingredients: item.ingredients?.map((ing) => ({
+                                name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                                quantity: parseFloat(ing.quantity) || 100,
+                                unit: ing.unit || "g",
+                            })) || [],
                         };
                     }),
                 }));
@@ -102,6 +107,11 @@ function Kitchen() {
                             addonCounts: item.addonCounts || {},
                             selectedCombos: item.selectedCombos || [],
                             type: "main",
+                            ingredients: item.ingredients?.map((ing) => ({
+                                name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                                quantity: parseFloat(ing.quantity) || 100,
+                                unit: ing.unit || "g",
+                            })) || [],
                         })),
                     };
                     setKitchenNotes([passedOrder]);
@@ -310,6 +320,13 @@ function Kitchen() {
         });
     };
 
+    const formatIngredients = (ingredients) => {
+        if (!ingredients || ingredients.length === 0) return "";
+        return ingredients
+            .map((ing) => `${ing.name} - ${ing.quantity} ${ing.unit}`)
+            .join(", ");
+    };
+
     return (
         <div className="container mt-5">
             <div className="card shadow-lg">
@@ -388,6 +405,18 @@ function Kitchen() {
                                                             }}
                                                         >
                                                             <strong>Note:</strong> {item.custom_customer_description}
+                                                        </p>
+                                                    )}
+                                                    {item.ingredients?.length > 0 && (
+                                                        <p
+                                                            style={{
+                                                                fontSize: "12px",
+                                                                color: "#666",
+                                                                marginTop: "5px",
+                                                                marginBottom: "0",
+                                                            }}
+                                                        >
+                                                            <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
                                                         </p>
                                                     )}
                                                 </td>
@@ -513,6 +542,18 @@ function Kitchen() {
                                                                                         }}
                                                                                     >
                                                                                         <strong>Note:</strong> {item.custom_customer_description}
+                                                                                    </p>
+                                                                                )}
+                                                                                {item.ingredients?.length > 0 && (
+                                                                                    <p
+                                                                                        style={{
+                                                                                            fontSize: "12px",
+                                                                                            color: "#666",
+                                                                                            marginTop: "5px",
+                                                                                            marginBottom: "0",
+                                                                                        }}
+                                                                                    >
+                                                                                        <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
                                                                                     </p>
                                                                                 )}
                                                                             </td>

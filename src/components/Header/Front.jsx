@@ -407,7 +407,12 @@ function Front() {
                     kitchen: mainItemKitchen,
                     quantity: item.quantity || 1,
                     customer_description: item.custom_customer_description || "",
-                    custom_variants: mainItemVariants
+                    custom_variants: mainItemVariants,
+                    ingredients: (item.ingredients || []).map(ing => ({
+                        name: ing.name || "Unknown",
+                        quantity: ing.quantity || 100,
+                        unit: ing.unit || "g",
+                    })),
                 };
 
                 const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
@@ -415,7 +420,8 @@ function Front() {
                     kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
                     quantity: quantity || 0,
                     customer_description: "",
-                    custom_variants: ""
+                    custom_variants: "",
+                    ingredients: [],
                 }));
 
                 const comboItems = (item.selectedCombos || []).map((combo) => {
@@ -426,7 +432,12 @@ function Front() {
                         kitchen: allItems.find(i => i.item_code === resolvedComboItemCode || i.name === combo.name1)?.kitchen || "Unknown",
                         quantity: combo.quantity || 1,
                         customer_description: combo.custom_customer_description || "",
-                        custom_variants: comboVariants
+                        custom_variants: comboVariants,
+                        ingredients: (combo.ingredients || []).map(ing => ({
+                            name: ing.name || "Unknown",
+                            quantity: ing.quantity || 100,
+                            unit: ing.unit || "g",
+                        })),
                     };
                 });
 
@@ -483,7 +494,12 @@ function Front() {
                     kitchen: mainItemKitchen,
                     quantity: item.quantity || 1,
                     customer_description: item.custom_customer_description || "",
-                    custom_variants: mainItemVariants
+                    custom_variants: mainItemVariants,
+                    ingredients: (item.ingredients || []).map(ing => ({
+                        name: ing.name || "Unknown",
+                        quantity: ing.quantity || 100,
+                        unit: ing.unit || "g",
+                    })),
                 };
 
                 const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
@@ -491,7 +507,8 @@ function Front() {
                     kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
                     quantity: quantity || 0,
                     customer_description: "",
-                    custom_variants: ""
+                    custom_variants: "",
+                    ingredients: [],
                 }));
 
                 const comboItems = (item.selectedCombos || []).map((combo) => {
@@ -502,7 +519,12 @@ function Front() {
                         kitchen: allItems.find(i => i.item_code === resolvedComboItemCode || i.name === combo.name1)?.kitchen || "Unknown",
                         quantity: combo.quantity || 1,
                         customer_description: combo.custom_customer_description || "",
-                        custom_variants: comboVariants
+                        custom_variants: comboVariants,
+                        ingredients: (combo.ingredients || []).map(ing => ({
+                            name: ing.name || "Unknown",
+                            quantity: ing.quantity || 100,
+                            unit: ing.unit || "g",
+                        })),
                     };
                 });
 
@@ -627,6 +649,11 @@ function Front() {
                 custom_size_variants: item.selectedSize || "",
                 custom_other_variants: item.selectedCustomVariant || "",
                 custom_kitchen: kitchen,
+                ingredients: (item.ingredients || []).map(ing => ({
+                    name: ing.name || "Unknown",
+                    quantity: ing.quantity || 100,
+                    unit: ing.unit || "g",
+                })),
             };
 
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
@@ -638,6 +665,7 @@ function Front() {
                 amount: (parseFloat(price) || 0) * (quantity || 0),
                 income_account: defaultIncomeAccount || "Sales - P",
                 custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
+                ingredients: [],
             }));
 
             const comboItems = (item.selectedCombos || []).map((combo) => {
@@ -653,6 +681,11 @@ function Front() {
                     custom_size_variants: combo.selectedSize || "",
                     custom_other_variants: combo.selectedCustomVariant || "",
                     custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
+                    ingredients: (combo.ingredients || []).map(ing => ({
+                        name: ing.name || "Unknown",
+                        quantity: ing.quantity || 100,
+                        unit: ing.unit || "g",
+                    })),
                 };
             });
 
@@ -832,6 +865,11 @@ function Front() {
                 custom_size_variants: item.selectedSize || "",
                 custom_other_variants: item.selectedCustomVariant || "",
                 custom_kitchen: kitchen,
+                ingredients: (item.ingredients || []).map(ing => ({
+                    name: ing.name || "Unknown",
+                    quantity: ing.quantity || 100,
+                    unit: ing.unit || "g",
+                })),
             };
 
             const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
@@ -843,6 +881,7 @@ function Front() {
                 amount: (parseFloat(price) || 0) * (quantity || 0),
                 income_account: defaultIncomeAccount || "Sales - P",
                 custom_kitchen: allItems.find(i => i.name === addonName)?.kitchen || "Unknown",
+                ingredients: [],
             }));
 
             const comboItems = (item.selectedCombos || []).map((combo) => {
@@ -858,6 +897,11 @@ function Front() {
                     custom_size_variants: combo.selectedSize || "",
                     custom_other_variants: combo.selectedCustomVariant || "",
                     custom_kitchen: allItems.find(i => i.item_code === resolvedComboItemCode)?.kitchen || "Unknown",
+                    ingredients: (combo.ingredients || []).map(ing => ({
+                        name: ing.name || "Unknown",
+                        quantity: ing.quantity || 100,
+                        unit: ing.unit || "g",
+                    })),
                 };
             });
 
@@ -1367,6 +1411,7 @@ function Front() {
                                                                 quantity: item.quantity || 1,
                                                                 price: (parseFloat(item.basePrice) || 0) + (parseFloat(item.customVariantPrice) || 0),
                                                                 note: item.custom_customer_description,
+                                                                ingredients: item.ingredients || [],
                                                                 isMain: true,
                                                                 cartItem: item,
                                                             },
@@ -1376,6 +1421,7 @@ function Front() {
                                                                 quantity: null,
                                                                 price: parseFloat(price) || 0,
                                                                 note: null,
+                                                                ingredients: [],
                                                                 isMain: false,
                                                             })),
                                                             ...(item.selectedCombos || []).map((combo, idx) => ({
@@ -1387,6 +1433,7 @@ function Front() {
                                                                 quantity: null,
                                                                 price: parseFloat(combo.rate) || 0,
                                                                 note: combo.custom_customer_description,
+                                                                ingredients: combo.ingredients || [],
                                                                 isMain: false,
                                                             })),
                                                         ];
@@ -1408,6 +1455,25 @@ function Front() {
                                                                         >
                                                                             <strong>Note:</strong> {row.note}
                                                                         </p>
+                                                                    )}
+                                                                    {row.ingredients.length > 0 && (
+                                                                        <div
+                                                                            style={{
+                                                                                fontSize: "12px",
+                                                                                color: "#555",
+                                                                                marginTop: "5px",
+                                                                                marginLeft: row.isMain ? "0" : "10px",
+                                                                            }}
+                                                                        >
+                                                                            <strong>Ingredients:</strong>
+                                                                            <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                                                                                {row.ingredients.map((ing, i) => (
+                                                                                    <li key={i}>
+                                                                                        {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
                                                                     )}
                                                                 </td>
                                                                 <td>
@@ -1646,6 +1712,18 @@ function Front() {
                                                                                                     <strong>Note:</strong> {item.custom_customer_description}
                                                                                                 </p>
                                                                                             )}
+                                                                                            {item.ingredients && item.ingredients.length > 0 && (
+                                                                                                <div style={{ fontSize: "12px", color: "#555", marginTop: "5px" }}>
+                                                                                                    <strong>Ingredients:</strong>
+                                                                                                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                                                                                                        {item.ingredients.map((ing, i) => (
+                                                                                                            <li key={i}>
+                                                                                                                {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
+                                                                                                            </li>
+                                                                                                        ))}
+                                                                                                    </ul>
+                                                                                                </div>
+                                                                                            )}
                                                                                             {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
@@ -1666,6 +1744,18 @@ function Front() {
                                                                                                                 <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
                                                                                                                     <strong>Note:</strong> {combo.custom_customer_description}
                                                                                                                 </p>
+                                                                                                            )}
+                                                                                                            {combo.ingredients && combo.ingredients.length > 0 && (
+                                                                                                                <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>
+                                                                                                                    <strong>Ingredients:</strong>
+                                                                                                                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                                                                                                                        {combo.ingredients.map((ing, i) => (
+                                                                                                                            <li key={i}>
+                                                                                                                                {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
+                                                                                                                            </li>
+                                                                                                                        ))}
+                                                                                                                    </ul>
+                                                                                                                </div>
                                                                                                             )}
                                                                                                         </li>
                                                                                                     ))}

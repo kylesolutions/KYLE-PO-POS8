@@ -65,7 +65,7 @@ const FoodDetails = ({ item, onClose }) => {
                         const ingredientItem = formattedItems.find((i) => i.item_code === ing.ingredients_name);
                         return {
                             ...ing,
-                            ingredient_name: ingredientItem ? ingredientItem.item_name : ing.ingredients_name,
+                            name: ingredientItem ? ingredientItem.item_name : ing.ingredients_name || "Unknown Ingredient",
                         };
                     }) || [];
                     setFetchedItem({
@@ -84,8 +84,8 @@ const FoodDetails = ({ item, onClose }) => {
                     // Initialize ingredient quantities (default 100g)
                     const initialQuantities = {};
                     ingredientsWithNames.forEach((ing) => {
-                        if (ing.ingredient_name && !initialQuantities[ing.ingredient_name]) {
-                            initialQuantities[ing.ingredient_name] = 100;
+                        if (ing.name && !initialQuantities[ing.name]) {
+                            initialQuantities[ing.name] = 100;
                         }
                     });
                     setIngredientQuantities(initialQuantities);
@@ -129,7 +129,7 @@ const FoodDetails = ({ item, onClose }) => {
         }, 0);
         // Calculate ingredient price based on quantity difference from 100g
         const ingredientPrice = fetchedItem.ingredients.reduce((sum, ing) => {
-            const qty = ingredientQuantities[ing.ingredient_name] || 100;
+            const qty = ingredientQuantities[ing.name] || 100;
             const qtyDifference = qty - 100; // Difference from default 100g
             return sum + (parseFloat(ing.ingredient_price) || 0) * qtyDifference / 100;
         }, 0) * mainQuantity;
@@ -283,16 +283,17 @@ const FoodDetails = ({ item, onClose }) => {
 
         // Prepare adjusted ingredients with quantities and prices
         const adjustedIngredients = fetchedItem.ingredients.map((ing) => ({
-            ingredient_name: ing.ingredient_name,
+            name: ing.name,
             ingredients_name: ing.ingredients_name,
-            quantity: ingredientQuantities[ing.ingredient_name] || 100,
-            price: (parseFloat(ing.ingredient_price) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
+            quantity: ingredientQuantities[ing.name] || 100,
+            unit: "g",
+            price: (parseFloat(ing.ingredient_price) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
             nutrition: {
-                calories: (parseFloat(ing.calories) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
-                protein: (parseFloat(ing.protein) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
-                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
-                fiber: (parseFloat(ing.fiber) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
-                fat: (parseFloat(ing.fat) || 0) * (ingredientQuantities[ing.ingredient_name] || 100) / 100,
+                calories: (parseFloat(ing.calories) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                protein: (parseFloat(ing.protein) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                fiber: (parseFloat(ing.fiber) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                fat: (parseFloat(ing.fat) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
             },
         }));
 
@@ -324,6 +325,20 @@ const FoodDetails = ({ item, onClose }) => {
                     rate,
                     kitchen: comboItem.custom_kitchen || combo.kitchen || "Unknown",
                     custom_customer_description: description || "",
+                    ingredients: (comboItem?.ingredients || []).map((ing) => ({
+                        name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                        ingredients_name: ing.ingredients_name,
+                        quantity: ingredientQuantities[ing.name] || 100,
+                        unit: "g",
+                        price: (parseFloat(ing.ingredient_price) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                        nutrition: {
+                            calories: (parseFloat(ing.calories) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                            protein: (parseFloat(ing.protein) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                            carbohydrates: (parseFloat(ing.carbohydrates) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                            fiber: (parseFloat(ing.fiber) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                            fat: (parseFloat(ing.fat) || 0) * (ingredientQuantities[ing.name] || 100) / 100,
+                        },
+                    })),
                 };
             }),
             kitchen: selectedItem.custom_kitchen || fetchedItem.kitchen,
@@ -625,23 +640,23 @@ const FoodDetails = ({ item, onClose }) => {
                                                         <tbody>
                                                             {fetchedItem.ingredients.map((ingredient, index) => (
                                                                 <tr key={index} style={{ transition: "background-color 0.2s" }} className="ingredient-row">
-                                                                    <td>{ingredient.ingredient_name || 'N/A'}</td>
+                                                                    <td>{ingredient.name || 'N/A'}</td>
                                                                     {nutritionFields.map((field) => (
                                                                         <td key={field}>
                                                                             {ingredient[field]
-                                                                                ? ((parseFloat(ingredient[field]) * (ingredientQuantities[ingredient.ingredient_name] || 100) / 100).toFixed(2))
+                                                                                ? ((parseFloat(ingredient[field]) * (ingredientQuantities[ingredient.name] || 100) / 100).toFixed(2))
                                                                                 : '0.00'}
                                                                         </td>
                                                                     ))}
                                                                     <td>
-                                                                        ₹{(parseFloat(ingredient.ingredient_price || 0) * (ingredientQuantities[ingredient.ingredient_name] || 100) / 100).toFixed(2)}
+                                                                        ₹{(parseFloat(ingredient.ingredient_price || 0) * (ingredientQuantities[ingredient.name] || 100) / 100).toFixed(2)}
                                                                     </td>
                                                                     <td>
                                                                         <input
                                                                             type="number"
                                                                             min="1"
-                                                                            value={ingredientQuantities[ingredient.ingredient_name] || 100}
-                                                                            onChange={(e) => handleIngredientQuantityChange(ingredient.ingredient_name, e.target.value)}
+                                                                            value={ingredientQuantities[ingredient.name] || 100}
+                                                                            onChange={(e) => handleIngredientQuantityChange(ingredient.name, e.target.value)}
                                                                             style={{
                                                                                 width: "60px",
                                                                                 border: "1px solid #007bff",
@@ -709,4 +724,4 @@ const FoodDetails = ({ item, onClose }) => {
     );
 };
 
-export default FoodDetails;
+export default FoodDetails; 
