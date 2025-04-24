@@ -24,64 +24,74 @@ export const UserProvider = ({ children }) => {
                 const comboQuantity = combo.quantity || 1;
                 return comboSum + comboBasePrice * comboQuantity;
             }, 0);
-            return sum + ((basePrice + customVariantPrice) * item.quantity) + addonsPrice + combosPrice;
+            return sum + ((basePrice + customVariantPrice) * (item.quantity || 1)) + addonsPrice + combosPrice;
         }, 0);
         setTotalPrice(newTotalPrice);
     }, [cartItems]);
 
-    const addToCart = (newItem) => {
-        setCartItems((prevItems) => {
-            const existingItemIndex = prevItems.findIndex((cartItem) =>
-                cartItem.item_code === newItem.item_code &&
-                cartItem.selectedSize === newItem.selectedSize &&
-                cartItem.selectedCustomVariant === newItem.selectedCustomVariant
-            );
-    
-            if (existingItemIndex !== -1) {
-                const existingItem = prevItems[existingItemIndex];
-                // Merge quantities and update addons/combos if present
-                const mergedAddonCounts = { ...existingItem.addonCounts };
-                Object.entries(newItem.addonCounts || {}).forEach(([addonName, { price, quantity, kitchen }]) => {
-                    if (mergedAddonCounts[addonName]) {
-                        mergedAddonCounts[addonName].quantity += quantity;
-                    } else {
-                        mergedAddonCounts[addonName] = { price, quantity, kitchen };
-                    }
-                });
-    
-                const mergedCombos = [...(existingItem.selectedCombos || [])];
-                (newItem.selectedCombos || []).forEach((newCombo) => {
-                    const comboMatchIndex = mergedCombos.findIndex(
-                        (combo) =>
-                            combo.name1 === newCombo.name1 &&
-                            combo.selectedSize === newCombo.selectedSize &&
-                            combo.selectedCustomVariant === newCombo.selectedCustomVariant
-                    );
-                    if (comboMatchIndex !== -1) {
-                        mergedCombos[comboMatchIndex].quantity =
-                            (mergedCombos[comboMatchIndex].quantity || 1) + (newCombo.quantity || 1);
-                    } else {
-                        mergedCombos.push({ ...newCombo });
-                    }
-                });
-    
-                return prevItems.map((cartItem, index) =>
-                    index === existingItemIndex
-                        ? {
-                              ...cartItem,
-                              quantity: (cartItem.quantity || 1) + (newItem.quantity || 1),
-                              addonCounts: mergedAddonCounts,
-                              selectedCombos: mergedCombos,
-                          }
-                        : cartItem
-                );
+    const areItemsEqual = (item1, item2) => {
+        if (item1.cartItemId !== item2.cartItemId) return false;
+        if (item1.item_code !== item2.item_code) return false;
+        if (item1.selectedSize !== item2.selectedSize) return false;
+        if (item1.selectedCustomVariant !== item2.selectedCustomVariant) return false;
+        if (item1.custom_customer_description !== item2.custom_customer_description) return false;
+        const addonCounts1 = item1.addonCounts || {};
+        const addonCounts2 = item2.addonCounts || {};
+        const addonKeys1 = Object.keys(addonCounts1);
+        const addonKeys2 = Object.keys(addonCounts2);
+        if (addonKeys1.length !== addonKeys2.length) return false;
+        for (const key of addonKeys1) {
+            if (!addonCounts2[key] || addonCounts1[key].quantity !== addonCounts2[key].quantity) return false;
+        }
+        const combos1 = item1.selectedCombos || [];
+        const combos2 = item2.selectedCombos || [];
+        if (combos1.length !== combos2.length) return false;
+        for (let i = 0; i < combos1.length; i++) {
+            if (
+                combos1[i].name1 !== combos2[i].name1 ||
+                combos1[i].selectedSize !== combos2[i].selectedSize ||
+                combos1[i].selectedCustomVariant !== combos2[i].selectedCustomVariant ||
+                combos1[i].quantity !== combos2[i].quantity
+            ) {
+                return false;
             }
-            return [...prevItems, { ...newItem, cartItemId: uuidv4() }]; 
+        }
+        return true;
+    };
+
+    const addToCart = (item) => {
+        console.log('UserContext.jsx: addToCart called with:', JSON.stringify(item, null, 2));
+        console.log('UserContext.jsx: Current cartItems before adding:', JSON.stringify(cartItems, null, 2));
+
+        setCartItems((prevItems) => {
+            const itemQuantity = item.quantity || 1;
+            const newItem = {
+                ...item,
+                cartItemId: item.cartItemId || uuidv4(),
+                quantity: itemQuantity,
+            };
+
+            const existingItemIndex = prevItems.findIndex((cartItem) => areItemsEqual(cartItem, newItem));
+
+            if (existingItemIndex !== -1) {
+                const updatedItems = [...prevItems];
+                updatedItems[existingItemIndex] = {
+                    ...updatedItems[existingItemIndex],
+                    quantity: updatedItems[existingItemIndex].quantity + itemQuantity,
+                };
+                console.log('UserContext.jsx: Cart after updating quantity:', JSON.stringify(updatedItems, null, 2));
+                return updatedItems;
+            } else {
+                const updatedItems = [...prevItems, newItem];
+                console.log('UserContext.jsx: Cart after adding new item:', JSON.stringify(updatedItems, null, 2));
+                return updatedItems;
+            }
         });
     };
 
     const removeFromCart = (item) => {
-        setCartItems((prevItems) => prevItems.filter((cartItem) => cartItem !== item));
+        console.log("removeFromCart called for:", JSON.stringify({ item_code: item.item_code, cartItemId: item.cartItemId }, null, 2));
+        setCartItems((prevItems) => prevItems.filter((cartItem) => cartItem.cartItemId !== item.cartItemId));
     };
 
     const setItemDetails = (item) => {
@@ -90,8 +100,8 @@ export const UserProvider = ({ children }) => {
 
     const updateCartItem = (updatedItem) => {
         setCartItems((prevItems) =>
-            prevItems.map((item) =>
-                item.id === updatedItem.id ? updatedItem : item
+            prevItems.map((cartItem) =>
+                cartItem.cartItemId === updatedItem.cartItemId ? { ...cartItem, ...updatedItem } : cartItem
             )
         );
     };
@@ -153,7 +163,6 @@ export const UserProvider = ({ children }) => {
             return acc;
         }, {});
 
-        // Prepare and send each kitchen order to the backend
         const kitchenOrderPromises = Object.entries(kitchenOrders).map(async ([kitchen, kitchenOrder]) => {
             const orderData = {
                 customer_name: kitchenOrder.customerName || "Unknown",

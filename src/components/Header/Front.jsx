@@ -46,6 +46,7 @@ function Front() {
     const [applyDiscountOn, setApplyDiscountOn] = useState("Grand Total");
     const [discountPercentage, setDiscountPercentage] = useState(0);
     const [discountAmount, setDiscountAmount] = useState(0);
+    const [cartItemToUpdate, setCartItemToUpdate] = useState(null);
 
     useEffect(() => {
         if (location.state) {
@@ -275,7 +276,15 @@ function Front() {
 
     const handlePhoneNumberChange = (e) => setPhoneNumber(e.target.value);
 
-    const handleItemClick = (item) => setSelectedItem(item);
+    const handleItemClick = (item, cartItem = null) => {
+        if (cartItem) {
+            setCartItemToUpdate(cartItem);
+            setSelectedItem(item);
+        } else {
+            setCartItemToUpdate(null);
+            setSelectedItem(item);
+        }
+    };
 
     const handleItemUpdate = (updatedItem) => {
         updateCartItem({
@@ -1130,9 +1139,13 @@ function Front() {
     const cancelCart = () => setCartItems([]);
 
     const handleAddToCart = (item) => {
-        addToCart(item);
-        updateKitchenNoteForOrder();
-    };
+        const itemToAdd = {
+          ...item,
+          quantity: 1, // Explicitly set quantity to 1 for new items
+        };
+        console.log('Front.jsx: Adding to cart:', JSON.stringify(itemToAdd, null, 2));
+        addToCart(itemToAdd);
+      };
 
     return (
         <>
@@ -1406,8 +1419,7 @@ function Front() {
                                                         const rows = [
                                                             {
                                                                 type: "main",
-                                                                name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}${item.selectedCustomVariant ? ` (${item.selectedCustomVariant})` : ""
-                                                                    }`,
+                                                                name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}${item.selectedCustomVariant ? ` (${item.selectedCustomVariant})` : ""}`,
                                                                 quantity: item.quantity || 1,
                                                                 price: (parseFloat(item.basePrice) || 0) + (parseFloat(item.customVariantPrice) || 0),
                                                                 note: item.custom_customer_description,
@@ -1426,10 +1438,7 @@ function Front() {
                                                             })),
                                                             ...(item.selectedCombos || []).map((combo, idx) => ({
                                                                 type: "combo",
-                                                                name: `+ ${combo.name1} x${combo.quantity || 1}${combo.selectedSize || combo.selectedCustomVariant
-                                                                    ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ")})`
-                                                                    : ""
-                                                                    }`,
+                                                                name: `+ ${combo.name1} x${combo.quantity || 1}${combo.selectedSize || combo.selectedCustomVariant ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ")})` : ""}`,
                                                                 quantity: null,
                                                                 price: parseFloat(combo.rate) || 0,
                                                                 note: combo.custom_customer_description,
@@ -1442,39 +1451,18 @@ function Front() {
                                                             <tr key={`${item.cartItemId}-${idx}`}>
                                                                 <td>{row.isMain ? tableNumber : ""}</td>
                                                                 <td>
-                                                                    <span style={{ marginLeft: row.isMain ? "0" : "10px" }}>{row.name}</span>
+                                                                    <span
+                                                                        style={{ marginLeft: row.isMain ? "0" : "10px", cursor: row.isMain ? "pointer" : "default" }}
+                                                                        onClick={() => row.isMain && handleItemClick(allItems.find(i => i.item_code === item.item_code), item)} // Pass cart item for update
+                                                                    >
+                                                                        {row.name}
+                                                                    </span>
                                                                     {row.note && (
-                                                                        <p
-                                                                            style={{
-                                                                                fontSize: "12px",
-                                                                                color: "#666",
-                                                                                marginTop: "5px",
-                                                                                marginBottom: "0",
-                                                                                marginLeft: row.isMain ? "0" : "10px",
-                                                                            }}
-                                                                        >
+                                                                        <p style={{ fontSize: "12px", color: "#666", marginTop: "5px", marginBottom: "0", marginLeft: row.isMain ? "0" : "10px" }}>
                                                                             <strong>Note:</strong> {row.note}
                                                                         </p>
                                                                     )}
-                                                                    {row.ingredients.length > 0 && (
-                                                                        <div
-                                                                            style={{
-                                                                                fontSize: "12px",
-                                                                                color: "#555",
-                                                                                marginTop: "5px",
-                                                                                marginLeft: row.isMain ? "0" : "10px",
-                                                                            }}
-                                                                        >
-                                                                            <strong>Ingredients:</strong>
-                                                                            <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
-                                                                                {row.ingredients.map((ing, i) => (
-                                                                                    <li key={i}>
-                                                                                        {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
-                                                                                    </li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        </div>
-                                                                    )}
+                                                            
                                                                 </td>
                                                                 <td>
                                                                     {row.quantity && (
@@ -1489,14 +1477,16 @@ function Front() {
                                                                     )}
                                                                 </td>
                                                                 <td className="text-end">₹{(row.price || 0).toFixed(2)}</td>
-                                                                <td>{row.isMain && (
-                                                                    <button
-                                                                        className="btn btn-sm"
-                                                                        onClick={() => removeFromCart(row.cartItem)}
-                                                                    >
-                                                                        <i className="bi bi-trash"></i>
-                                                                    </button>
-                                                                )}</td>
+                                                                <td>
+                                                                    {row.isMain && (
+                                                                        <button
+                                                                            className="btn btn-sm"
+                                                                            onClick={() => removeFromCart(row.cartItem)}
+                                                                        >
+                                                                            <i className="bi bi-trash"></i>
+                                                                        </button>
+                                                                    )}
+                                                                </td>
                                                             </tr>
                                                         ));
                                                     })}
@@ -1728,7 +1718,7 @@ function Front() {
                                                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
                                                                                                         <li key={addonName}>+ {addonName} x{quantity} (₹{(parseFloat(price) || 0).toFixed(2)})</li>
-                                                                                                        ))}
+                                                                                                    ))}
                                                                                                 </ul>
                                                                                             )}
                                                                                             {item.selectedCombos && item.selectedCombos.length > 0 && (
@@ -1866,15 +1856,18 @@ function Front() {
                     <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} />
                 </div>
 
-                {selectedItem && (
-                    <FoodDetails
-                        item={selectedItem}
-                        allItems={allItems}
-                        onClose={() => setSelectedItem(null)}
-                        onUpdate={handleItemUpdate}
-                        onAddToCart={handleAddToCart}
-                    />
-                )}
+                <FoodDetails
+                    item={selectedItem}
+                    allItems={allItems}
+                    onClose={() => {
+                        setSelectedItem(null);
+                        setCartItemToUpdate(null);
+                    }}
+                    onUpdate={handleItemUpdate}
+                    onAddToCart={handleAddToCart}
+                    cartItem={cartItemToUpdate}
+                    isUpdate={!!cartItemToUpdate}
+                />
             </div>
         </>
     );
