@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import UserContext from '../../Context/UserContext';
 import './foodDetails.css';
 import { v4 as uuidv4 } from 'uuid';
@@ -259,13 +259,129 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
         }));
     };
 
-    const getIngredientsForSelectedSize = () => {
-        if (!fetchedItem) return [];
-        if (!hasSizeVariants || !selectedSize) return fetchedItem.ingredients;
-        const selectedItemCode = getItemCodeForSize(selectedSize);
-        const selectedItem = localAllItems.find((i) => i.item_code === selectedItemCode);
-        return selectedItem?.ingredients || fetchedItem.ingredients;
-    };
+    const hasSizeVariants = fetchedItem && localAllItems.some((i) =>
+        i.item_code.startsWith(fetchedItem.item_code.replace(/-[SML]$/, '')) &&
+        ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
+    );
+
+    const getAggregatedIngredients = useMemo(() => {
+        if (!fetchedItem) return { ingredients: [], totals: { calories: 0, protein: 0, carbohydrates: 0, fiber: 0, fat: 0, quantity: 0 } };
+
+        // Base item or selected size variant ingredients
+        let ingredients = [];
+        if (hasSizeVariants && selectedSize) {
+            const selectedItemCode = getItemCodeForSize(selectedSize);
+            const selectedItem = localAllItems.find((i) => i.item_code === selectedItemCode);
+            ingredients = (selectedItem?.ingredients || fetchedItem.ingredients).map(ing => ({
+                ...ing,
+                quantity: (parseFloat(ing.quantity) || 1) * mainQuantity, // Scale quantity by mainQuantity
+                calories: (parseFloat(ing.calories) || 0) * mainQuantity, // Scale nutrition by mainQuantity
+                protein: (parseFloat(ing.protein) || 0) * mainQuantity,
+                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * mainQuantity,
+                fiber: (parseFloat(ing.fiber) || 0) * mainQuantity,
+                fat: (parseFloat(ing.fat) || 0) * mainQuantity,
+            }));
+        } else {
+            ingredients = fetchedItem.ingredients.map(ing => ({
+                ...ing,
+                quantity: (parseFloat(ing.quantity) || 1) * mainQuantity, // Scale quantity by mainQuantity
+                calories: (parseFloat(ing.calories) || 0) * mainQuantity, // Scale nutrition by mainQuantity
+                protein: (parseFloat(ing.protein) || 0) * mainQuantity,
+                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * mainQuantity,
+                fiber: (parseFloat(ing.fiber) || 0) * mainQuantity,
+                fat: (parseFloat(ing.fat) || 0) * mainQuantity,
+            }));
+        }
+
+        // Add-on ingredients
+        Object.entries(addonCounts).forEach(([addonName, { quantity }]) => {
+            if (quantity > 0) {
+                const addonItem = localAllItems.find((i) => i.item_name === addonName);
+                if (addonItem?.ingredients?.length) {
+                    ingredients = [
+                        ...ingredients,
+                        ...addonItem.ingredients.map(ing => ({
+                            ...ing,
+                            quantity: (parseFloat(ing.quantity) || 1) * quantity * mainQuantity, // Scale by addon quantity and mainQuantity
+                            calories: (parseFloat(ing.calories) || 0) * quantity * mainQuantity, // Scale nutrition
+                            protein: (parseFloat(ing.protein) || 0) * quantity * mainQuantity,
+                            carbohydrates: (parseFloat(ing.carbohydrates) || 0) * quantity * mainQuantity,
+                            fiber: (parseFloat(ing.fiber) || 0) * quantity * mainQuantity,
+                            fat: (parseFloat(ing.fat) || 0) * quantity * mainQuantity,
+                        })),
+                    ];
+                }
+            }
+        });
+
+        // Combo ingredients
+        selectedCombos.forEach((combo) => {
+            const comboItem = localAllItems.find((i) => i.item_name === combo.name1);
+            if (comboItem) {
+                let comboIngredients = comboItem.ingredients || [];
+                if (comboItem.has_variants && combo.selectedSize) {
+                    const comboItemCode = getComboVariantItemCode(combo.name1, combo.selectedSize);
+                    const variantItem = localAllItems.find((i) => i.item_code === comboItemCode);
+                    comboIngredients = variantItem?.ingredients || comboIngredients;
+                }
+                if (comboIngredients.length) {
+                    ingredients = [
+                        ...ingredients,
+                        ...comboIngredients.map(ing => ({
+                            ...ing,
+                            quantity: (parseFloat(ing.quantity) || 1) * (combo.quantity || 1) * mainQuantity, // Scale by combo quantity and mainQuantity
+                            calories: (parseFloat(ing.calories) || 0) * (combo.quantity || 1) * mainQuantity, // Scale nutrition
+                            protein: (parseFloat(ing.protein) || 0) * (combo.quantity || 1) * mainQuantity,
+                            carbohydrates: (parseFloat(ing.carbohydrates) || 0) * (combo.quantity || 1) * mainQuantity,
+                            fiber: (parseFloat(ing.fiber) || 0) * (combo.quantity || 1) * mainQuantity,
+                            fat: (parseFloat(ing.fat) || 0) * (combo.quantity || 1) * mainQuantity,
+                        })),
+                    ];
+                }
+            }
+        });
+
+        // Aggregate ingredients by ingredients_name
+        const aggregated = {};
+        ingredients.forEach((ing) => {
+            const key = ing.ingredients_name || ing.name;
+            if (!aggregated[key]) {
+                aggregated[key] = {
+                    ingredients_name: ing.ingredients_name,
+                    name: ing.name || 'Unknown Ingredient',
+                    calories: 0,
+                    protein: 0,
+                    carbohydrates: 0,
+                    fiber: 0,
+                    fat: 0,
+                    quantity: 0,
+                };
+            }
+            aggregated[key].calories += parseFloat(ing.calories) || 0; // Sum nutritional values directly
+            aggregated[key].protein += parseFloat(ing.protein) || 0;
+            aggregated[key].carbohydrates += parseFloat(ing.carbohydrates) || 0;
+            aggregated[key].fiber += parseFloat(ing.fiber) || 0;
+            aggregated[key].fat += parseFloat(ing.fat) || 0;
+            aggregated[key].quantity += parseFloat(ing.quantity) || 1;
+        });
+
+        const aggregatedIngredients = Object.values(aggregated);
+
+        // Calculate totals
+        const totals = aggregatedIngredients.reduce(
+            (acc, ing) => ({
+                calories: acc.calories + (parseFloat(ing.calories) || 0),
+                protein: acc.protein + (parseFloat(ing.protein) || 0),
+                carbohydrates: acc.carbohydrates + (parseFloat(ing.carbohydrates) || 0),
+                fiber: acc.fiber + (parseFloat(ing.fiber) || 0),
+                fat: acc.fat + (parseFloat(ing.fat) || 0),
+                quantity: acc.quantity + (parseFloat(ing.quantity) || 0),
+            }),
+            { calories: 0, protein: 0, carbohydrates: 0, fiber: 0, fat: 0, quantity: 0 }
+        );
+
+        return { ingredients: aggregatedIngredients, totals };
+    }, [fetchedItem, hasSizeVariants, selectedSize, addonCounts, selectedCombos, mainQuantity, localAllItems]);
 
     const handleAddToCart = () => {
         if (!fetchedItem || isAdding) return;
@@ -288,17 +404,18 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
             ? (fetchedItem.variants.find((v) => v.type_of_variants === selectedCustomVariant)?.variant_price || 0)
             : 0;
 
-        const adjustedIngredients = getIngredientsForSelectedSize().map((ing) => ({
+        const { ingredients: aggregatedIngredients } = getAggregatedIngredients; // Fixed: Removed parentheses
+        const adjustedIngredients = aggregatedIngredients.map((ing) => ({
             name: ing.name,
             ingredients_name: ing.ingredients_name,
-            quantity: 100,
+            quantity: Math.max(0, ing.quantity), // Prevent negative quantities
             unit: "g",
             nutrition: {
-                calories: parseFloat(ing.calories) || 0,
-                protein: parseFloat(ing.protein) || 0,
-                carbohydrates: parseFloat(ing.carbohydrates) || 0,
-                fiber: parseFloat(ing.fiber) || 0,
-                fat: parseFloat(ing.fat) || 0,
+                calories: ing.calories,
+                protein: ing.protein,
+                carbohydrates: ing.carbohydrates,
+                fiber: ing.fiber,
+                fat: ing.fat,
             },
         }));
 
@@ -330,25 +447,29 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                     rate,
                     kitchen: comboItem.custom_kitchen || combo.kitchen || "Unknown",
                     custom_customer_description: description || "",
-                    ingredients: (comboItem?.ingredients || []).map((ing) => ({
-                        name: ing.name || ing.ingredients_name || "Unknown Ingredient",
-                        ingredients_name: ing.ingredients_name,
-                        quantity: 100,
-                        unit: "g",
-                        nutrition: {
-                            calories: parseFloat(ing.calories) || 0,
-                            protein: parseFloat(ing.protein) || 0,
-                            carbohydrates: parseFloat(ing.carbohydrates) || 0,
-                            fiber: parseFloat(ing.fiber) || 0,
-                            fat: parseFloat(ing.fat) || 0,
-                        },
-                    })),
+                    ingredients: (comboItem?.ingredients || []).map((ing) => {
+                        const baseQuantity = parseFloat(ing.quantity) || 1;
+                        const scaledQuantity = baseQuantity * (combo.quantity || 1) * mainQuantity; // Scale quantity
+                        return {
+                            name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                            ingredients_name: ing.ingredients_name,
+                            quantity: scaledQuantity,
+                            unit: "g",
+                            nutrition: {
+                                calories: (parseFloat(ing.calories) || 0) * (combo.quantity || 1) * mainQuantity, // Scale by combo.quantity and mainQuantity
+                                protein: (parseFloat(ing.protein) || 0) * (combo.quantity || 1) * mainQuantity,
+                                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * (combo.quantity || 1) * mainQuantity,
+                                fiber: (parseFloat(ing.fiber) || 0) * (combo.quantity || 1) * mainQuantity,
+                                fat: (parseFloat(ing.fat) || 0) * (combo.quantity || 1) * mainQuantity,
+                            },
+                        };
+                    }),
                     addons: comboItem?.addons || [],
                     variants: comboItem?.variants || [],
                 };
             }),
             kitchen: selectedItem.custom_kitchen || fetchedItem.kitchen,
-            quantity: isUpdate ? mainQuantity : 1,
+            quantity: mainQuantity,
             custom_customer_description: description || "",
             ingredients: adjustedIngredients,
             addons: fetchedItem.addons,
@@ -389,11 +510,6 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
         }
         return (parseFloat(combo.combo_price) || 0).toFixed(2);
     };
-
-    const hasSizeVariants = fetchedItem && localAllItems.some((i) =>
-        i.item_code.startsWith(fetchedItem.item_code.replace(/-[SML]$/, '')) &&
-        ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
-    );
 
     const nutritionFields = ['calories', 'protein', 'carbohydrates', 'fiber', 'fat'];
 
@@ -477,11 +593,11 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                                 {fetchedItem?.addons?.length > 0 && (
                                     <div className="mt-3">
                                         <strong>Add-ons:</strong>
-                                        <ul className="addons-list d-flex justify-content-evenly flex-wrap row">
+                                        <ul className="addons-list d-flex justify-content-evenly flex-wrap">
                                             {fetchedItem.addons.map((addon) => {
                                                 const addonData = addonCounts[addon.name1] || { price: parseFloat(addon.addon_price) || 0, quantity: 0 };
                                                 return (
-                                                    <li key={addon.name1} className={`addon-item col-6 col-md-4 col-lg-3 ${addonData.quantity > 0 ? 'selected' : ''}`}>
+                                                    <li key={addon.name1} className={`addon-item ${addonData.quantity > 0 ? 'selected' : ''}`}>
                                                         <img
                                                             src={addon.addon_image ? `http://109.199.100.136:6060${addon.addon_image}` : 'default-addon-image.jpg'}
                                                             width={75}
@@ -667,13 +783,13 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
 
                                 {showModal && (
                                     <div className="modal-overlay">
-                                        <div className="modal-content p-3" style={{ backgroundColor: "#ffffff", border: "2px solid #007bff", borderRadius: "8px" }}>
+                                        <div className="modal-content p-3" style={{ backgroundColor: "#ffffff", borderRadius: "8px" }}>
                                             <span className="close-btn" role="button" onClick={() => setShowModal(false)} style={{ color: "#007bff", fontSize: "1.5rem" }}>×</span>
-                                            {getIngredientsForSelectedSize().length > 0 ? (
+                                            {getAggregatedIngredients.ingredients.length > 0 ? (
                                                 <div className="ingredient-container">
-                                                    <h3 className="ingredient-title" style={{ color: "#007bff", fontWeight: "600" }}>Ingredients</h3>
+                                                    <h3 className="ingredient-title" style={{ color: "#007bff", fontWeight: "600" }}>Nutrition Values</h3>
                                                     <table className="ingredient-table" style={{ border: "1px solid #007bff", backgroundColor: "#ffffff" }}>
-                                                        <thead style={{ backgroundColor: "#007bff", color: "#ffffff" }}>
+                                                        <thead style={{ backgroundColor: "#007bff", color: "#000000" }}>
                                                             <tr>
                                                                 <th>Ingredient</th>
                                                                 <th>Calories</th>
@@ -685,7 +801,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {getIngredientsForSelectedSize().map((ingredient, index) => (
+                                                            {getAggregatedIngredients.ingredients.map((ingredient, index) => (
                                                                 <tr key={index} style={{ transition: "background-color 0.2s" }} className="ingredient-row">
                                                                     <td>{ingredient.name || 'N/A'}</td>
                                                                     {nutritionFields.map((field) => (
@@ -693,10 +809,21 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                                                                             {(parseFloat(ingredient[field]) || 0).toFixed(2)}
                                                                         </td>
                                                                     ))}
-                                                                    <td>100</td>
+                                                                    <td>{(ingredient.quantity || 0).toFixed(2)}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
+                                                        <tfoot style={{ backgroundColor: "#f0f0f0", fontWeight: "bold" }}>
+                                                            <tr>
+                                                                <td>Total</td>
+                                                                {nutritionFields.map((field) => (
+                                                                    <td key={field}>
+                                                                        {(getAggregatedIngredients.totals[field] || 0).toFixed(2)}
+                                                                    </td>
+                                                                ))}
+                                                                <td>{(getAggregatedIngredients.totals.quantity || 0).toFixed(2)}</td>
+                                                            </tr>
+                                                        </tfoot>
                                                     </table>
                                                 </div>
                                             ) : (

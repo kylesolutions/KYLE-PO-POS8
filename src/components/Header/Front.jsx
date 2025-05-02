@@ -19,7 +19,7 @@ function Front() {
     const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
-    const { tableNumber: initialTableNumber, existingOrder, deliveryType: initialDeliveryType } = state || {};
+    const { tableNumber: initialTableNumber, existingOrder, deliveryType: initialDeliveryType, chairCount: initialChairCount } = state || {};
     const userData = useSelector((state) => state.user);
     const company = userData.company || "POS8";
     const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount);
@@ -42,6 +42,7 @@ function Front() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [tableNumber, setTableNumber] = useState(initialTableNumber || "");
     const [deliveryType, setDeliveryType] = useState(initialDeliveryType || "");
+    const [chairCount, setChairCount] = useState(initialChairCount || 0);
     const [showDiscountModal, setShowDiscountModal] = useState(false);
     const [applyDiscountOn, setApplyDiscountOn] = useState("Grand Total");
     const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -50,11 +51,12 @@ function Front() {
 
     useEffect(() => {
         if (location.state) {
-            const { customerName: stateCustomerName, phoneNumber: statePhoneNumber, tableNumber: stateTableNumber, existingOrder } = location.state;
+            const { customerName: stateCustomerName, phoneNumber: statePhoneNumber, tableNumber: stateTableNumber, existingOrder, chairCount: stateChairCount } = location.state;
             const finalCustomerName = stateCustomerName || existingOrder?.customer_name || "One Time Customer";
             const finalPhoneNumber = statePhoneNumber || existingOrder?.contact_mobile || "";
             const finalTableNumber = stateTableNumber || existingOrder?.custom_table_number || "";
             const finalDeliveryType = location.state.deliveryType || existingOrder?.custom_delivery_type || "";
+            const finalChairCount = stateChairCount || existingOrder?.custom_chair_count || 0;
             const finalCartItems = existingOrder?.items?.map(item => ({
                 cartItemId: uuidv4(),
                 id: item.item_code,
@@ -79,10 +81,13 @@ function Front() {
             setPhoneNumber(finalPhoneNumber);
             setTableNumber(finalTableNumber);
             setDeliveryType(finalDeliveryType);
+            setChairCount(finalChairCount);
             setAddress(finalAddress);
             setWatsappNumber(finalWatsappNumber);
             setEmail(finalEmail);
             setCartItems(finalCartItems);
+
+            console.log("Front.jsx: Initial chairCount set to:", finalChairCount); // Debug log
 
             if (existingOrder) {
                 setApplyDiscountOn(existingOrder.apply_discount_on || "Grand Total");
@@ -95,6 +100,7 @@ function Front() {
             setPhoneNumber("");
             setTableNumber("");
             setDeliveryType("");
+            setChairCount(0);
             setAddress("");
             setWatsappNumber("");
             setEmail("");
@@ -102,6 +108,7 @@ function Front() {
             setApplyDiscountOn("Grand Total");
             setDiscountPercentage(0);
             setDiscountAmount(0);
+            console.log("Front.jsx: Initial chairCount set to: 0 (no location.state)"); // Debug log
         }
     }, [location.state, setCartItems]);
 
@@ -360,7 +367,7 @@ function Front() {
 
     const handleNavigation = () => {
         if (tableNumber) {
-            navigate('/kitchen', { state: { tableNumber, customerName } });
+            navigate('/kitchen', { state: { tableNumber, customerName, chairCount } });
         } else {
             alert("No table selected.");
         }
@@ -380,21 +387,32 @@ function Front() {
 
     const checkKitchenNoteExists = async (posInvoiceId) => {
         try {
-            const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kitchen_note', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                },
-                body: JSON.stringify({ pos_invoice_id: posInvoiceId }),
-            });
+            const response = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kitchen_notes",
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                        "Expect": "",
+                    },
+                }
+            );
+    
             const result = await response.json();
-            if (response.ok && result.message?.status === 'success' && result.message.data) {
-                return true;
+            console.log("Front.jsx: checkKitchenNoteExists Response:", result);
+    
+            if (response.ok && result.message?.status === "success") {
+                const kitchenNote = result.message.data.find(
+                    (note) => note.pos_invoice_id === posInvoiceId
+                );
+                return !!kitchenNote;
+            } else {
+                console.error("Front.jsx: Failed to check Kitchen Note existence:", result.message?.message || result.exception);
+                return false;
             }
-            return false;
         } catch (error) {
-            console.error('Error checking kitchen note existence:', error);
+            console.error("Front.jsx: Error checking Kitchen Note existence:", error);
             return false;
         }
     };
@@ -405,12 +423,13 @@ function Front() {
             customer_name: customerName || "One Time Customer",
             table_number: tableNumber || "",
             delivery_type: deliveryType || "DINE IN",
+            custom_chair_count: deliveryType === "DINE IN" ? chairCount : 0,
             items: cartItems.flatMap((item) => {
                 const variantPrice = parseFloat(item.customVariantPrice) || 0;
                 const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
                 const mainItemKitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
                 const mainItemVariants = [item.selectedCustomVariant].filter(Boolean).join(" - ") || "";
-
+    
                 const mainItem = {
                     item_name: item.name,
                     kitchen: mainItemKitchen,
@@ -423,7 +442,7 @@ function Front() {
                         unit: ing.unit || "g",
                     })),
                 };
-
+    
                 const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
                     item_name: addonName,
                     kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
@@ -432,7 +451,7 @@ function Front() {
                     custom_variants: "",
                     ingredients: [],
                 }));
-
+    
                 const comboItems = (item.selectedCombos || []).map((combo) => {
                     const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
                     const comboVariants = [combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ") || "";
@@ -449,13 +468,18 @@ function Front() {
                         })),
                     };
                 });
-
+    
                 return [mainItem, ...addonItems.filter(addon => addon.quantity > 0), ...comboItems];
             }),
         };
-
-        console.log("Kitchen Note Payload:", JSON.stringify(kitchenNotePayload, null, 2));
-
+    
+        if (kitchenNotePayload.delivery_type === "DINE IN" && kitchenNotePayload.custom_chair_count <= 0) {
+            console.warn("Front.jsx: Warning: custom_chair_count is 0 for DINE IN order. Expected positive value.");
+        }
+    
+        console.log("Front.jsx: createKitchenNote - custom_chair_count:", kitchenNotePayload.custom_chair_count);
+        console.log("Front.jsx: createKitchenNote Payload:", JSON.stringify(kitchenNotePayload, null, 2));
+    
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_kitchen_note",
@@ -464,111 +488,170 @@ function Front() {
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Expect": "", // Disable Expect header
                     },
                     body: JSON.stringify(kitchenNotePayload),
                 }
             );
-
+    
             const result = await response.json();
-            console.log("Kitchen Note Response:", result);
-
+            console.log("Front.jsx: createKitchenNote Response:", result);
+    
             if (response.ok && result.message?.status === "success") {
-                console.log(`Kitchen Note created for POS Invoice ${posInvoiceId}`);
+                console.log(`Front.jsx: Kitchen Note created for POS Invoice ${posInvoiceId}`);
                 return true;
             } else {
                 const errorMsg = result.message?.message || result.exception || "Unknown error";
-                console.error("Failed to create Kitchen Note:", errorMsg);
+                console.error("Front.jsx: Failed to create Kitchen Note:", errorMsg);
                 return false;
             }
         } catch (error) {
-            console.error("Error creating Kitchen Note:", error);
+            console.error("Front.jsx: Error creating Kitchen Note:", error);
             return false;
         }
     };
-
+    
     const updateKitchenNote = async (posInvoiceId) => {
-        const kitchenNotePayload = {
-            pos_invoice_id: posInvoiceId,
-            customer_name: customerName || "One Time Customer",
-            table_number: tableNumber || "",
-            delivery_type: deliveryType || "DINE IN",
-            items: cartItems.flatMap((item) => {
-                const variantPrice = parseFloat(item.customVariantPrice) || 0;
-                const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
-                const mainItemKitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
-                const mainItemVariants = [item.selectedCustomVariant].filter(Boolean).join(" - ") || "";
-
-                const mainItem = {
-                    item_name: item.name,
-                    kitchen: mainItemKitchen,
-                    quantity: item.quantity || 1,
-                    customer_description: item.custom_customer_description || "",
-                    custom_variants: mainItemVariants,
-                    ingredients: (item.ingredients || []).map(ing => ({
-                        name: ing.name || "Unknown",
-                        quantity: ing.quantity || 100,
-                        unit: ing.unit || "g",
-                    })),
-                };
-
-                const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
-                    item_name: addonName,
-                    kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
-                    quantity: quantity || 0,
-                    customer_description: "",
-                    custom_variants: "",
-                    ingredients: [],
-                }));
-
-                const comboItems = (item.selectedCombos || []).map((combo) => {
-                    const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
-                    const comboVariants = [combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ") || "";
-                    return {
-                        item_name: combo.name1,
-                        kitchen: allItems.find(i => i.item_code === resolvedComboItemCode || i.name === combo.name1)?.kitchen || "Unknown",
-                        quantity: combo.quantity || 1,
-                        customer_description: combo.custom_customer_description || "",
-                        custom_variants: comboVariants,
-                        ingredients: (combo.ingredients || []).map(ing => ({
-                            name: ing.name || "Unknown",
-                            quantity: ing.quantity || 100,
-                            unit: ing.unit || "g",
-                        })),
-                    };
-                });
-
-                return [mainItem, ...addonItems.filter(addon => addon.quantity > 0), ...comboItems];
-            }),
-        };
-
-        console.log("Update Kitchen Note Payload:", JSON.stringify(kitchenNotePayload, null, 2));
-
         try {
+            // Fetch existing Kitchen Note to preserve prepared items
             const response = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kitchen_notes",
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                        "Expect": "",
+                    },
+                }
+            );
+    
+            const result = await response.json();
+            console.log("Front.jsx: Fetch Kitchen Note for update:", JSON.stringify(result, null, 2));
+    
+            if (!response.ok || result.message?.status !== "success") {
+                throw new Error(result.message?.message || result.exception || "Failed to fetch Kitchen Note");
+            }
+    
+            const existingNote = result.message.data.find(note => note.pos_invoice_id === posInvoiceId);
+            const existingItems = existingNote ? existingNote.items : [];
+    
+            // Construct payload with all items (new, existing, and prepared)
+            const kitchenNotePayload = {
+                pos_invoice_id: posInvoiceId,
+                customer_name: customerName || "One Time Customer",
+                table_number: tableNumber || "",
+                delivery_type: deliveryType || "DINE IN",
+                custom_chair_count: deliveryType === "DINE IN" ? chairCount : 0,
+                items: [
+                    // Existing items (to preserve prepared items)
+                    ...existingItems.map(item => ({
+                        item_name: item.item_name,
+                        kitchen: item.kitchen || "Unknown",
+                        quantity: item.quantity || 1,
+                        customer_description: item.customer_description || "",
+                        custom_variants: item.custom_variants || "",
+                        status: item.status || "Prepare",
+                        ingredients: item.ingredients || [],
+                    })),
+                    // New items from cartItems
+                    ...cartItems.flatMap((item) => {
+                        const variantPrice = parseFloat(item.customVariantPrice) || 0;
+                        const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
+                        const mainItemKitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
+                        const mainItemVariants = [item.selectedCustomVariant].filter(Boolean).join(" - ") || "";
+    
+                        const mainItem = {
+                            item_name: item.name,
+                            kitchen: mainItemKitchen,
+                            quantity: item.quantity || 1,
+                            customer_description: item.custom_customer_description || "",
+                            custom_variants: mainItemVariants,
+                            status: item.status || "Prepare",
+                            ingredients: (item.ingredients || []).map(ing => ({
+                                name: ing.name || "Unknown",
+                                quantity: ing.quantity || 100,
+                                unit: ing.unit || "g",
+                            })),
+                        };
+    
+                        const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                            item_name: addonName,
+                            kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
+                            quantity: quantity || 0,
+                            customer_description: "",
+                            custom_variants: "",
+                            status: "Prepare",
+                            ingredients: [],
+                        }));
+    
+                        const comboItems = (item.selectedCombos || []).map((combo) => {
+                            const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
+                            const comboVariants = [combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ") || "";
+                            return {
+                                item_name: combo.name1,
+                                kitchen: allItems.find(i => i.item_code === resolvedComboItemCode || i.name === combo.name1)?.kitchen || "Unknown",
+                                quantity: combo.quantity || 1,
+                                customer_description: combo.custom_customer_description || "",
+                                custom_variants: comboVariants,
+                                status: "Prepare",
+                                ingredients: (combo.ingredients || []).map(ing => ({
+                                    name: ing.name || "Unknown",
+                                    quantity: ing.quantity || 100,
+                                    unit: ing.unit || "g",
+                                })),
+                            };
+                        });
+    
+                        return [mainItem, ...addonItems.filter(addon => addon.quantity > 0), ...comboItems];
+                    }),
+                ],
+            };
+    
+            // Remove duplicates by item_name, keeping the latest status
+            const uniqueItems = [];
+            const seenItemNames = new Set();
+            for (const item of kitchenNotePayload.items.reverse()) {
+                if (!seenItemNames.has(item.item_name)) {
+                    uniqueItems.push(item);
+                    seenItemNames.add(item.item_name);
+                }
+            }
+            kitchenNotePayload.items = uniqueItems.reverse();
+    
+            if (kitchenNotePayload.delivery_type === "DINE IN" && kitchenNotePayload.custom_chair_count <= 0) {
+                console.warn("Front.jsx: Warning: custom_chair_count is 0 for DINE IN order. Expected positive value.");
+            }
+    
+            console.log("Front.jsx: updateKitchenNote - custom_chair_count:", kitchenNotePayload.custom_chair_count);
+            console.log("Front.jsx: updateKitchenNote Payload:", JSON.stringify(kitchenNotePayload, null, 2));
+    
+            const updateResponse = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note",
                 {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Expect": "",
                     },
                     body: JSON.stringify(kitchenNotePayload),
                 }
             );
-
-            const result = await response.json();
-            console.log("Update Kitchen Note Response:", result);
-
-            if (response.ok && result.message?.status === "success") {
-                console.log(`Kitchen Note updated for POS Invoice ${posInvoiceId}`);
+    
+            const updateResult = await updateResponse.json();
+            console.log("Front.jsx: updateKitchenNote Response:", JSON.stringify(updateResult, null, 2));
+    
+            if (updateResponse.ok && updateResult.message?.status === "success") {
+                console.log(`Front.jsx: Kitchen Note updated for POS Invoice ${posInvoiceId}`);
                 return true;
             } else {
-                const errorMsg = result.message?.message || result.exception || "Unknown error";
-                console.error("Failed to update Kitchen Note:", errorMsg);
+                const errorMsg = updateResult.message?.message || updateResult.exception || "Unknown error";
+                console.error("Front.jsx: Failed to update Kitchen Note:", errorMsg);
                 return false;
             }
         } catch (error) {
-            console.error("Error updating Kitchen Note:", error);
+            console.error("Front.jsx: Error updating Kitchen Note:", error);
             return false;
         }
     };
@@ -582,7 +665,7 @@ function Front() {
         const posInvoiceId = existingOrder.name;
         const kitchenNoteSuccess = await updateKitchenNote(posInvoiceId);
         if (!kitchenNoteSuccess) {
-            console.warn(`Failed to update Kitchen Note for POS Invoice ${posInvoiceId}`);
+            console.warn(`Front.jsx: Failed to update Kitchen Note for POS Invoice ${posInvoiceId}`);
         }
     };
 
@@ -601,14 +684,14 @@ function Front() {
             });
             const result = await response.json();
             if (response.ok && result.message?.status === 'success') {
-                console.log(`Status updated to Paid for POS Invoice ${posInvoiceId}`);
+                console.log(`Front.jsx: Status updated to Paid for POS Invoice ${posInvoiceId}`);
                 return true;
             } else {
-                console.warn(`Failed to update status for POS Invoice ${posInvoiceId}: ${result.message?.message || 'Unknown error'}`);
+                console.warn(`Front.jsx: Failed to update status for POS Invoice ${posInvoiceId}: ${result.message?.message || 'Unknown error'}`);
                 return false;
             }
         } catch (error) {
-            console.error('Error updating invoice status:', error);
+            console.error('Front.jsx: Error updating invoice status:', error);
             return false;
         }
     };
@@ -618,7 +701,6 @@ function Front() {
             alert("Cart is empty. Please add items before proceeding to payment.");
             return;
         }
-
         if (deliveryType && deliveryType !== "DINE IN") {
             if (!address || address.trim() === "") {
                 alert("Please enter a delivery address for this delivery type.");
@@ -632,6 +714,10 @@ function Front() {
                 alert("Please enter an email address for this delivery type.");
                 return;
             }
+        }
+        if (deliveryType === "DINE IN" && (!tableNumber || chairCount < 1)) {
+            alert("Table number and at least one chair are required for DINE IN orders.");
+            return;
         }
 
         const subTotal = getSubTotal();
@@ -722,6 +808,7 @@ function Front() {
             status: "Paid",
             custom_table_number: tableNumber || "",
             custom_delivery_type: deliveryType || "DINE IN",
+            custom_chair_count: deliveryType === "DINE IN" ? chairCount : 0,
             customer_address: address || "",
             contact_mobile: phoneNumber || watsappNumber || "",
             contact_email: email || "",
@@ -766,13 +853,13 @@ function Front() {
                     if (!kitchenNoteExists) {
                         kitchenNoteSuccess = await createKitchenNote(posInvoiceId);
                         if (!kitchenNoteSuccess) {
-                            console.warn("Kitchen Note creation failed for POS Invoice:", posInvoiceId);
+                            console.warn("Front.jsx: Kitchen Note creation failed for POS Invoice:", posInvoiceId);
                         }
                     }
                 }
 
                 if (!existingOrder && result.message.data.status !== "Paid") {
-                    console.log(`Initial status is ${result.message.data.status}. Attempting to update to Paid for POS Invoice ${posInvoiceId}`);
+                    console.log(`Front.jsx: Initial status is ${result.message.data.status}. Attempting to update to Paid for POS Invoice ${posInvoiceId}`);
                     payload.name = posInvoiceId;
                     payload.status = "Paid";
                     const updateResponse = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice', {
@@ -786,11 +873,11 @@ function Front() {
                     });
                     const updateResult = await updateResponse.json();
                     if (updateResponse.ok && updateResult.message?.status === 'success') {
-                        console.log(`Status updated to Paid for POS Invoice ${posInvoiceId}`);
+                        console.log(`Front.jsx: Status updated to Paid for POS Invoice ${posInvoiceId}`);
                         result.message.data.status = "Paid";
                     } else {
                         const errorMsg = updateResult.message?.exception || updateResult.message?.message || "Unknown error";
-                        console.warn(`Failed to update status to Paid for POS Invoice ${posInvoiceId}: ${errorMsg}`);
+                        console.warn(`Front.jsx: Failed to update status to Paid for POS Invoice ${posInvoiceId}: ${errorMsg}`);
                     }
                 }
 
@@ -811,7 +898,7 @@ function Front() {
                 alert(`Failed to process payment for POS Invoice: ${errorMsg}`);
             }
         } catch (error) {
-            console.error("Error processing payment:", error);
+            console.error("Front.jsx: Error processing payment:", error);
             alert("Failed to process payment. Please try again.");
         }
     };
@@ -855,6 +942,11 @@ function Front() {
                 alert("Please enter an email address for this delivery type.");
                 return;
             }
+        }
+
+        if (deliveryType === "DINE IN" && (!tableNumber || chairCount < 1)) {
+            alert("Table number and at least one chair are required for DINE IN orders.");
+            return;
         }
 
         const allCartItems = cartItems.flatMap((item) => {
@@ -940,6 +1032,7 @@ function Front() {
             status: "Draft",
             custom_table_number: tableNumber || "",
             custom_delivery_type: deliveryType || "DINE IN",
+            custom_chair_count: deliveryType === "DINE IN" ? chairCount : 0,
             customer_address: address || "",
             contact_mobile: phoneNumber || watsappNumber || "",
             contact_email: email || "",
@@ -954,7 +1047,7 @@ function Front() {
             payload.name = existingOrder.name;
         }
 
-        console.log("Saving POS Invoice payload:", JSON.stringify(payload, null, 2));
+        console.log("Front.jsx: Saving POS Invoice payload:", JSON.stringify(payload, null, 2));
 
         try {
             const apiEndpoint = existingOrder && existingOrder.name
@@ -971,7 +1064,7 @@ function Front() {
             });
 
             const result = await response.json();
-            console.log("Response from POS Invoice API:", result);
+            console.log("Front.jsx: Response from POS Invoice API:", result);
 
             if (response.ok && result.message && result.message.status === "success") {
                 const posInvoiceId = result.message.data.name;
@@ -983,7 +1076,7 @@ function Front() {
                     kitchenNoteSuccess = await createKitchenNote(posInvoiceId);
                 }
                 if (!kitchenNoteSuccess) {
-                    console.warn("Kitchen Note creation/update failed for POS Invoice:", posInvoiceId);
+                    console.warn("Front.jsx: Kitchen Note creation/update failed for POS Invoice:", posInvoiceId);
                 }
                 alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: ₹${result.message.data.grand_total}`);
                 setCartItems([]);
@@ -996,7 +1089,7 @@ function Front() {
                 alert(`Failed to ${existingOrder ? "update" : "save"} POS Invoice: ${errorMsg}`);
             }
         } catch (error) {
-            console.error(`Error ${existingOrder ? "updating" : "saving"} POS Invoice:`, error);
+            console.error(`Front.jsx: Error ${existingOrder ? "updating" : "saving"} POS Invoice:`, error);
             alert("A network error occurred. Please check your connection and try again.");
         }
     };
@@ -1036,7 +1129,7 @@ function Front() {
                 setCustomers(formattedCustomers);
                 setFilteredCustomers(formattedCustomers);
             } catch (error) {
-                console.error("Network error fetching customers:", error);
+                console.error("Front.jsx: Network error fetching customers:", error);
             }
         };
         fetchCustomers();
@@ -1121,7 +1214,7 @@ function Front() {
                     alert(data.message || "Failed to create customer.");
                 }
             } catch (error) {
-                console.error("Error creating customer:", error);
+                console.error("Front.jsx: Error creating customer:", error);
                 alert("Failed to create customer. Please try again.");
             }
         } else {
@@ -1140,18 +1233,18 @@ function Front() {
 
     const handleAddToCart = (item) => {
         const itemToAdd = {
-          ...item,
-          quantity: 1, // Explicitly set quantity to 1 for new items
+            ...item,
+            quantity: 1,
         };
         console.log('Front.jsx: Adding to cart:', JSON.stringify(itemToAdd, null, 2));
         addToCart(itemToAdd);
-      };
+    };
 
     return (
         <>
             <div className="container-fluid">
                 <div className="row">
-                    <div className="col-lg-2 col-xl-1 category-sidebar">
+                    <div className="col-lg-2 col-xl-1 category-sidebar" style={{ background: "#3498db" }}>
                         <div className="row p-2">
                             {categories.map((category, index) => (
                                 <div key={index} className="col-lg-12 mb-2">
@@ -1159,7 +1252,7 @@ function Front() {
                                         className={`category-btn w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active' : ''}`}
                                         onClick={() => handleFilter(category)}
                                     >
-                                        <span>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                                        <span className='fs-12'>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
                                     </button>
                                 </div>
                             ))}
@@ -1167,7 +1260,7 @@ function Front() {
                     </div>
 
                     <div className="col-lg-5 col-xl-7 row2">
-                        <div className="row" style={{ overflowY: 'auto' }}>
+                        <div className="row" style={{ overflowY: 'scroll' }}>
                             {filteredItems.map((item, index) => (
                                 <div className="col-xl-3 col-lg-6 col-md-4 col-6 align-items-center my-2" key={item.id}>
                                     <div className="card" onClick={() => handleItemClick(item)}>
@@ -1188,38 +1281,43 @@ function Front() {
                             <div className="row p-2 mt-2 border shadow rounded flex-grow-1" style={{ overflowY: 'auto' }}>
                                 <div className="col-12 p-2 p-md-2 mb-3">
                                     <div className="text-center row">
-                                        <div className='row'>
+                                        <div className='row d-flex align-items-center'>
                                             {tableNumber ? (
                                                 <>
                                                     <div className='col-lg-2 text-start' style={{ position: "relative" }}>
-                                                        <h1
-                                                            className="display-4 fs-2"
+                                                        <p
                                                             style={{
                                                                 background: tableNumber ? "rgb(58 56 56)" : "transparent",
                                                                 color: tableNumber ? "white" : "inherit",
                                                                 borderRadius: tableNumber ? "5px" : "0",
-                                                                padding: tableNumber ? "4px 20px" : "0",
+                                                                padding: tableNumber ? "4px 10px" : "0",
                                                                 display: "flex",
                                                                 alignItems: "center",
                                                                 justifyContent: "center",
+                                                                fontSize: "12px",
+                                                                marginBottom: "0"
                                                             }}
                                                         >
-                                                            <small
+                                                            T No: {tableNumber}
+                                                        </p>
+                                                        {deliveryType === "DINE IN" && chairCount > 0 && (
+                                                            <p
                                                                 style={{
-                                                                    position: "absolute",
-                                                                    top: "0px",
-                                                                    left: "50%",
-                                                                    transform: "translateX(-50%)",
-                                                                    fontSize: "10px",
+                                                                    fontSize: "12px",
                                                                     color: "#fff",
+                                                                    background: "rgb(58 56 56)",
+                                                                    borderRadius: "5px",
+                                                                    padding: "2px 10px",
+                                                                    marginTop: "5px",
+                                                                    textAlign: "center",
+                                                                    marginBottom: "0"
                                                                 }}
                                                             >
-                                                                T.no
-                                                            </small>
-                                                            {tableNumber}
-                                                        </h1>
+                                                                Chairs: {chairCount}
+                                                            </p>
+                                                        )}
                                                     </div>
-                                                    <div className='col-10 col-lg-4 mb-2 position-relative'>
+                                                    <div className='col-10 col-lg-4 position-relative'>
                                                         <input
                                                             type="text"
                                                             className="form-control"
@@ -1272,7 +1370,7 @@ function Front() {
                                                             </ul>
                                                         )}
                                                     </div>
-                                                    <div className='col-10 col-lg-4 mb-2'>
+                                                    <div className='col-10 col-lg-4'>
                                                         <input
                                                             type="text"
                                                             className="form-control"
@@ -1282,7 +1380,7 @@ function Front() {
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
                                                     </div>
-                                                    <div className='col-2 col-lg-2 mb-2' style={{ background: "rgb(58 56 56)", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <div className='col-2 col-lg-2' style={{ background: "rgb(58 56 56)", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                         <span
                                                             onClick={handleCustomerSubmit}
                                                             style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
@@ -1453,7 +1551,7 @@ function Front() {
                                                                 <td>
                                                                     <span
                                                                         style={{ marginLeft: row.isMain ? "0" : "10px", cursor: row.isMain ? "pointer" : "default" }}
-                                                                        onClick={() => row.isMain && handleItemClick(allItems.find(i => i.item_code === item.item_code), item)} // Pass cart item for update
+                                                                        onClick={() => row.isMain && handleItemClick(allItems.find(i => i.item_code === item.item_code), item)}
                                                                     >
                                                                         {row.name}
                                                                     </span>
@@ -1462,7 +1560,6 @@ function Front() {
                                                                             <strong>Note:</strong> {row.note}
                                                                         </p>
                                                                     )}
-                                                            
                                                                 </td>
                                                                 <td>
                                                                     {row.quantity && (
@@ -1671,7 +1768,12 @@ function Front() {
                                                                 <div className="modal-body">
                                                                     <div className="bill-section border p-3 shadow rounded">
                                                                         <div className="d-flex justify-content-between">
-                                                                            <p><strong>{tableNumber ? "Table No" : "Delivery Type"}:</strong> {tableNumber || deliveryType}</p>
+                                                                            <p>
+                                                                                <strong>{tableNumber ? "Table No" : "Delivery Type"}:</strong> {tableNumber || deliveryType}
+                                                                                {deliveryType === "DINE IN" && chairCount > 0 && (
+                                                                                    <span> (Chairs: {chairCount})</span>
+                                                                                )}
+                                                                            </p>
                                                                             <p><strong>Customer:</strong> {customerName}</p>
                                                                         </div>
                                                                         {deliveryType !== "DINE IN" && (

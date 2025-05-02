@@ -159,14 +159,14 @@
 /* Ingredients styles unchanged */
 
 /* Ingredients */
-.ingredient-container {
+/* .ingredient-container {
   margin: 20px 0;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
+  padding: 20px; */
+  /* border: 1px solid #ddd; */
+  /* border-radius: 8px; */
+  /* background-color: #f9f9f9; */
+  /* box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); */
+/* } */
 
 .ingredient-title {
   margin-bottom: 16px;
@@ -174,7 +174,6 @@
   font-weight: bold;
   color: #333;
   text-align: center;
-  border-bottom: 2px solid #ddd;
   padding-bottom: 8px;
 }
 

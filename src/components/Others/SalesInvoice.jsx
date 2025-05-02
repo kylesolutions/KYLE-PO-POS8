@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import './salesInvoice.css';
 
 function SalesInvoice() {
   const [invoices, setInvoices] = useState([]);
@@ -49,7 +50,7 @@ function SalesInvoice() {
         ? (invoice.posting_date || "").includes(filterDate)
         : true;
       const matchesTime = filterTime
-        ? (invoice.posting_date || "").includes(filterTime)
+        ? (invoice.posting_time || "").includes(filterTime)
         : true;
       const matchesMobile = filterMobile
         ? (invoice.customer_details?.mobile_no || "").toLowerCase().includes(filterMobile.toLowerCase())
@@ -70,9 +71,25 @@ function SalesInvoice() {
       day: "numeric",
       month: "long",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return "N/A";
+    try {
+      const [hours, minutes, seconds] = timeString.split(":").map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, seconds);
+      return date.toLocaleString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+    } catch (error) {
+      console.error("Error formatting time:", timeString, error);
+      return "N/A";
+    }
   };
 
   const formatDiscount = (invoice) => {
@@ -100,14 +117,24 @@ function SalesInvoice() {
               max-width: 800px; 
               margin: 0 auto; 
             }
-            .invoice-details { 
+            .invoice-details, .customer-details, .footer .totals { 
               margin-bottom: 15px; 
             }
-            .invoice-details p, .customer-details p { 
+            .invoice-details p, .customer-details p, .footer .totals p { 
               margin: 5px 0; 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: center; 
+            }
+            .invoice-details p strong, .customer-details p strong, .footer .totals p strong { 
+              text-align: left; 
+              flex: 0 0 40%; 
+            }
+            .invoice-details p .value, .customer-details p .value, .footer .totals p .value { 
+              text-align: right; 
+              flex: 0 0 60%; 
             }
             .customer-details { 
-              margin-bottom: 15px; 
               border-bottom: 1px solid #000; 
               padding-bottom: 10px; 
             }
@@ -119,7 +146,7 @@ function SalesInvoice() {
             th, td { 
               border: 1px solid #000; 
               padding: 8px; 
-              text-align: left; 
+              text-align: right; 
             }
             th { 
               font-weight: bold; 
@@ -130,10 +157,8 @@ function SalesInvoice() {
               margin-top: 15px; 
             }
             .footer .totals { 
-              text-align: right; 
-            }
-            .footer p { 
-              margin: 5px 0; 
+              width: 100%; 
+              max-width: 300px; 
             }
             @media print {
               @page { margin: 0; }
@@ -145,17 +170,18 @@ function SalesInvoice() {
         <body>
           <div class="invoice-container">
             <div class="invoice-details">
-              <p><strong>Invoice ID:</strong> ${invoice.name}</p>
-              <p><strong>Posting Date:</strong> ${formatDate(invoice.posting_date)}</p>
+              <p><strong>Invoice ID:</strong> <span class="value">${invoice.name}</span></p>
+              <p><strong>Posting Date:</strong> <span class="value">${formatDate(invoice.posting_date)}</span></p>
+              <p><strong>Posting Time:</strong> <span class="value">${formatTime(invoice.posting_time)}</span></p>
             </div>
             <div class="customer-details">
-              <p><strong>Customer Name:</strong> ${invoice.customer_details?.customer_name || "N/A"}</p>
+              <p><strong>Customer Name:</strong> <span class="value">${invoice.customer_details?.customer_name || "N/A"}</span></p>
               ${
                 invoice.customer_details?.address
-                  ? `<p><strong>Address:</strong> ${invoice.customer_details.address}</p>`
+                  ? `<p><strong>Address:</strong> <span class="value">${invoice.customer_details.address}</span></p>`
                   : ""
               }
-              <p><strong>Phone Number:</strong> ${invoice.customer_details?.mobile_no || "N/A"}</p>
+              <p><strong>Phone Number:</strong> <span class="value">${invoice.customer_details?.mobile_no || "N/A"}</span></p>
             </div>
             <table>
               <thead>
@@ -165,6 +191,8 @@ function SalesInvoice() {
                   <th>Quantity</th>
                   <th>Rate</th>
                   <th>Amount</th>
+                  <th>Size</th>
+                  <th>Varient</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,6 +207,8 @@ function SalesInvoice() {
                             <td>${item.qty || 0}</td>
                             <td>₹${item.rate || 0}</td>
                             <td>₹${item.amount || 0}</td>
+                            <td>${item.custom_size_variants}</td>
+                            <td>${item.custom_other_variants}</td>
                           </tr>
                         `
                         )
@@ -189,11 +219,12 @@ function SalesInvoice() {
             </table>
             <div class="footer">
               <div class="totals">
-                <p><strong>Total Taxes:</strong> ₹${invoice.total_taxes_and_charges || 0}</p>
-                <p><strong>Discount:</strong> ${formatDiscount(invoice)} (${invoice.apply_discount_on || "Grand Total"})</p>
-                <p><strong>Currency:</strong> ${invoice.currency || "INR"}</p>
-                <p><strong>Paid Amount:</strong> ₹${invoice.paid_amount || 0}</p>
-                <p><strong>Grand Total:</strong> ₹${invoice.grand_total || 0}</p>
+                <p><strong>Total Taxes:</strong> <span class="value">₹${invoice.total_taxes_and_charges || 0}</span></p>
+                <p><strong>Discount:</strong> <span class="value">${formatDiscount(invoice)} (${invoice.apply_discount_on || "Grand Total"})</span></p>
+                <p><strong>Currency:</strong> <span class="value">${invoice.currency || "INR"}</span></p>
+                <p><strong>Paid Amount:</strong> <span class="value">₹${invoice.paid_amount || 0}</span></p>
+                <p><strong>Grand Total:</strong> <span class="value">₹${invoice.grand_total || 0}</span></p>
+                <p><strong>In Words:</strong> <span class="value">${invoice.in_words || "N/A"}</span></p>
               </div>
             </div>
           </div>
@@ -295,7 +326,7 @@ function SalesInvoice() {
                   <td>₹{invoice.grand_total || 0}</td>
                   <td>
                     {formatDiscount(invoice)}
-                    {invoice.apply_discount_on ? ` (${invoice.apply_discount_on})` : ""}
+                    {invoice.apply_discount_on ? `(${invoice.apply_discount_on})` : ""}
                   </td>
                   <td>
                     <button
@@ -327,12 +358,28 @@ function SalesInvoice() {
             </div>
             <div className="modal-body">
               <div className="mb-3">
-                <p><strong>Posting Date:</strong> {formatDate(selectedInvoice.posting_date)}</p>
-                <p><strong>Customer Name:</strong> {selectedInvoice.customer_details?.customer_name || "N/A"}</p>
+                <p>
+                  <strong>Posting Date:</strong>{" "}
+                  <span className="value">{formatDate(selectedInvoice.posting_date)}</span>
+                </p>
+                <p>
+                  <strong>Posting Time:</strong>{" "}
+                  <span className="value">{formatTime(selectedInvoice.posting_time)}</span>
+                </p>
+                <p>
+                  <strong>Customer Name:</strong>{" "}
+                  <span className="value">{selectedInvoice.customer_details?.customer_name || "N/A"}</span>
+                </p>
                 {selectedInvoice.customer_details?.address && (
-                  <p><strong>Address:</strong> {selectedInvoice.customer_details.address}</p>
+                  <p>
+                    <strong>Address:</strong>{" "}
+                    <span className="value">{selectedInvoice.customer_details.address}</span>
+                  </p>
                 )}
-                <p><strong>Phone Number:</strong> {selectedInvoice.customer_details?.mobile_no || "N/A"}</p>
+                <p>
+                  <strong>Phone Number:</strong>{" "}
+                  <span className="value">{selectedInvoice.customer_details?.mobile_no || "N/A"}</span>
+                </p>
               </div>
               <h6>Items:</h6>
               {selectedInvoice.pos_invoice_items && selectedInvoice.pos_invoice_items.length > 0 ? (
@@ -342,9 +389,11 @@ function SalesInvoice() {
                       <tr>
                         <th>Item Name</th>
                         <th>Description</th>
-                        <th>Quantity</th>
-                        <th>Rate</th>
-                        <th>Amount</th>
+                        <th className="table-right-align">Quantity</th>
+                        <th className="table-right-align">Rate</th>
+                        <th className="table-right-align">Amount</th>
+                        <th className="table-right-align">Size</th>
+                        <th className="table-right-align">Varient</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -352,9 +401,11 @@ function SalesInvoice() {
                         <tr key={idx}>
                           <td>{item.item_name || "N/A"}</td>
                           <td>{item.description || "N/A"}</td>
-                          <td>{item.qty || 0}</td>
-                          <td>₹{item.rate || 0}</td>
-                          <td>₹{item.amount || 0}</td>
+                          <td className="table-right-align">{item.qty || 0}</td>
+                          <td className="table-right-align">₹{item.rate || 0}</td>
+                          <td className="table-right-align">₹{item.amount || 0}</td>
+                          <td className="table-right-align">{item.custom_size_variants}</td>
+                          <td className="table-right-align">{item.custom_other_variants}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -364,11 +415,32 @@ function SalesInvoice() {
                 <p>No items found</p>
               )}
               <div className="mt-3">
-                <p><strong>Total Taxes:</strong> ₹{selectedInvoice.total_taxes_and_charges || 0}</p>
-                <p><strong>Discount:</strong> {formatDiscount(selectedInvoice)} ({selectedInvoice.apply_discount_on || "Grand Total"})</p>
-                <p><strong>Currency:</strong> {selectedInvoice.currency || "INR"}</p>
-                <p><strong>Paid Amount:</strong> ₹{selectedInvoice.paid_amount || 0}</p>
-                <p><strong>Grand Total:</strong> ₹{selectedInvoice.grand_total || 0}</p>
+                <p>
+                  <strong>Total Taxes:</strong>{" "}
+                  <span className="value">₹{selectedInvoice.total_taxes_and_charges || 0}</span>
+                </p>
+                <p>
+                  <strong>Discount:</strong>{" "}
+                  <span className="value">
+                    {formatDiscount(selectedInvoice)} ({selectedInvoice.apply_discount_on || "Grand Total"})
+                  </span>
+                </p>
+                <p>
+                  <strong>Currency:</strong>{" "}
+                  <span className="value">{selectedInvoice.currency || "INR"}</span>
+                </p>
+                <p>
+                  <strong>Paid Amount:</strong>{" "}
+                  <span className="value">₹{selectedInvoice.paid_amount || 0}</span>
+                </p>
+                <p>
+                  <strong>Grand Total:</strong>{" "}
+                  <span className="value">₹{selectedInvoice.grand_total || 0}</span>
+                </p>
+                <p>
+                  <strong>In Words:</strong>{" "}
+                  <span className="value">{selectedInvoice.in_words || "N/A"}</span>
+                </p>
               </div>
             </div>
             <div className="modal-footer">
@@ -491,3 +563,4 @@ function SalesInvoice() {
 }
 
 export default SalesInvoice;
+

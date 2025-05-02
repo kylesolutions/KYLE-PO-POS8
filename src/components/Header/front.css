@@ -5,7 +5,7 @@
     height: 90vh;
     padding: 10px 5px;
     box-shadow: 2px 0 8px rgba(0, 123, 255, 0.15); /* Subtle blue shadow */
-    border-radius: 10px 0 0 10px;
+   
     overflow-y: auto;
   }
   
@@ -26,7 +26,7 @@
   .category-btn:hover {
     background: #3498db; /* Primary blue on hover */
     color: #ffffff; /* White text */
-    border-color: #3498db; /* Ensure border matches */
+    border-color: #ffffff; /* Ensure border matches */
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2); /* Stronger blue shadow */
   }

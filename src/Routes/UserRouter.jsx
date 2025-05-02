@@ -12,6 +12,7 @@ import BearerLoginPage from '../Pages/BearerLoginPage'
 import SalesInvoicePage from '../Pages/SalesInvoicePage'
 import OpeningEntryPage from '../Pages/OpeningEntryPage'
 import ClosingEntryPage from '../Pages/ClosingEntryPage'
+import DispatchPage from '../Pages/DispatchPage'
 
 function UserRouter() {
   return (
@@ -29,6 +30,7 @@ function UserRouter() {
         <Route path='salesinvoice' element={<SalesInvoicePage/>}/>
         <Route path='openingentry' element={<OpeningEntryPage/>}/>
         <Route path='closingentry' element={<ClosingEntryPage/>}/>
+        <Route path='dispatch' element={<DispatchPage/>}/>
     </Routes>
     </>
   )

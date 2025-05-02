@@ -58,14 +58,14 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                         cartItemId: uuidv4(),
                         item_code: item.item_code,
                         name: item.item_name,
-                        description: item.custom_customer_description || "", // Map backend field to description
+                        description: item.custom_customer_description || "",
                         basePrice: parseFloat(item.rate) || 0,
                         quantity: parseInt(item.qty, 10) || 1,
                         selectedSize: item.custom_size_variants || null,
                         selectedCustomVariant: item.custom_other_variants || null,
                         kitchen: menuItem.custom_kitchen || item.custom_kitchen || "Unknown",
-                        addonCounts: {}, // Addons not fetched here, adjust if needed
-                        selectedCombos: [], // Combos not fetched here, adjust if needed
+                        addonCounts: {},
+                        selectedCombos: [],
                     };
                 });
 
@@ -75,9 +75,11 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     custom_table_number: order.custom_table_number,
                     contact_mobile: order.contact_mobile,
                     custom_delivery_type: order.custom_delivery_type || "DINE IN",
+                    custom_chair_count: parseInt(order.custom_chair_count) || 0, // Include chair count
                     customer_address: order.customer_address || "",
                     contact_email: order.contact_email || "",
                     posting_date: order.posting_date,
+                    posting_time:order.posting_time,
                     cartItems,
                     apply_discount_on: order.apply_discount_on || "Grand Total",
                     additional_discount_percentage: parseFloat(order.additional_discount_percentage) || 0,
@@ -103,10 +105,10 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
     const handleSelectOrder = (order) => {
         const formattedCartItems = order.cartItems.map((item) => ({
             cartItemId: item.cartItemId || uuidv4(),
-            id: item.item_code, // Ensure id is included for Front
+            id: item.item_code,
             item_code: item.item_code,
             name: item.name,
-            custom_customer_description: item.description || "", // Map to backend field name expected by Front
+            custom_customer_description: item.description || "",
             basePrice: item.basePrice || 0,
             quantity: item.quantity || 1,
             selectedSize: item.selectedSize || null,
@@ -116,13 +118,13 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
             kitchen: item.kitchen || "Unknown",
         }));
 
-        console.log("Formatted cart items for Front:", formattedCartItems); // Debug log
+        console.log("Formatted cart items for Front:", formattedCartItems);
         setCartItems(formattedCartItems);
 
         alert(
             `You selected ${
                 order.custom_delivery_type === "DINE IN"
-                    ? `Table ${order.custom_table_number}`
+                    ? `Table ${order.custom_table_number}${order.custom_chair_count > 0 ? ` (Chairs: ${order.custom_chair_count})` : ""}`
                     : `Order (${order.custom_delivery_type})`
             }`
         );
@@ -132,6 +134,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                 tableNumber: order.custom_table_number,
                 phoneNumber: order.contact_mobile,
                 customerName: order.customer,
+                chairCount: order.custom_chair_count, // Pass chair count
                 existingOrder: {
                     ...order,
                     items: order.cartItems.map((item) => ({
@@ -147,6 +150,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     apply_discount_on: order.apply_discount_on,
                     additional_discount_percentage: order.additional_discount_percentage,
                     discount_amount: order.discount_amount,
+                    custom_chair_count: order.custom_chair_count, // Include in existingOrder
                 },
                 deliveryType: order.custom_delivery_type,
                 address: order.customer_address,
@@ -162,10 +166,11 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     ...order,
                     cartItems: order.cartItems.map((item) => ({
                         ...item,
-                        custom_customer_description: item.description || "", // Map to backend field for kitchen
+                        custom_customer_description: item.description || "",
                         kitchen: item.kitchen || "Unknown",
                     })),
                     custom_delivery_type: order.custom_delivery_type || "DINE IN",
+                    custom_chair_count: order.custom_chair_count, // Pass chair count
                 },
             },
         });
@@ -188,6 +193,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                 <th>#</th>
                                 <th>Customer Name</th>
                                 <th>Table Number</th>
+                                <th>Chair Count</th>
                                 <th>Phone Number</th>
                                 <th>Delivery Type</th>
                                 <th>Address</th>
@@ -203,6 +209,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                     <td>{index + 1}</td>
                                     <td>{order.customer}</td>
                                     <td>{order.custom_table_number || "N/A"}</td>
+                                    <td>{order.custom_delivery_type === "DINE IN" ? order.custom_chair_count : "N/A"}</td>
                                     <td>{order.contact_mobile || "N/A"}</td>
                                     <td>{order.custom_delivery_type}</td>
                                     <td>{order.customer_address || "N/A"}</td>
@@ -254,7 +261,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                             </div>
                                         ))}
                                     </td>
-                                    <td>{new Date(order.posting_date).toLocaleString()}</td>
+                                    <td>{order.posting_date} {order.posting_time}</td>
                                     <td className="d-flex">
                                         <button
                                             className="btn btn-primary btn-sm me-2"
@@ -280,3 +287,4 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
 }
 
 export default SavedOrder;
+

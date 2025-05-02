@@ -9,59 +9,66 @@ function Kitchen() {
     const [preparedItems, setPreparedItems] = useState([]);
     const [selectedKitchen, setSelectedKitchen] = useState(null);
     const [showStatusPopup, setShowStatusPopup] = useState(false);
-    const [pickedUpOrders, setPickedUpOrders] = useState({});
+    const [preparedOrders, setPreparedOrders] = useState({});
     const [searchInvoiceId, setSearchInvoiceId] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const fetchKitchenNotes = async () => {
-            try {
-                setLoading(true);
-                setError(null);
+    const fetchKitchenNotes = async () => {
+        try {
+            setLoading(true);
+            setError(null);
 
-                const response = await fetch(
-                    "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kitchen_notes",
-                    {
-                        method: "GET",
-                        headers: {
-                            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                            "Content-Type": "application/json",
-                        },
-                    }
-                );
+            const response = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kitchen_notes",
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
 
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch Kitchen Notes: ${response.status} - ${response.statusText}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch Kitchen Notes: ${response.status} - ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log("Kitchen.jsx: Raw response from get_kitchen_notes:", JSON.stringify(data, null, 2));
+
+            if (data.message?.status !== "success") {
+                throw new Error(data.message?.message || data.exception || "Invalid response from server");
+            }
+
+            if (!data.message?.data || !Array.isArray(data.message.data) || data.message.data.length === 0) {
+                console.warn("Kitchen.jsx: No kitchen notes found in response:", data);
+                setKitchenNotes([]);
+                setLoading(false);
+                return;
+            }
+
+            const storedPreparedOrders = JSON.parse(localStorage.getItem("preparedOrders")) || {};
+
+            const formattedNotes = data.message.data.map((note) => {
+                const chairCount = parseInt(note.number_of_chair) || 0;
+                console.log(`Kitchen.jsx: Processing note ${note.pos_invoice_id} - number_of_chair: ${note.number_of_chair}, parsed: ${chairCount}`);
+                if (note.delivery_type === "DINE IN" && chairCount === 0) {
+                    console.warn(`Kitchen.jsx: Warning: chairCount is 0 for DINE IN order ${note.pos_invoice_id}`);
                 }
 
-                const data = await response.json();
-                console.log("Raw response from get_kitchen_notes in Kitchen:", data);
-
-                if (data.message?.status !== "success") {
-                    throw new Error(data.message?.message || data.exception || "Invalid response from server");
-                }
-
-                if (!data.message?.data || !Array.isArray(data.message.data) || data.message.data.length === 0) {
-                    console.warn("No kitchen notes found in response:", data);
-                    setKitchenNotes([]);
-                    setLoading(false);
-                    return;
-                }
-
-                const storedPickedUpOrders = JSON.parse(localStorage.getItem("pickedUpOrders")) || {};
-
-                const formattedNotes = data.message.data.map((note) => ({
+                return {
                     name: note.name,
                     pos_invoice_id: note.pos_invoice_id,
                     customer: note.customer_name || "Unknown",
                     custom_table_number: note.table_number || "N/A",
                     custom_delivery_type: note.delivery_type || "DINE IN",
+                    custom_chair_count: chairCount,
                     posting_date: note.order_time,
                     cartItems: note.items.map((item) => {
-                        const itemId = `${note.name}-${item.name}`;
-                        const isPickedUp = Object.values(storedPickedUpOrders).some(o =>
-                            o.items.some(i => i.id === itemId && i.status === "PickedUp")
+                        const itemId = `${note.name}-${item.name}-${uuidv4()}`; // Ensure unique itemId
+                        const isPrepared = Object.values(storedPreparedOrders).some(o =>
+                            o.items.some(i => i.id === itemId && i.status === "Prepared")
                         );
                         return {
                             id: itemId,
@@ -75,7 +82,7 @@ function Kitchen() {
                             selectedSize: "",
                             selectedCustomVariant: "",
                             kitchen: item.kitchen || "Unknown",
-                            status: isPickedUp ? "PickedUp" : (item.status || "Prepare"),
+                            status: isPrepared ? "Prepared" : (item.status || "Prepare"),
                             addonCounts: {},
                             selectedCombos: [],
                             type: "main",
@@ -86,54 +93,64 @@ function Kitchen() {
                             })) || [],
                         };
                     }),
-                }));
+                };
+            });
 
-                if (location.state?.order) {
-                    const passedOrder = {
-                        ...location.state.order,
-                        cartItems: location.state.order.cartItems.map(item => ({
-                            id: `${location.state.order.name}-${item.item_code || item.name}-${uuidv4()}`,
-                            backendId: item.name,
-                            item_code: item.item_code || item.name,
-                            name: item.name,
-                            custom_customer_description: item.custom_customer_description || "",
-                            custom_variants: item.custom_variants || "",
-                            basePrice: parseFloat(item.basePrice) || 0,
-                            quantity: parseInt(item.quantity, 10) || 1,
-                            selectedSize: item.selectedSize || "",
-                            selectedCustomVariant: item.selectedCustomVariant || "",
-                            kitchen: item.kitchen || "Unknown",
-                            status: item.status || "Prepare",
-                            addonCounts: item.addonCounts || {},
-                            selectedCombos: item.selectedCombos || [],
-                            type: "main",
-                            ingredients: item.ingredients?.map((ing) => ({
-                                name: ing.name || ing.ingredients_name || "Unknown Ingredient",
-                                quantity: parseFloat(ing.quantity) || 100,
-                                unit: ing.unit || "g",
-                            })) || [],
-                        })),
-                    };
-                    setKitchenNotes([passedOrder]);
-                    setSelectedKitchen(passedOrder.cartItems[0]?.kitchen || "Unknown");
-                } else {
-                    setKitchenNotes(formattedNotes);
+            if (location.state?.order) {
+                const passedOrder = {
+                    ...location.state.order,
+                    custom_chair_count: parseInt(location.state.order.custom_chair_count) || 0,
+                    cartItems: location.state.order.cartItems.map(item => ({
+                        id: `${location.state.order.name}-${item.item_code || item.name}-${uuidv4()}`,
+                        backendId: item.name,
+                        item_code: item.item_code || item.name,
+                        name: item.name,
+                        custom_customer_description: item.custom_customer_description || "",
+                        custom_variants: item.custom_variants || "",
+                        basePrice: parseFloat(item.basePrice) || 0,
+                        quantity: parseInt(item.quantity, 10) || 1,
+                        selectedSize: item.selectedSize || "",
+                        selectedCustomVariant: item.selectedCustomVariant || "",
+                        kitchen: item.kitchen || "Unknown",
+                        status: item.status || "Prepare",
+                        addonCounts: item.addonCounts || {},
+                        selectedCombos: item.selectedCombos || [],
+                        type: "main",
+                        ingredients: item.ingredients?.map((ing) => ({
+                            name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                            quantity: parseFloat(ing.quantity) || 100,
+                            unit: ing.unit || "g",
+                        })) || [],
+                    })),
+                };
+                console.log(`Kitchen.jsx: Passed order - custom_chair_count: ${passedOrder.custom_chair_count}`);
+                if (passedOrder.custom_delivery_type === "DINE IN" && passedOrder.custom_chair_count === 0) {
+                    console.warn(`Kitchen.jsx: Warning: chairCount is 0 for passed DINE IN order ${passedOrder.pos_invoice_id}`);
                 }
-
-                const storedPreparedItems = JSON.parse(localStorage.getItem("preparedItems")) || [];
-                setPreparedItems(storedPreparedItems);
-                setPickedUpOrders(storedPickedUpOrders);
-            } catch (error) {
-                const errorMessage = error.message || "An unexpected error occurred";
-                console.error("Error fetching Kitchen Notes:", error);
-                setError(`Failed to load kitchen notes: ${errorMessage}. Please try again or contact support.`);
-                setKitchenNotes([]);
-            } finally {
-                setLoading(false);
+                setKitchenNotes([passedOrder]);
+                setSelectedKitchen(passedOrder.cartItems[0]?.kitchen || "Unknown");
+            } else {
+                setKitchenNotes(formattedNotes);
             }
-        };
 
+            const storedPreparedItems = JSON.parse(localStorage.getItem("preparedItems")) || [];
+            setPreparedItems(storedPreparedItems);
+            setPreparedOrders(storedPreparedOrders);
+            console.log("Kitchen.jsx: Updated kitchenNotes:", JSON.stringify(formattedNotes, null, 2));
+        } catch (error) {
+            const errorMessage = error.message || "An unexpected error occurred";
+            console.error("Kitchen.jsx: Error fetching Kitchen Notes:", error);
+            setError(`Failed to load kitchen notes: ${errorMessage}. Please try again or contact support.`);
+            setKitchenNotes([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchKitchenNotes();
+        const intervalId = setInterval(fetchKitchenNotes, 30000);
+        return () => clearInterval(intervalId);
     }, [location]);
 
     const kitchens = [
@@ -153,24 +170,29 @@ function Kitchen() {
     const filteredItemsMap = new Map();
     kitchenNotes.forEach((order) => {
         order.cartItems.forEach((item) => {
-            if (item.kitchen === selectedKitchen && item.status !== "PickedUp") {
+            if (item.kitchen === selectedKitchen && item.status !== "Prepared") {
                 filteredItemsMap.set(item.id, {
                     ...item,
                     pos_invoice_id: order.pos_invoice_id,
                     tableNumber: order.custom_table_number,
                     deliveryType: order.custom_delivery_type,
+                    chairCount: order.custom_chair_count,
                 });
             }
         });
     });
     const filteredItems = Array.from(filteredItemsMap.values());
+    console.log("Kitchen.jsx: Filtered items for", selectedKitchen, ":", JSON.stringify(filteredItems, null, 2));
 
     const handleStatusChange = async (id, newStatus) => {
         try {
             const item = filteredItems.find((i) => i.id === id);
             if (!item) throw new Error("Item not found");
 
-            const response = await fetch(
+            console.log("Kitchen.jsx: Changing status for item", item.name, "to", newStatus);
+
+            // Update backend status
+            const statusResponse = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
                 {
                     method: "POST",
@@ -185,18 +207,69 @@ function Kitchen() {
                 }
             );
 
-            const result = await response.json();
-            if (result.message?.status !== "success") {
-                throw new Error(result.message?.message || result.exception || "Failed to update status");
+            const statusResult = await statusResponse.json();
+            console.log("Kitchen.jsx: Status update response:", JSON.stringify(statusResult, null, 2));
+            if (statusResult.message?.status !== "success") {
+                throw new Error(statusResult.message?.message || statusResult.exception || "Failed to update status");
             }
 
+            // Handle "Prepared" status: delete from backend and add to preparedOrders
+            if (newStatus === "Prepared") {
+                const deleteResponse = await fetch(
+                    "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_kitchen_note_item",
+                    {
+                        method: "POST",
+                        headers: {
+                            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            item_name: item.backendId,
+                        }),
+                    }
+                );
+
+                const deleteResult = await deleteResponse.json();
+                console.log("Kitchen.jsx: Delete item response:", JSON.stringify(deleteResult, null, 2));
+                if (deleteResult.message?.status !== "success") {
+                    throw new Error(deleteResult.message?.message || deleteResult.exception || "Failed to delete item");
+                }
+
+                const preparedTime = new Date().toLocaleString();
+                const orderName = item.pos_invoice_id || item.id.split("-")[0];
+                const preparedItem = {
+                    ...item,
+                    preparedTime,
+                    status: "Prepared",
+                };
+
+                setPreparedOrders((prev) => {
+                    const existingOrder = prev[orderName] || {
+                        customerName: item.customer || "Unknown",
+                        tableNumber: item.tableNumber || "N/A",
+                        deliveryType: item.deliveryType || "DINE IN",
+                        chairCount: item.chairCount || 0,
+                        pos_invoice_id: orderName,
+                        items: [],
+                    };
+                    if (!existingOrder.items.some((i) => i.id === item.id)) {
+                        existingOrder.items.push(preparedItem);
+                    }
+                    const newPreparedOrders = { ...prev, [orderName]: existingOrder };
+                    localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
+                    console.log("Kitchen.jsx: Updated preparedOrders:", JSON.stringify(newPreparedOrders, null, 2));
+                    return newPreparedOrders;
+                });
+            }
+
+            // Update local state
             const updatedOrders = kitchenNotes.map((order) => ({
                 ...order,
-                cartItems: order.cartItems.map((item) => {
-                    if (item.id === id) {
-                        return { ...item, status: newStatus };
+                cartItems: order.cartItems.map((cartItem) => {
+                    if (cartItem.id === id) {
+                        return { ...cartItem, status: newStatus };
                     }
-                    return item;
+                    return cartItem;
                 }),
             }));
 
@@ -208,87 +281,27 @@ function Kitchen() {
 
             setKitchenNotes(updatedOrders);
             localStorage.setItem("preparedItems", JSON.stringify(preparedItems));
+            console.log("Kitchen.jsx: Updated kitchenNotes after status change:", JSON.stringify(updatedOrders, null, 2));
+
+            // Fetch fresh data to ensure consistency
+            await fetchKitchenNotes();
         } catch (error) {
-            console.error("Error updating status:", error);
+            console.error("Kitchen.jsx: Error updating status:", error);
             alert(`Unable to update item status: ${error.message || "Please try again."}`);
         }
     };
 
-    const handlePickUp = async (id) => {
-        try {
-            const item = filteredItems.find((i) => i.id === id);
-            if (!item) throw new Error("Item not found");
-
-            const response = await fetch(
-                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_kitchen_note_item",
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        item_name: item.backendId,
-                    }),
-                }
-            );
-
-            const result = await response.json();
-            if (result.message?.status !== "success") {
-                throw new Error(result.message?.message || result.exception || "Failed to delete item");
-            }
-
-            const pickupTime = new Date().toLocaleString();
-            const updatedOrders = kitchenNotes.map((order) => ({
-                ...order,
-                cartItems: order.cartItems.map((item) => {
-                    if (item.id === id) {
-                        return { ...item, status: "PickedUp" };
-                    }
-                    return item;
-                }),
-            }));
-
-            const pickedItem = filteredItems.find((item) => item.id === id);
-            if (pickedItem) {
-                const orderName = pickedItem.pos_invoice_id || pickedItem.id.split("-")[0];
-                setPickedUpOrders((prev) => {
-                    const existingOrder = prev[orderName] || {
-                        customerName: pickedItem.customer || "Unknown",
-                        tableNumber: pickedItem.tableNumber || "N/A",
-                        deliveryType: pickedItem.deliveryType || "DINE IN",
-                        pos_invoice_id: orderName,
-                        items: [],
-                    };
-                    if (!existingOrder.items.some((i) => i.id === pickedItem.id)) {
-                        existingOrder.items.push({
-                            ...pickedItem,
-                            pickupTime,
-                            kitchen: selectedKitchen,
-                            status: "PickedUp",
-                        });
-                    }
-                    const newPickedUpOrders = { ...prev, [orderName]: existingOrder };
-                    localStorage.setItem("pickedUpOrders", JSON.stringify(newPickedUpOrders));
-                    return newPickedUpOrders;
-                });
-            }
-
-            setKitchenNotes(updatedOrders);
-        } catch (error) {
-            console.error("Error marking item as picked up:", error);
-            alert(`Unable to mark item as picked up: ${error.message || "Please try again."}`);
-        }
+    const handleRefresh = () => {
+        console.log("Kitchen.jsx: Manual refresh triggered");
+        fetchKitchenNotes();
     };
 
-    const filteredPickedUpOrders = Object.entries(pickedUpOrders)
-        .filter(([orderName]) =>
-            orderName.toLowerCase().includes(searchInvoiceId.toLowerCase())
-        )
-        .map(([orderName, order]) => ({
-            orderName,
-            ...order,
-        }));
+    const formatIngredients = (ingredients) => {
+        if (!ingredients || ingredients.length === 0) return "";
+        return ingredients
+            .map((ing) => `${ing.name} - ${ing.quantity} ${ing.unit}`)
+            .join(", ");
+    };
 
     const getRowStyle = (status) => {
         switch (status || "Prepare") {
@@ -308,24 +321,27 @@ function Kitchen() {
     };
 
     const handleDeleteItem = (orderName, itemId) => {
-        setPickedUpOrders((prev) => {
+        setPreparedOrders((prev) => {
             const updatedOrder = { ...prev[orderName] };
             updatedOrder.items = updatedOrder.items.filter((item) => item.id !== itemId);
-            const newPickedUpOrders = { ...prev, [orderName]: updatedOrder };
+            const newPreparedOrders = { ...prev, [orderName]: updatedOrder };
             if (updatedOrder.items.length === 0) {
-                delete newPickedUpOrders[orderName];
+                delete newPreparedOrders[orderName];
             }
-            localStorage.setItem("pickedUpOrders", JSON.stringify(newPickedUpOrders));
-            return newPickedUpOrders;
+            localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
+            console.log("Kitchen.jsx: Updated preparedOrders after delete:", JSON.stringify(newPreparedOrders, null, 2));
+            return newPreparedOrders;
         });
     };
 
-    const formatIngredients = (ingredients) => {
-        if (!ingredients || ingredients.length === 0) return "";
-        return ingredients
-            .map((ing) => `${ing.name} - ${ing.quantity} ${ing.unit}`)
-            .join(", ");
-    };
+    const filteredPreparedOrders = Object.entries(preparedOrders)
+        .filter(([orderName]) =>
+            orderName.toLowerCase().includes(searchInvoiceId.toLowerCase())
+        )
+        .map(([orderName, order]) => ({
+            orderName,
+            ...order,
+        }));
 
     return (
         <div className="container mt-5">
@@ -335,9 +351,14 @@ function Kitchen() {
                         <i className="bi bi-arrow-left"></i> Back
                     </button>
                     <h3 className="mb-0">Kitchen Dashboard</h3>
-                    <button className="btn btn-info btn-sm" onClick={() => setShowStatusPopup(true)}>
-                        <i className="bi bi-info-circle"></i> Status
-                    </button>
+                    <div>
+                        <button className="btn btn-info btn-sm me-2" onClick={() => setShowStatusPopup(true)}>
+                            <i className="bi bi-info-circle"></i> Status
+                        </button>
+                        <button className="btn btn-light btn-sm" onClick={handleRefresh}>
+                            <i className="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
                 </div>
                 <div className="card-body">
                     {loading ? (
@@ -379,12 +400,12 @@ function Kitchen() {
                                         <tr>
                                             <th>Invoice</th>
                                             <th>Table</th>
+                                            <th>Chairs</th>
                                             <th>Delivery Type</th>
                                             <th>Item</th>
                                             <th>Variants</th>
                                             <th>Quantity</th>
                                             <th>Status</th>
-                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -392,6 +413,7 @@ function Kitchen() {
                                             <tr key={item.id} style={getRowStyle(item.status)}>
                                                 <td>{item.pos_invoice_id || "Unknown"}</td>
                                                 <td>{item.tableNumber || "N/A"}</td>
+                                                <td>{item.deliveryType === "DINE IN" ? item.chairCount : "N/A"}</td>
                                                 <td>{item.deliveryType}</td>
                                                 <td>
                                                     {item.name}
@@ -433,16 +455,6 @@ function Kitchen() {
                                                         <option value="Prepared">Prepared</option>
                                                     </select>
                                                 </td>
-                                                <td>
-                                                    {item.status === "Prepared" && (
-                                                        <button
-                                                            className="btn btn-success btn-sm"
-                                                            onClick={() => handlePickUp(item.id)}
-                                                        >
-                                                            Pick Up
-                                                        </button>
-                                                    )}
-                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -458,7 +470,7 @@ function Kitchen() {
                     <div className="modal-dialog modal-xl">
                         <div className="modal-content">
                             <div className="modal-header bg-info text-white">
-                                <h5 className="modal-title">Picked Up Items Status</h5>
+                                <h5 className="modal-title">Prepared Items Status</h5>
                                 <button
                                     type="button"
                                     className="btn-close bg-white"
@@ -467,7 +479,7 @@ function Kitchen() {
                             </div>
                             <div className="modal-body">
                                 <div className="mb-3">
-                                    <label htmlFor="searchInvoiceId" className="form-label fw-bold" style={{ color: "#007bff" }}>
+                                    <label htmlFor="searchInvoiceId" className="form-label fw-bold">
                                         Filter by POS Invoice ID
                                     </label>
                                     <input
@@ -477,23 +489,14 @@ function Kitchen() {
                                         placeholder="Enter POS Invoice ID (e.g., POS-12345)"
                                         value={searchInvoiceId}
                                         onChange={(e) => setSearchInvoiceId(e.target.value)}
-                                        style={{
-                                            borderColor: "#007bff",
-                                            backgroundColor: "#ffffff",
-                                            color: "#333",
-                                            boxShadow: "0 2px 4px rgba(0, 123, 255, 0.1)",
-                                            transition: "all 0.3s ease",
-                                        }}
-                                        onMouseEnter={(e) => e.target.style.boxShadow = "0 4px 8px rgba(0, 123, 255, 0.2)"}
-                                        onMouseLeave={(e) => e.target.style.boxShadow = "0 2px 4px rgba(0, 123, 255, 0.1)"}
                                     />
                                 </div>
-                                {filteredPickedUpOrders.length === 0 ? (
-                                    <p className="text-muted">No picked-up orders match the entered POS Invoice ID.</p>
+                                {filteredPreparedOrders.length === 0 ? (
+                                    <p className="text-muted">No prepared orders match the entered POS Invoice ID.</p>
                                 ) : (
-                                    <div className="accordion" id="pickedUpOrdersAccordion">
-                                        {filteredPickedUpOrders.map((order, index) => (
-                                            <div key={order.orderName} className="accordion-item mb-3" style={{ border: "1px solid #007bff", borderRadius: "8px" }}>
+                                    <div className="accordion" id="preparedOrdersAccordion">
+                                        {filteredPreparedOrders.map((order, index) => (
+                                            <div key={order.orderName} className="accordion-item mb-3">
                                                 <h2 className="accordion-header" id={`heading-${order.orderName}`}>
                                                     <button
                                                         className="accordion-button"
@@ -502,16 +505,15 @@ function Kitchen() {
                                                         data-bs-target={`#collapse-${order.orderName}`}
                                                         aria-expanded={index === 0 ? "true" : "false"}
                                                         aria-controls={`collapse-${order.orderName}`}
-                                                        style={{ backgroundColor: "#007bff", color: "#ffffff", fontWeight: "600" }}
                                                     >
-                                                        Order: {order.orderName} (Table: {order.tableNumber || "N/A"}, Delivery: {order.deliveryType})
+                                                        Order: {order.orderName} (Table: {order.tableNumber || "N/A"}, Chairs: {order.chairCount || 0}, Delivery: {order.deliveryType})
                                                     </button>
                                                 </h2>
                                                 <div
                                                     id={`collapse-${order.orderName}`}
                                                     className={`accordion-collapse collapse ${index === 0 ? "show" : ""}`}
                                                     aria-labelledby={`heading-${order.orderName}`}
-                                                    data-bs-parent="#pickedUpOrdersAccordion"
+                                                    data-bs-parent="#preparedOrdersAccordion"
                                                 >
                                                     <div className="accordion-body p-0">
                                                         <div className="table-responsive">
@@ -523,7 +525,7 @@ function Kitchen() {
                                                                         <th>Kitchen</th>
                                                                         <th>Quantity</th>
                                                                         <th>Type</th>
-                                                                        <th>Pickup Time</th>
+                                                                        <th>Prepared Time</th>
                                                                         <th>Action</th>
                                                                     </tr>
                                                                 </thead>
@@ -561,7 +563,7 @@ function Kitchen() {
                                                                             <td>{item.kitchen}</td>
                                                                             <td>{item.quantity}</td>
                                                                             <td>{item.type}</td>
-                                                                            <td>{item.pickupTime}</td>
+                                                                            <td>{item.preparedTime}</td>
                                                                             <td>
                                                                                 <button
                                                                                     className="btn btn-danger btn-sm"

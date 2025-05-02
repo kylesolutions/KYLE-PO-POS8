@@ -9,11 +9,15 @@ function Table() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { setCartItems } = useContext(UserContext);
-    const [activeOrders, setActiveOrders] = useState([]);
+    const [activeOrders, setActiveOrders] = useState([]); // [{ tableNumber, bookedChairs }]
     const [allItems, setAllItems] = useState([]);
+    const [showModal, setShowModal] = useState(false);
+    const [selectedTable, setSelectedTable] = useState(null);
+    const [chairCount, setChairCount] = useState(1);
+    const [availableChairs, setAvailableChairs] = useState(0);
     const navigate = useNavigate();
 
-    // Fetch all items (consistent with SavedOrder.jsx)
+    // Fetch all items
     const fetchAllItems = async () => {
         try {
             const response = await fetch(
@@ -28,8 +32,6 @@ function Table() {
             );
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
             const data = await response.json();
-            console.log("Raw Items API Response:", JSON.stringify(data, null, 2));
-
             let itemList = Array.isArray(data) ? data : (data.message && Array.isArray(data.message) ? data.message : []);
             if (!itemList.length) throw new Error("Invalid items data structure");
 
@@ -37,11 +39,13 @@ function Table() {
             setAllItems(
                 itemList.map((item) => ({
                     ...item,
-                    variants: item.variants ? item.variants.map((v) => ({
-                        type_of_variants: v.type_of_variants,
-                        item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
-                        variant_price: parseFloat(v.variants_price) || 0,
-                    })) : [],
+                    variants: item.variants
+                        ? item.variants.map((v) => ({
+                              type_of_variants: v.type_of_variants,
+                              item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
+                              variant_price: parseFloat(v.variants_price) || 0,
+                          }))
+                        : [],
                     price_list_rate: parseFloat(item.price_list_rate) || 0,
                     image: item.image ? `${baseUrl}${item.image}` : "default-image.jpg",
                     custom_kitchen: item.custom_kitchen || "Unknown",
@@ -55,7 +59,7 @@ function Table() {
         }
     };
 
-    // Fetch active POS Invoices (replacing get_saved_orders)
+    // Fetch active POS Invoices
     const fetchActiveOrders = useCallback(async () => {
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices", {
@@ -78,15 +82,24 @@ function Table() {
                 return;
             }
 
-            // Filter for draft invoices without payments
-            const draftOrders = result.data.filter(order => 
-                order.custom_is_draft_without_payment === 1 || order.custom_is_draft_without_payment === "1"
-            );
-            const activeTableNumbers = draftOrders
-                .map(order => String(order.custom_table_number))
-                .filter(Boolean); // Only include non-empty table numbers
-            console.log("Active Table Numbers from POS Invoices:", activeTableNumbers);
-            setActiveOrders(activeTableNumbers);
+            // Aggregate booked chairs per table
+            const tableChairMap = {};
+            result.data
+                .filter((order) => order.custom_is_draft_without_payment === 1 || order.custom_is_draft_without_payment === "1")
+                .forEach((order) => {
+                    const tableNumber = String(order.custom_table_number);
+                    const chairs = parseInt(order.custom_chair_count, 10) || 0;
+                    if (tableNumber && chairs > 0) {
+                        tableChairMap[tableNumber] = (tableChairMap[tableNumber] || 0) + chairs;
+                    }
+                });
+
+            const activeTableOrders = Object.entries(tableChairMap).map(([tableNumber, bookedChairs]) => ({
+                tableNumber,
+                bookedChairs,
+            }));
+            console.log("Active Table Orders:", JSON.stringify(activeTableOrders, null, 2));
+            setActiveOrders(activeTableOrders);
         } catch (error) {
             console.error("Error fetching POS Invoices:", error);
             setActiveOrders([]);
@@ -97,14 +110,14 @@ function Table() {
         const fetchTablesAndOrders = async () => {
             try {
                 const tableResponse = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_table_details", {
-                    headers: { "Authorization": "token 0bde704e8493354:5709b3ab1a1cb1a" },
+                    headers: { Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a" },
                 });
                 if (!tableResponse.ok) throw new Error(`HTTP error! Status: ${tableResponse.status}`);
                 const tableData = await tableResponse.json();
                 console.log("Fetched Tables:", JSON.stringify(tableData, null, 2));
                 setTables(tableData.message || []);
 
-                await fetchAllItems(); // Fetch items first
+                await fetchAllItems();
                 await fetchActiveOrders();
                 setLoading(false);
             } catch (err) {
@@ -116,7 +129,30 @@ function Table() {
         fetchTablesAndOrders();
     }, [fetchActiveOrders]);
 
-    const handleTableClick = async (tableNumber) => {
+    const getBookedChairs = (tableNumber) => {
+        const order = activeOrders.find((o) => o.tableNumber === String(tableNumber));
+        return order ? order.bookedChairs : 0;
+    };
+
+    const handleTableClick = (table) => {
+        const bookedChairs = getBookedChairs(table.table_number);
+        const available = table.number_of_chair - bookedChairs;
+        if (available <= 0) {
+            alert("No chairs available for this table.");
+            return;
+        }
+        setSelectedTable(table);
+        setAvailableChairs(available);
+        setChairCount(1);
+        setShowModal(true);
+    };
+
+    const handleChairSelection = async () => {
+        if (!selectedTable || chairCount < 1 || chairCount > availableChairs) {
+            alert(`Please select a valid number of chairs (1 to ${availableChairs}).`);
+            return;
+        }
+
         try {
             const response = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices", {
                 method: "GET",
@@ -127,78 +163,38 @@ function Table() {
             });
             if (!response.ok) throw new Error(`Failed to fetch POS Invoices: ${response.status}`);
             const data = await response.json();
-            console.log("POS Invoices for Table", tableNumber, ":", JSON.stringify(data, null, 2));
+            console.log("POS Invoices for Table", selectedTable.table_number, ":", JSON.stringify(data, null, 2));
 
             const result = data.message || data;
             if (result.status !== "success" || !result.data) throw new Error(result.message || "Invalid response");
 
-            const existingOrder = result.data.find(order => 
-                String(order.custom_table_number) === String(tableNumber) && 
-                (order.custom_is_draft_without_payment === 1 || order.custom_is_draft_without_payment === "1")
+            // Always create a new order for new chair selections
+            setShowModal(false);
+            setCartItems([]);
+            console.log(
+                "Creating new POS Invoice for Table",
+                selectedTable.table_number,
+                "with chairCount",
+                chairCount
             );
-
-            if (existingOrder) {
-                const formattedCartItems = existingOrder.items.map(item => {
-                    const menuItem = allItems.find(m => m.item_code === item.item_code) || {};
-                    return {
-                        cartItemId: uuidv4(),
-                        id: item.item_code, // Ensure id is included for Front
-                        item_code: item.item_code,
-                        name: item.item_name,
-                        custom_customer_description: item.custom_customer_description || "", // Include description
-                        basePrice: parseFloat(item.rate) || 0,
-                        quantity: parseInt(item.qty, 10) || 1,
-                        selectedSize: item.custom_size_variants || null,
-                        selectedCustomVariant: item.custom_other_variants || null,
-                        kitchen: menuItem.custom_kitchen || item.custom_kitchen || "Unknown",
-                        addonCounts: {}, // Addons not in POS Invoice yet; adjust if backend updates
-                        selectedCombos: [], // Combos not in POS Invoice yet; adjust if backend updates
-                    };
-                });
-
-                console.log("Formatted Cart Items:", JSON.stringify(formattedCartItems, null, 2));
-                setCartItems(formattedCartItems);
-
-                const navigationState = {
-                    tableNumber,
-                    phoneNumber: existingOrder.contact_mobile,
-                    customerName: existingOrder.customer_name,
-                    existingOrder: {
-                        name: existingOrder.name,
-                        customer: existingOrder.customer_name,
-                        contact_mobile: existingOrder.contact_mobile,
-                        custom_table_number: existingOrder.custom_table_number,
-                        custom_delivery_type: existingOrder.custom_delivery_type,
-                        customer_address: existingOrder.customer_address,
-                        contact_email: existingOrder.contact_email,
-                        posting_date: existingOrder.posting_date,
-                        items: existingOrder.items.map(item => ({
-                            item_code: item.item_code,
-                            item_name: item.item_name,
-                            custom_customer_description: item.custom_customer_description || "", 
-                            rate: parseFloat(item.rate) || 0,
-                            qty: parseInt(item.qty, 10) || 1,
-                            custom_size_variants: item.custom_size_variants || "",
-                            custom_other_variants: item.custom_other_variants || "",
-                            custom_kitchen: item.custom_kitchen || "Unknown",
-                        })),
-                        apply_discount_on: existingOrder.apply_discount_on || "Grand Total",
-                        additional_discount_percentage: parseFloat(existingOrder.additional_discount_percentage) || 0,
-                        discount_amount: parseFloat(existingOrder.discount_amount) || 0,
-                    },
-                    deliveryType: existingOrder.custom_delivery_type,
-                };
-                console.log("Navigating to /frontpage with state:", JSON.stringify(navigationState, null, 2));
-                navigate("/frontpage", { state: navigationState });
-            } else {
-                setCartItems([]);
-                console.log("No existing POS Invoice for Table", tableNumber, "- Navigating with tableNumber only");
-                navigate("/frontpage", { state: { tableNumber, deliveryType: "DINE IN" } });
-            }
+            navigate("/frontpage", {
+                state: {
+                    tableNumber: selectedTable.table_number,
+                    chairCount,
+                    deliveryType: "DINE IN",
+                },
+            });
         } catch (error) {
             console.error("Error fetching POS Invoice for table:", error);
             setCartItems([]);
-            navigate("/frontpage", { state: { tableNumber, deliveryType: "DINE IN" } });
+            setShowModal(false);
+            navigate("/frontpage", {
+                state: {
+                    tableNumber: selectedTable.table_number,
+                    chairCount,
+                    deliveryType: "DINE IN",
+                },
+            });
         }
     };
 
@@ -209,30 +205,103 @@ function Table() {
 
     return (
         <>
-            <i className="fi fi-rs-angle-small-left back-button1" onClick={() => navigate("/firsttab")}></i>
             <div className="table-page container">
-                <h1>Restaurant Table Layout</h1>
+                <i className="fi fi-rs-angle-small-left back-button1" onClick={() => navigate("/firsttab")}></i>
                 <div className="table-grid">
                     {tables.length > 0 ? (
-                        tables.map((table, index) => (
-                            <div
-                                key={index}
-                                className={`table-card ${activeOrders.includes(String(table.table_number)) ? "booked" : "available"}`}
-                                onClick={() => handleTableClick(table.table_number)}
-                            >
-                                <h2>T{table.table_number}</h2>
-                                <div className="chairs-container">
-                                    {Array.from({ length: table.number_of_chair }).map((_, chairIndex) => (
-                                        <i key={chairIndex} className="fa-solid fa-chair chair-icon"></i>
-                                    ))}
+                        tables.map((table, index) => {
+                            const bookedChairs = getBookedChairs(table.table_number);
+                            const availableChairs = table.number_of_chair - bookedChairs;
+                            return (
+                                <div
+                                    key={index}
+                                    className={`table-card ${
+                                        bookedChairs > 0
+                                            ? availableChairs > 0
+                                                ? "partially-booked"
+                                                : "booked"
+                                            : "available"
+                                    }`}
+                                    onClick={() => handleTableClick(table)}
+                                >
+                                    <h2>T{table.table_number}</h2>
+                                    <div className="chairs-container">
+                                        {Array.from({ length: table.number_of_chair }).map((_, chairIndex) => (
+                                            <i
+                                                key={chairIndex}
+                                                className={`fa-solid fa-chair chair-icon ${
+                                                    chairIndex < bookedChairs ? "booked-chair" : ""
+                                                }`}
+                                            ></i>
+                                        ))}
+                                    </div>
+                                    <p className="chair-status">
+                                        {availableChairs} of {table.number_of_chair} chairs available
+                                    </p>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     ) : (
                         <div>No tables available.</div>
                     )}
                 </div>
             </div>
+
+            {/* Chair Selection Modal */}
+            {showModal && selectedTable && (
+                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Select Chairs for Table {selectedTable.table_number}</h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setShowModal(false)}
+                                    aria-label="Close"
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                <p>
+                                    Available chairs: {availableChairs} out of {selectedTable.number_of_chair}
+                                </p>
+                                <div className="mb-3">
+                                    <label htmlFor="chairCount" className="form-label">
+                                        Number of Chairs:
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        id="chairCount"
+                                        min="1"
+                                        max={availableChairs}
+                                        value={chairCount}
+                                        onChange={(e) => setChairCount(parseInt(e.target.value, 10) || 1)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={handleChairSelection}
+                                    disabled={chairCount < 1 || chairCount > availableChairs}
+                                >
+                                    Confirm
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

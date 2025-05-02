@@ -83,7 +83,7 @@ function ClosingEntry() {
 
       try {
         console.log('Fetching POS Invoices for:', { pos_opening_entry: posOpeningEntry });
-        const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices', {
+        const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices_openingentry', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
