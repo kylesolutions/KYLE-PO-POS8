@@ -19,7 +19,7 @@ function Front() {
     const { cartItems, addToCart, removeFromCart, updateCartItem, setCartItems } = useContext(UserContext);
     const location = useLocation();
     const { state } = useLocation();
-    const { tableNumber: initialTableNumber, existingOrder, deliveryType: initialDeliveryType, chairCount: initialChairCount } = state || {};
+    const { tableNumber: initialTableNumber, existingOrder, deliveryType: initialDeliveryType, chairCount: initialChairCount, customer, customer_name, customer_phone, address, email, watsappNumber } = state || {};
     const userData = useSelector((state) => state.user);
     const company = userData.company || "POS8";
     const [defaultIncomeAccount, setDefaultIncomeAccount] = useState(userData.defaultIncomeAccount);
@@ -28,15 +28,15 @@ function Front() {
     const [savedOrders, setSavedOrders] = useState([]);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [customers, setCustomers] = useState([]);
-    const [customerName, setCustomerName] = useState("One Time Customer");
+    const [customerName, setCustomerName] = useState("");
     const [newCustomerName, setNewCustomerName] = useState("");
     const [showModal, setShowModal] = useState(false);
     const navigate = useNavigate();
     const [bookedTables, setBookedTables] = useState([]);
     const allowedItemGroups = useSelector((state) => state.user.allowedItemGroups);
-    const [address, setAddress] = useState("");
-    const [watsappNumber, setWatsappNumber] = useState("");
-    const [email, setEmail] = useState("");
+    const [addressState, setAddress] = useState("");
+    const [watsappNumberState, setWatsappNumber] = useState("");
+    const [emailState, setEmail] = useState("");
     const [bearer, setBearer] = useState(userData.user);
     const [showBillModal, setShowBillModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -48,15 +48,35 @@ function Front() {
     const [discountPercentage, setDiscountPercentage] = useState(0);
     const [discountAmount, setDiscountAmount] = useState(0);
     const [cartItemToUpdate, setCartItemToUpdate] = useState(null);
+    const [customerInput, setCustomerInput] = useState("");
+    const [filteredCustomers, setFilteredCustomers] = useState([]);
+    const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
 
     useEffect(() => {
         if (location.state) {
-            const { customerName: stateCustomerName, phoneNumber: statePhoneNumber, tableNumber: stateTableNumber, existingOrder, chairCount: stateChairCount } = location.state;
-            const finalCustomerName = stateCustomerName || existingOrder?.customer_name || "One Time Customer";
-            const finalPhoneNumber = statePhoneNumber || existingOrder?.contact_mobile || "";
-            const finalTableNumber = stateTableNumber || existingOrder?.custom_table_number || "";
-            const finalDeliveryType = location.state.deliveryType || existingOrder?.custom_delivery_type || "";
-            const finalChairCount = stateChairCount || existingOrder?.custom_chair_count || 0;
+            const {
+                customer: stateCustomer,
+                customer_name: stateCustomerName,
+                customer_phone: stateCustomerPhone,
+                address: stateAddress,
+                email: stateEmail,
+                watsappNumber: stateWatsappNumber,
+                tableNumber: stateTableNumber,
+                existingOrder,
+                chairCount: stateChairCount,
+                deliveryType: stateDeliveryType
+            } = location.state;
+
+            // Prioritize existingOrder customer details if available
+            const finalCustomer = existingOrder?.customer || stateCustomer || "";
+            const finalCustomerName = existingOrder?.customer || stateCustomerName || "One Time Customer";
+            const finalPhoneNumber = existingOrder?.contact_mobile || stateCustomerPhone || "";
+            const finalAddress = existingOrder?.customer_address || stateAddress || "";
+            const finalEmail = existingOrder?.contact_email || stateEmail || "";
+            const finalWatsappNumber = existingOrder?.contact_mobile || stateWatsappNumber || "";
+            const finalTableNumber = existingOrder?.custom_table_number || stateTableNumber || "";
+            const finalDeliveryType = existingOrder?.custom_delivery_type || stateDeliveryType || "";
+            const finalChairCount = existingOrder?.custom_chair_count || stateChairCount || 0;
             const finalCartItems = existingOrder?.items?.map(item => ({
                 cartItemId: uuidv4(),
                 id: item.item_code,
@@ -72,22 +92,29 @@ function Front() {
                 kitchen: item.custom_kitchen || "Unknown",
                 ingredients: item.ingredients || []
             })) || [];
-            const finalAddress = existingOrder?.customer_address || "";
-            const finalWatsappNumber = existingOrder?.contact_mobile || "";
-            const finalEmail = existingOrder?.contact_email || "";
 
             setCustomerName(finalCustomerName);
             setCustomerInput(finalCustomerName);
             setPhoneNumber(finalPhoneNumber);
+            setAddress(finalAddress);
+            setEmail(finalEmail);
+            setWatsappNumber(finalWatsappNumber);
             setTableNumber(finalTableNumber);
             setDeliveryType(finalDeliveryType);
             setChairCount(finalChairCount);
-            setAddress(finalAddress);
-            setWatsappNumber(finalWatsappNumber);
-            setEmail(finalEmail);
             setCartItems(finalCartItems);
 
-            console.log("Front.jsx: Initial chairCount set to:", finalChairCount); // Debug log
+            console.log("Front.jsx: Initial state set:", {
+                customer: finalCustomer,
+                customerName: finalCustomerName,
+                phoneNumber: finalPhoneNumber,
+                address: finalAddress,
+                email: finalEmail,
+                watsappNumber: finalWatsappNumber,
+                tableNumber: finalTableNumber,
+                deliveryType: finalDeliveryType,
+                chairCount: finalChairCount
+            });
 
             if (existingOrder) {
                 setApplyDiscountOn(existingOrder.apply_discount_on || "Grand Total");
@@ -95,20 +122,21 @@ function Front() {
                 setDiscountAmount(parseFloat(existingOrder.discount_amount) || 0);
             }
         } else {
+            // Reset to default only if no state is provided (e.g., direct navigation to /frontpage)
             setCustomerName("One Time Customer");
             setCustomerInput("");
             setPhoneNumber("");
+            setAddress("");
+            setEmail("");
+            setWatsappNumber("");
             setTableNumber("");
             setDeliveryType("");
             setChairCount(0);
-            setAddress("");
-            setWatsappNumber("");
-            setEmail("");
             setCartItems([]);
             setApplyDiscountOn("Grand Total");
             setDiscountPercentage(0);
             setDiscountAmount(0);
-            console.log("Front.jsx: Initial chairCount set to: 0 (no location.state)"); // Debug log
+            console.log("Front.jsx: Initial state reset (no location.state)");
         }
     }, [location.state, setCartItems]);
 
@@ -268,6 +296,35 @@ function Front() {
         fetchItems();
     }, [allowedItemGroups]);
 
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            try {
+                const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_customers', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                    },
+                });
+                const data = await response.json();
+                let customerList = Array.isArray(data) ? data : (data.message || []);
+                const formattedCustomers = customerList.map(customer => ({
+                    name: customer.name,
+                    customer_name: customer.customer_name || "",
+                    mobile_no: customer.mobile_no || "",
+                    primary_address: customer.primary_address || "",
+                    email_id: customer.email_id || "",
+                    custom_watsapp_no: customer.custom_watsapp_no || ""
+                }));
+                setCustomers(formattedCustomers);
+                setFilteredCustomers(formattedCustomers);
+            } catch (error) {
+                console.error("Front.jsx: Network error fetching customers:", error);
+            }
+        };
+        fetchCustomers();
+    }, []);
+
     const handleFilter = (category) => {
         const filtered = allItems.filter(item => {
             const isMainItem = ((item.variants || []).length > 0) ||
@@ -398,10 +455,10 @@ function Front() {
                     },
                 }
             );
-    
+
             const result = await response.json();
             console.log("Front.jsx: checkKitchenNoteExists Response:", result);
-    
+
             if (response.ok && result.message?.status === "success") {
                 const kitchenNote = result.message.data.find(
                     (note) => note.pos_invoice_id === posInvoiceId
@@ -429,7 +486,7 @@ function Front() {
                 const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
                 const mainItemKitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
                 const mainItemVariants = [item.selectedCustomVariant].filter(Boolean).join(" - ") || "";
-    
+
                 const mainItem = {
                     item_name: item.name,
                     kitchen: mainItemKitchen,
@@ -442,7 +499,7 @@ function Front() {
                         unit: ing.unit || "g",
                     })),
                 };
-    
+
                 const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
                     item_name: addonName,
                     kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
@@ -451,7 +508,7 @@ function Front() {
                     custom_variants: "",
                     ingredients: [],
                 }));
-    
+
                 const comboItems = (item.selectedCombos || []).map((combo) => {
                     const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
                     const comboVariants = [combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ") || "";
@@ -468,18 +525,18 @@ function Front() {
                         })),
                     };
                 });
-    
+
                 return [mainItem, ...addonItems.filter(addon => addon.quantity > 0), ...comboItems];
             }),
         };
-    
+
         if (kitchenNotePayload.delivery_type === "DINE IN" && kitchenNotePayload.custom_chair_count <= 0) {
             console.warn("Front.jsx: Warning: custom_chair_count is 0 for DINE IN order. Expected positive value.");
         }
-    
+
         console.log("Front.jsx: createKitchenNote - custom_chair_count:", kitchenNotePayload.custom_chair_count);
         console.log("Front.jsx: createKitchenNote Payload:", JSON.stringify(kitchenNotePayload, null, 2));
-    
+
         try {
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_kitchen_note",
@@ -488,15 +545,15 @@ function Front() {
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                        "Expect": "", // Disable Expect header
+                        "Expect": "",
                     },
                     body: JSON.stringify(kitchenNotePayload),
                 }
             );
-    
+
             const result = await response.json();
             console.log("Front.jsx: createKitchenNote Response:", result);
-    
+
             if (response.ok && result.message?.status === "success") {
                 console.log(`Front.jsx: Kitchen Note created for POS Invoice ${posInvoiceId}`);
                 return true;
@@ -510,10 +567,9 @@ function Front() {
             return false;
         }
     };
-    
+
     const updateKitchenNote = async (posInvoiceId) => {
         try {
-            // Fetch existing Kitchen Note to preserve prepared items
             const response = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kitchen_notes",
                 {
@@ -525,18 +581,17 @@ function Front() {
                     },
                 }
             );
-    
+
             const result = await response.json();
             console.log("Front.jsx: Fetch Kitchen Note for update:", JSON.stringify(result, null, 2));
-    
+
             if (!response.ok || result.message?.status !== "success") {
                 throw new Error(result.message?.message || result.exception || "Failed to fetch Kitchen Note");
             }
-    
+
             const existingNote = result.message.data.find(note => note.pos_invoice_id === posInvoiceId);
             const existingItems = existingNote ? existingNote.items : [];
-    
-            // Construct payload with all items (new, existing, and prepared)
+
             const kitchenNotePayload = {
                 pos_invoice_id: posInvoiceId,
                 customer_name: customerName || "One Time Customer",
@@ -544,7 +599,6 @@ function Front() {
                 delivery_type: deliveryType || "DINE IN",
                 custom_chair_count: deliveryType === "DINE IN" ? chairCount : 0,
                 items: [
-                    // Existing items (to preserve prepared items)
                     ...existingItems.map(item => ({
                         item_name: item.item_name,
                         kitchen: item.kitchen || "Unknown",
@@ -554,13 +608,12 @@ function Front() {
                         status: item.status || "Prepare",
                         ingredients: item.ingredients || [],
                     })),
-                    // New items from cartItems
                     ...cartItems.flatMap((item) => {
                         const variantPrice = parseFloat(item.customVariantPrice) || 0;
                         const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
                         const mainItemKitchen = allItems.find(i => i.item_code === item.item_code)?.kitchen || "Unknown";
                         const mainItemVariants = [item.selectedCustomVariant].filter(Boolean).join(" - ") || "";
-    
+
                         const mainItem = {
                             item_name: item.name,
                             kitchen: mainItemKitchen,
@@ -574,7 +627,7 @@ function Front() {
                                 unit: ing.unit || "g",
                             })),
                         };
-    
+
                         const addonItems = Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
                             item_name: addonName,
                             kitchen: allItems.find(i => i.name === addonName || i.item_code === addonName)?.kitchen || "Unknown",
@@ -584,7 +637,7 @@ function Front() {
                             status: "Prepare",
                             ingredients: [],
                         }));
-    
+
                         const comboItems = (item.selectedCombos || []).map((combo) => {
                             const resolvedComboItemCode = resolveComboVariantItemCode(combo.name1, combo.selectedSize);
                             const comboVariants = [combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ") || "";
@@ -602,13 +655,12 @@ function Front() {
                                 })),
                             };
                         });
-    
+
                         return [mainItem, ...addonItems.filter(addon => addon.quantity > 0), ...comboItems];
                     }),
                 ],
             };
-    
-            // Remove duplicates by item_name, keeping the latest status
+
             const uniqueItems = [];
             const seenItemNames = new Set();
             for (const item of kitchenNotePayload.items.reverse()) {
@@ -618,14 +670,14 @@ function Front() {
                 }
             }
             kitchenNotePayload.items = uniqueItems.reverse();
-    
+
             if (kitchenNotePayload.delivery_type === "DINE IN" && kitchenNotePayload.custom_chair_count <= 0) {
                 console.warn("Front.jsx: Warning: custom_chair_count is 0 for DINE IN order. Expected positive value.");
             }
-    
+
             console.log("Front.jsx: updateKitchenNote - custom_chair_count:", kitchenNotePayload.custom_chair_count);
             console.log("Front.jsx: updateKitchenNote Payload:", JSON.stringify(kitchenNotePayload, null, 2));
-    
+
             const updateResponse = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note",
                 {
@@ -638,10 +690,10 @@ function Front() {
                     body: JSON.stringify(kitchenNotePayload),
                 }
             );
-    
+
             const updateResult = await updateResponse.json();
             console.log("Front.jsx: updateKitchenNote Response:", JSON.stringify(updateResult, null, 2));
-    
+
             if (updateResponse.ok && updateResult.message?.status === "success") {
                 console.log(`Front.jsx: Kitchen Note updated for POS Invoice ${posInvoiceId}`);
                 return true;
@@ -702,15 +754,15 @@ function Front() {
             return;
         }
         if (deliveryType && deliveryType !== "DINE IN") {
-            if (!address || address.trim() === "") {
+            if (!addressState || addressState.trim() === "") {
                 alert("Please enter a delivery address for this delivery type.");
                 return;
             }
-            if (!watsappNumber || watsappNumber.trim() === "") {
+            if (!watsappNumberState || watsappNumberState.trim() === "") {
                 alert("Please enter a WhatsApp number for this delivery type.");
                 return;
             }
-            if (!email || email.trim() === "") {
+            if (!emailState || emailState.trim() === "") {
                 alert("Please enter an email address for this delivery type.");
                 return;
             }
@@ -809,9 +861,9 @@ function Front() {
             custom_table_number: tableNumber || "",
             custom_delivery_type: deliveryType || "DINE IN",
             custom_chair_count: deliveryType === "DINE IN" ? chairCount : 0,
-            customer_address: address || "",
-            contact_mobile: phoneNumber || watsappNumber || "",
-            contact_email: email || "",
+            customer_address: addressState || "",
+            contact_mobile: phoneNumber || watsappNumberState || "",
+            contact_email: emailState || "",
             custom_bearer: bearer || "",
             apply_discount_on: applyDiscountOn,
             additional_discount_percentage: parseFloat(discountPercentage) || 0,
@@ -930,15 +982,15 @@ function Front() {
         }
 
         if (deliveryType && deliveryType !== "DINE IN") {
-            if (!address || address.trim() === "") {
+            if (!addressState || addressState.trim() === "") {
                 alert("Please enter a delivery address for this delivery type.");
                 return;
             }
-            if (!watsappNumber || watsappNumber.trim() === "") {
+            if (!watsappNumberState || watsappNumberState.trim() === "") {
                 alert("Please enter a WhatsApp number for this delivery type.");
                 return;
             }
-            if (!email || email.trim() === "") {
+            if (!emailState || emailState.trim() === "") {
                 alert("Please enter an email address for this delivery type.");
                 return;
             }
@@ -1033,9 +1085,9 @@ function Front() {
             custom_table_number: tableNumber || "",
             custom_delivery_type: deliveryType || "DINE IN",
             custom_chair_count: deliveryType === "DINE IN" ? chairCount : 0,
-            customer_address: address || "",
-            contact_mobile: phoneNumber || watsappNumber || "",
-            contact_email: email || "",
+            customer_address: addressState || "",
+            contact_mobile: phoneNumber || watsappNumberState || "",
+            contact_email: emailState || "",
             custom_bearer: bearer || "",
             apply_discount_on: applyDiscountOn,
             additional_discount_percentage: parseFloat(discountPercentage) || 0,
@@ -1102,39 +1154,6 @@ function Front() {
         handleClose();
     };
 
-    const [customerInput, setCustomerInput] = useState("");
-    const [filteredCustomers, setFilteredCustomers] = useState([]);
-    const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
-
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_customers', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                    },
-                });
-                const data = await response.json();
-                let customerList = Array.isArray(data) ? data : (data.message || []);
-                const formattedCustomers = customerList.map(customer => ({
-                    name: customer.name,
-                    customer_name: customer.customer_name || "",
-                    mobile_no: customer.mobile_no || "",
-                    primary_address: customer.primary_address || "",
-                    email_id: customer.email_id || "",
-                    custom_watsapp_no: customer.custom_watsapp_no || ""
-                }));
-                setCustomers(formattedCustomers);
-                setFilteredCustomers(formattedCustomers);
-            } catch (error) {
-                console.error("Front.jsx: Network error fetching customers:", error);
-            }
-        };
-        fetchCustomers();
-    }, []);
-
     const handleCustomerInputChange = (e) => {
         const value = e.target.value;
         setCustomerInput(value);
@@ -1182,9 +1201,9 @@ function Front() {
                 const customerData = {
                     customer_name: trimmedInput,
                     ...(phoneNumber && { phone: phoneNumber }),
-                    ...(address && { address: address }),
-                    ...(email && { email: email }),
-                    ...(watsappNumber && { whatsapp_number: watsappNumber }),
+                    ...(addressState && { address: addressState }),
+                    ...(emailState && { email: emailState }),
+                    ...(watsappNumberState && { whatsapp_number: watsappNumberState }),
                 };
 
                 const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer', {
@@ -1203,9 +1222,9 @@ function Front() {
                         name: data.customer_id || trimmedInput,
                         customer_name: trimmedInput,
                         mobile_no: phoneNumber || "",
-                        primary_address: address || "",
-                        email_id: email || "",
-                        custom_watsapp_no: watsappNumber || ""
+                        primary_address: addressState || "",
+                        email_id: emailState || "",
+                        custom_watsapp_no: watsappNumberState || ""
                     };
                     setCustomers((prev) => [...prev, newCustomer]);
                     setFilteredCustomers((prev) => [...prev, newCustomer]);
@@ -1472,7 +1491,7 @@ function Front() {
                                                             type="text"
                                                             className="form-control"
                                                             placeholder="Enter delivery address"
-                                                            value={address}
+                                                            value={addressState}
                                                             onChange={(e) => setAddress(e.target.value)}
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
@@ -1482,7 +1501,7 @@ function Front() {
                                                             type="text"
                                                             className="form-control"
                                                             placeholder="Enter WhatsApp number"
-                                                            value={watsappNumber}
+                                                            value={watsappNumberState}
                                                             onChange={(e) => setWatsappNumber(e.target.value)}
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
@@ -1492,7 +1511,7 @@ function Front() {
                                                             type="email"
                                                             className="form-control"
                                                             placeholder="Enter email"
-                                                            value={email}
+                                                            value={emailState}
                                                             onChange={(e) => setEmail(e.target.value)}
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />

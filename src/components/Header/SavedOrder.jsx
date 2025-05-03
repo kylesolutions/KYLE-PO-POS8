@@ -159,22 +159,22 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
         });
     };
 
-    const handleViewInKitchen = (order) => {
-        navigate("/kitchen", {
-            state: {
-                order: {
-                    ...order,
-                    cartItems: order.cartItems.map((item) => ({
-                        ...item,
-                        custom_customer_description: item.description || "",
-                        kitchen: item.kitchen || "Unknown",
-                    })),
-                    custom_delivery_type: order.custom_delivery_type || "DINE IN",
-                    custom_chair_count: order.custom_chair_count, // Pass chair count
-                },
-            },
-        });
-    };
+    // const handleViewInKitchen = (order) => {
+    //     navigate("/kitchen", {
+    //         state: {
+    //             order: {
+    //                 ...order,
+    //                 cartItems: order.cartItems.map((item) => ({
+    //                     ...item,
+    //                     custom_customer_description: item.description || "",
+    //                     kitchen: item.kitchen || "Unknown",
+    //                 })),
+    //                 custom_delivery_type: order.custom_delivery_type || "DINE IN",
+    //                 custom_chair_count: order.custom_chair_count, // Pass chair count
+    //             },
+    //         },
+    //     });
+    // };
 
     return (
         <div className="container mt-4">
@@ -269,12 +269,12 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                         >
                                             Select
                                         </button>
-                                        <button
+                                        {/* <button
                                             className="btn btn-info btn-sm"
                                             onClick={() => handleViewInKitchen(order)}
                                         >
                                             Kitchen
-                                        </button>
+                                        </button> */}
                                     </td>
                                 </tr>
                             ))}
