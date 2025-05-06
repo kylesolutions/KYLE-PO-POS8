@@ -4,6 +4,7 @@ import './salesInvoice.css';
 
 function SalesInvoice() {
   const [invoices, setInvoices] = useState([]);
+  const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterId, setFilterId] = useState("");
@@ -25,22 +26,52 @@ function SalesInvoice() {
         }
       );
       const data = await response.json();
-      console.log("Full API Response:", data);
+      console.log("Full Invoice API Response:", data);
       if (data.message && Array.isArray(data.message.invoice)) {
         setInvoices(data.message.invoice);
       } else {
         setError("No valid invoice data found in the response");
       }
     } catch (err) {
-      console.error("Fetch error:", err);
+      console.error("Fetch invoices error:", err);
       setError("An error occurred while fetching the POS invoices.");
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchOffers = async () => {
+    try {
+      const response = await fetch(
+        "http://109.199.100.136:6060/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_offers",
+        {
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+          },
+        }
+      );
+      const data = await response.json();
+      console.log("Full Offers API Response:", data);
+      if (Array.isArray(data.message)) {
+        const currentTime = new Date();
+        const activeOffers = data.message.filter((offer) => {
+          const start = new Date(offer.start_date);
+          const end = new Date(offer.end_date);
+          return start <= currentTime && currentTime <= end;
+        });
+        setOffers(activeOffers);
+      } else {
+        console.warn("No valid offers data found in the response");
+        setOffers([]);
+      }
+    } catch (err) {
+      console.error("Fetch offers error:", err);
+      setOffers([]);
+    }
+  };
+
   useEffect(() => {
-    fetchInvoices();
+    Promise.all([fetchInvoices(), fetchOffers()]).finally(() => setLoading(false));
   }, []);
 
   const filterInvoices = (invoiceList) => {
@@ -117,26 +148,30 @@ function SalesInvoice() {
               max-width: 800px; 
               margin: 0 auto; 
             }
-            .invoice-details, .customer-details, .footer .totals { 
+            .invoice-details, .customer-details, .footer .totals, .offers-details { 
               margin-bottom: 15px; 
             }
-            .invoice-details p, .customer-details p, .footer .totals p { 
+            .invoice-details p, .customer-details p, .footer .totals p, .offers-details p { 
               margin: 5px 0; 
               display: flex; 
               justify-content: space-between; 
               align-items: center; 
             }
-            .invoice-details p strong, .customer-details p strong, .footer .totals p strong { 
+            .invoice-details p strong, .customer-details p strong, .footer .totals p strong, .offers-details p strong { 
               text-align: left; 
               flex: 0 0 40%; 
             }
-            .invoice-details p .value, .customer-details p .value, .footer .totals p .value { 
+            .invoice-details p .value, .customer-details p .value, .footer .totals p .value, .offers-details p .value { 
               text-align: right; 
               flex: 0 0 60%; 
             }
             .customer-details { 
               border-bottom: 1px solid #000; 
               padding-bottom: 10px; 
+            }
+            .offers-details {
+              border-top: 1px solid #000;
+              padding-top: 10px;
             }
             table { 
               width: 100%; 
@@ -160,6 +195,21 @@ function SalesInvoice() {
               width: 100%; 
               max-width: 300px; 
             }
+            .invoice-logo {
+              display: flex;
+              align-items: center;
+              margin-bottom: 10px;
+            }
+            .invoice-logo img {
+              width: 80px;
+              height: 80px;
+              margin-right: 10px;
+            }
+            .invoice-logo p {
+              font-size: 16px;
+              font-weight: bold;
+              margin: 0;
+            }
             @media print {
               @page { margin: 0; }
               body { padding-top: 0; }
@@ -169,7 +219,11 @@ function SalesInvoice() {
         </head>
         <body>
           <div class="invoice-container">
-            <div class="invoice-details">
+            <div class="invoice-details"> 
+              <div class="invoice-logo">
+                <img src="/menuIcons/logo for restaurant ilustración de Stock.jpeg" alt="Dine 8 Logo"/>
+                <p>Dine 8</p>
+              </div>  
               <p><strong>Invoice ID:</strong> <span class="value">${invoice.name}</span></p>
               <p><strong>Posting Date:</strong> <span class="value">${formatDate(invoice.posting_date)}</span></p>
               <p><strong>Posting Time:</strong> <span class="value">${formatTime(invoice.posting_time)}</span></p>
@@ -213,14 +267,33 @@ function SalesInvoice() {
                         `
                         )
                         .join("")
-                    : `<tr><td colspan="5" style="text-align: center;">No items found</td></tr>`
+                    : `<tr><td colspan="7" style="text-align: center;">No items found</td></tr>`
                 }
               </tbody>
             </table>
+            ${
+              offers.length > 0
+                ? `
+                  <div class="offers-details">
+                    <p><strong>Special Offers:</strong></p>
+                    ${offers
+                      .map(
+                        (offer) =>
+                          `<p><span class="value">${offer.messages || "N/A"} (Valid: ${formatDate(
+                            offer.start_date
+                          )} to ${formatDate(offer.end_date)})</span></p>`
+                      )
+                      .join("")}
+                  </div>
+                `
+                : ""
+            }
             <div class="footer">
               <div class="totals">
                 <p><strong>Total Taxes:</strong> <span class="value">₹${invoice.total_taxes_and_charges || 0}</span></p>
-                <p><strong>Discount:</strong> <span class="value">${formatDiscount(invoice)} (${invoice.apply_discount_on || "Grand Total"})</span></p>
+                <p><strong>Discount:</strong> <span class="value">${formatDiscount(invoice)} (${
+                  invoice.apply_discount_on || "Grand Total"
+                })</span></p>
                 <p><strong>Currency:</strong> <span class="value">${invoice.currency || "INR"}</span></p>
                 <p><strong>Paid Amount:</strong> <span class="value">₹${invoice.paid_amount || 0}</span></p>
                 <p><strong>Grand Total:</strong> <span class="value">₹${invoice.grand_total || 0}</span></p>
@@ -358,6 +431,14 @@ function SalesInvoice() {
             </div>
             <div className="modal-body">
               <div className="mb-3">
+                <div className="d-flex align-items-center mb-2">
+                  <img
+                    src="/menuIcons/logo for restaurant ilustración de Stock.jpeg"
+                    alt="Dine 8 Logo"
+                    style={{ width: "80px", height: "80px", marginRight: "10px" }}
+                  />
+                  <p style={{ fontSize: "16px", fontWeight: "bold", margin: 0 }}>Dine 8</p>
+                </div>
                 <p>
                   <strong>Posting Date:</strong>{" "}
                   <span className="value">{formatDate(selectedInvoice.posting_date)}</span>
@@ -413,6 +494,18 @@ function SalesInvoice() {
                 </div>
               ) : (
                 <p>No items found</p>
+              )}
+              {offers.length > 0 && (
+                <div className="mb-3">
+                  <h6>Special Offers:</h6>
+                  {offers.map((offer, idx) => (
+                    <p key={idx}>
+                      <span className="value">
+                        {offer.messages || "N/A"} (Valid: {formatDate(offer.start_date)} to {formatDate(offer.end_date)})
+                      </span>
+                    </p>
+                  ))}
+                </div>
               )}
               <div className="mt-3">
                 <p>
@@ -563,4 +656,3 @@ function SalesInvoice() {
 }
 
 export default SalesInvoice;
-

@@ -185,7 +185,7 @@ function Dispatch() {
                                     onMouseLeave={(e) => (e.target.style.boxShadow = "0 2px 4px rgba(0, 123, 255, 0.1)")}
                                 />
                             </div>
-                            <div className="accordion" id="preparedOrdersAccordion">
+                            <div className="prepared-orders-list">
                                 {filteredPreparedOrders.map((order, index) => {
                                     const allItemsSelected = order.items.every((item) =>
                                         selectedItems.some(
@@ -193,106 +193,96 @@ function Dispatch() {
                                         )
                                     );
                                     return (
-                                        <div key={order.orderName} className="accordion-item mb-3" style={{ border: "1px solid #3498db", borderRadius: "8px" }}>
-                                            <h2 className="accordion-header" id={`heading-${order.orderName}`}>
-                                                <button
-                                                    className="accordion-button"
-                                                    type="button"
-                                                    data-bs-toggle="collapse"
-                                                    data-bs-target={`#collapse-${order.orderName}`}
-                                                    aria-expanded={index === 0 ? "true" : "false"}
-                                                    aria-controls={`collapse-${order.orderName}`}
-                                                    style={{ backgroundColor: "#007bff", color: "#ffffff", fontWeight: "600" }}
-                                                >
-                                                    (Table: {order.tableNumber || "N/A"}, Chairs: {order.chairCount || 0}, Delivery: {order.deliveryType})
-                                                </button>
-                                            </h2>
+                                        <div
+                                            key={order.orderName}
+                                            className="order-section mb-3"
+                                            style={{ border: "1px solid #3498db", borderRadius: "8px" }}
+                                        >
                                             <div
-                                                id={`collapse-${order.orderName}`}
-                                                className={`accordion-collapse collapse ${index === 0 ? "show" : ""}`}
-                                                aria-labelledby={`heading-${order.orderName}`}
-                                                data-bs-parent="#preparedOrdersAccordion"
+                                                className="order-header p-3"
+                                                style={{ backgroundColor: "#007bff", color: "#ffffff", fontWeight: "600" }}
                                             >
-                                                <div className="accordion-body p-0">
-                                                    <div className="table-responsive">
-                                                        <table className="table table-bordered table-striped mb-0">
-                                                            <thead className="table-dark">
-                                                                <tr>
-                                                                    <th>
+                                                (Table: {order.tableNumber || "N/A"}, Chairs: {order.chairCount || 0}, Delivery: {order.deliveryType})
+                                            </div>
+                                            <div className="order-body p-0">
+                                                <div className="table-responsive">
+                                                    <table className="table table-bordered table-striped mb-0">
+                                                        <thead className="table-dark">
+                                                            <tr>
+                                                                <th>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={allItemsSelected}
+                                                                        onChange={(e) => handleSelectAll(order, e.target.checked)}
+                                                                    />
+                                                                </th>
+                                                                <th>Item</th>
+                                                                <th>Variants</th>
+                                                                <th>Kitchen</th>
+                                                                <th>Quantity</th>
+                                                                <th>Type</th>
+                                                                <th>Prepared Time</th>
+                                                                <th>Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {order.items.map((item) => (
+                                                                <tr key={item.id}>
+                                                                    <td>
                                                                         <input
                                                                             type="checkbox"
-                                                                            checked={allItemsSelected}
-                                                                            onChange={(e) => handleSelectAll(order, e.target.checked)}
+                                                                            checked={selectedItems.some(
+                                                                                (selected) =>
+                                                                                    selected.orderName === order.orderName &&
+                                                                                    selected.itemId === item.id
+                                                                            )}
+                                                                            onChange={() => handleSelectItem(order.orderName, item.id)}
                                                                         />
-                                                                    </th>
-                                                                    <th>Item</th>
-                                                                    <th>Variants</th>
-                                                                    <th>Kitchen</th>
-                                                                    <th>Quantity</th>
-                                                                    <th>Type</th>
-                                                                    <th>Prepared Time</th>
-                                                                    <th>Action</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {order.items.map((item) => (
-                                                                    <tr key={item.id}>
-                                                                        <td>
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={selectedItems.some(
-                                                                                    (selected) =>
-                                                                                        selected.orderName === order.orderName &&
-                                                                                        selected.itemId === item.id
-                                                                                )}
-                                                                                onChange={() => handleSelectItem(order.orderName, item.id)}
-                                                                            />
-                                                                        </td>
-                                                                        <td>
-                                                                            {item.name}
-                                                                            {item.custom_customer_description && (
-                                                                                <p
-                                                                                    style={{
-                                                                                        fontSize: "12px",
-                                                                                        color: "#666",
-                                                                                        marginTop: "5px",
-                                                                                        marginBottom: "0",
-                                                                                    }}
-                                                                                >
-                                                                                    <strong>Note:</strong> {item.custom_customer_description}
-                                                                                </p>
-                                                                            )}
-                                                                            {item.ingredients?.length > 0 && (
-                                                                                <p
-                                                                                    style={{
-                                                                                        fontSize: "12px",
-                                                                                        color: "#666",
-                                                                                        marginTop: "5px",
-                                                                                        marginBottom: "0",
-                                                                                    }}
-                                                                                >
-                                                                                    <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
-                                                                                </p>
-                                                                            )}
-                                                                        </td>
-                                                                        <td>{item.custom_variants || "None"}</td>
-                                                                        <td>{item.kitchen}</td>
-                                                                        <td>{item.quantity}</td>
-                                                                        <td>{item.type}</td>
-                                                                        <td>{item.preparedTime}</td>
-                                                                        <td>
-                                                                            <button
-                                                                                className="btn btn-primary btn-sm"
-                                                                                onClick={() => handleDispatchItem(order.orderName, item.id)}
+                                                                    </td>
+                                                                    <td>
+                                                                        {item.name}
+                                                                        {item.custom_customer_description && (
+                                                                            <p
+                                                                                style={{
+                                                                                    fontSize: "12px",
+                                                                                    color: "#666",
+                                                                                    marginTop: "5px",
+                                                                                    marginBottom: "0",
+                                                                                }}
                                                                             >
-                                                                                Dispatch
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
+                                                                                <strong>Note:</strong> {item.custom_customer_description}
+                                                                            </p>
+                                                                        )}
+                                                                        {item.ingredients?.length > 0 && (
+                                                                            <p
+                                                                                style={{
+                                                                                    fontSize: "12px",
+                                                                                    color: "#666",
+                                                                                    marginTop: "5px",
+                                                                                    marginBottom: "0",
+                                                                                }}
+                                                                            >
+                                                                                <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
+                                                                            </p>
+                                                                        )}
+                                                                    </td>
+                                                                    <td>{item.custom_variants || "None"}</td>
+                                                                    <td>{item.kitchen}</td>
+                                                                    <td>{item.quantity}</td>
+                                                                    <td>{item.type}</td>
+                                                                    <td>{item.preparedTime}</td>
+                                                                    <td>
+                                                                        <button
+                                                                            className="btn btn-primary btn-sm"
+                                                                            onClick={() => handleDispatchItem(order.orderName, item.id)}
+                                                                        >
+                                                                            Dispatch
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
                                             </div>
                                         </div>

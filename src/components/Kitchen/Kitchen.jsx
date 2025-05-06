@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
 
 function Kitchen() {
     const navigate = useNavigate();
@@ -8,6 +7,7 @@ function Kitchen() {
     const [kitchenNotes, setKitchenNotes] = useState([]);
     const [preparedItems, setPreparedItems] = useState([]);
     const [selectedKitchen, setSelectedKitchen] = useState(null);
+    const [allKitchens, setAllKitchens] = useState([]);
     const [showStatusPopup, setShowStatusPopup] = useState(false);
     const [preparedOrders, setPreparedOrders] = useState({});
     const [searchInvoiceId, setSearchInvoiceId] = useState("");
@@ -44,6 +44,7 @@ function Kitchen() {
             if (!data.message?.data || !Array.isArray(data.message.data) || data.message.data.length === 0) {
                 console.warn("Kitchen.jsx: No kitchen notes found in response:", data);
                 setKitchenNotes([]);
+                setAllKitchens([]);
                 setLoading(false);
                 return;
             }
@@ -66,10 +67,11 @@ function Kitchen() {
                     custom_chair_count: chairCount,
                     posting_date: note.order_time,
                     cartItems: note.items.map((item) => {
-                        const itemId = `${note.name}-${item.name}-${uuidv4()}`; // Ensure unique itemId
+                        const itemId = item.name; // Use backend item.name as unique ID
                         const isPrepared = Object.values(storedPreparedOrders).some(o =>
                             o.items.some(i => i.id === itemId && i.status === "Prepared")
                         );
+                        console.log(`Kitchen.jsx: Item ${item.item_name} (ID: ${itemId}) - isPrepared: ${isPrepared}, backend status: ${item.status}`);
                         return {
                             id: itemId,
                             backendId: item.name,
@@ -82,7 +84,7 @@ function Kitchen() {
                             selectedSize: "",
                             selectedCustomVariant: "",
                             kitchen: item.kitchen || "Unknown",
-                            status: isPrepared ? "Prepared" : (item.status || "Prepare"),
+                            status: item.status || "Prepare", // Trust backend status, override only if prepared
                             addonCounts: {},
                             selectedCombos: [],
                             type: "main",
@@ -96,12 +98,22 @@ function Kitchen() {
                 };
             });
 
+            // Extract all kitchens from the data
+            const kitchensFromData = [
+                ...new Set(
+                    formattedNotes.flatMap((order) =>
+                        order.cartItems.map((item) => item.kitchen || "Unknown")
+                    )
+                ),
+            ];
+            setAllKitchens(kitchensFromData);
+
             if (location.state?.order) {
                 const passedOrder = {
                     ...location.state.order,
                     custom_chair_count: parseInt(location.state.order.custom_chair_count) || 0,
                     cartItems: location.state.order.cartItems.map(item => ({
-                        id: `${location.state.order.name}-${item.item_code || item.name}-${uuidv4()}`,
+                        id: item.name, // Use item.name for consistency
                         backendId: item.name,
                         item_code: item.item_code || item.name,
                         name: item.name,
@@ -128,7 +140,7 @@ function Kitchen() {
                     console.warn(`Kitchen.jsx: Warning: chairCount is 0 for passed DINE IN order ${passedOrder.pos_invoice_id}`);
                 }
                 setKitchenNotes([passedOrder]);
-                setSelectedKitchen(passedOrder.cartItems[0]?.kitchen || "Unknown");
+                setSelectedKitchen(passedOrder.cartItems[0]?.kitchen || kitchensFromData[0] || "Unknown");
             } else {
                 setKitchenNotes(formattedNotes);
             }
@@ -142,6 +154,7 @@ function Kitchen() {
             console.error("Kitchen.jsx: Error fetching Kitchen Notes:", error);
             setError(`Failed to load kitchen notes: ${errorMessage}. Please try again or contact support.`);
             setKitchenNotes([]);
+            setAllKitchens([]);
         } finally {
             setLoading(false);
         }
@@ -153,19 +166,16 @@ function Kitchen() {
         return () => clearInterval(intervalId);
     }, [location]);
 
-    const kitchens = [
-        ...new Set(
-            kitchenNotes.flatMap((order) =>
-                order.cartItems.map((item) => item.kitchen || "Unknown")
-            )
-        ),
-    ];
-
     useEffect(() => {
-        if (kitchens.length > 0 && !selectedKitchen && !location.state?.order) {
-            setSelectedKitchen(kitchens[0]);
+        if (allKitchens.length > 0 && !selectedKitchen && !location.state?.order) {
+            const kitchenWithItems = allKitchens.find((kitchen) =>
+                kitchenNotes.some((order) =>
+                    order.cartItems.some((item) => item.kitchen === kitchen && item.status !== "Prepared")
+                )
+            );
+            setSelectedKitchen(kitchenWithItems || allKitchens[0]);
         }
-    }, [kitchens, selectedKitchen, location.state]);
+    }, [allKitchens, kitchenNotes, selectedKitchen, location.state]);
 
     const filteredItemsMap = new Map();
     kitchenNotes.forEach((order) => {
@@ -213,28 +223,21 @@ function Kitchen() {
                 throw new Error(statusResult.message?.message || statusResult.exception || "Failed to update status");
             }
 
-            // Handle "Prepared" status: delete from backend and add to preparedOrders
+            // Update local state for all statuses
+            setKitchenNotes((prev) =>
+                prev.map((order) => ({
+                    ...order,
+                    cartItems: order.cartItems.map((cartItem) => {
+                        if (cartItem.id === id) {
+                            return { ...cartItem, status: newStatus };
+                        }
+                        return cartItem;
+                    }),
+                }))
+            );
+
+            // If status is "Prepared", add to preparedOrders and remove from frontend display
             if (newStatus === "Prepared") {
-                const deleteResponse = await fetch(
-                    "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_kitchen_note_item",
-                    {
-                        method: "POST",
-                        headers: {
-                            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            item_name: item.backendId,
-                        }),
-                    }
-                );
-
-                const deleteResult = await deleteResponse.json();
-                console.log("Kitchen.jsx: Delete item response:", JSON.stringify(deleteResult, null, 2));
-                if (deleteResult.message?.status !== "success") {
-                    throw new Error(deleteResult.message?.message || deleteResult.exception || "Failed to delete item");
-                }
-
                 const preparedTime = new Date().toLocaleString();
                 const orderName = item.pos_invoice_id || item.id.split("-")[0];
                 const preparedItem = {
@@ -260,31 +263,18 @@ function Kitchen() {
                     console.log("Kitchen.jsx: Updated preparedOrders:", JSON.stringify(newPreparedOrders, null, 2));
                     return newPreparedOrders;
                 });
-            }
 
-            // Update local state
-            const updatedOrders = kitchenNotes.map((order) => ({
-                ...order,
-                cartItems: order.cartItems.map((cartItem) => {
-                    if (cartItem.id === id) {
-                        return { ...cartItem, status: newStatus };
-                    }
-                    return cartItem;
-                }),
-            }));
-
-            if (newStatus === "Prepared") {
+                // Remove prepared item from kitchenNotes
+                setKitchenNotes((prev) =>
+                    prev.map((order) => ({
+                        ...order,
+                        cartItems: order.cartItems.filter((cartItem) => cartItem.id !== id || cartItem.status !== "Prepared"),
+                    }))
+                );
                 setPreparedItems((prev) => [...new Set([...prev, id])]);
-            } else {
-                setPreparedItems((prev) => prev.filter((itemId) => itemId !== id));
             }
 
-            setKitchenNotes(updatedOrders);
             localStorage.setItem("preparedItems", JSON.stringify(preparedItems));
-            console.log("Kitchen.jsx: Updated kitchenNotes after status change:", JSON.stringify(updatedOrders, null, 2));
-
-            // Fetch fresh data to ensure consistency
-            await fetchKitchenNotes();
         } catch (error) {
             console.error("Kitchen.jsx: Error updating status:", error);
             alert(`Unable to update item status: ${error.message || "Please try again."}`);
@@ -372,16 +362,16 @@ function Kitchen() {
                         <div className="alert alert-danger text-center" role="alert">
                             {error}
                         </div>
-                    ) : filteredItems.length === 0 ? (
+                    ) : allKitchens.length === 0 && filteredItems.length === 0 ? (
                         <div className="alert alert-info text-center" role="alert">
-                            No active kitchen orders found for {selectedKitchen || "any kitchen"}.
+                            No active kitchen orders found for any kitchen.
                         </div>
                     ) : (
                         <>
                             <div className="mb-4">
                                 <h5 className="fw-bold">Select Kitchen:</h5>
                                 <div className="btn-group flex-wrap gap-2">
-                                    {kitchens.map((kitchen) => (
+                                    {allKitchens.map((kitchen) => (
                                         <button
                                             key={kitchen}
                                             className={`btn btn-outline-primary ${selectedKitchen === kitchen ? "active" : ""}`}
@@ -394,72 +384,78 @@ function Kitchen() {
                             </div>
 
                             <h5 className="mb-3">Current Orders - {selectedKitchen || "Select a Kitchen"}</h5>
-                            <div className="table-responsive text-center">
-                                <table className="table table-bordered table-hover">
-                                    <thead className="table-dark">
-                                        <tr>
-                                            <th>Invoice</th>
-                                            <th>Table</th>
-                                            <th>Chairs</th>
-                                            <th>Delivery Type</th>
-                                            <th>Item</th>
-                                            <th>Variants</th>
-                                            <th>Quantity</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredItems.map((item) => (
-                                            <tr key={item.id} style={getRowStyle(item.status)}>
-                                                <td>{item.pos_invoice_id || "Unknown"}</td>
-                                                <td>{item.tableNumber || "N/A"}</td>
-                                                <td>{item.deliveryType === "DINE IN" ? item.chairCount : "N/A"}</td>
-                                                <td>{item.deliveryType}</td>
-                                                <td>
-                                                    {item.name}
-                                                    {item.custom_customer_description && (
-                                                        <p
-                                                            style={{
-                                                                fontSize: "12px",
-                                                                color: "#666",
-                                                                marginTop: "5px",
-                                                                marginBottom: "0",
-                                                            }}
-                                                        >
-                                                            <strong>Note:</strong> {item.custom_customer_description}
-                                                        </p>
-                                                    )}
-                                                    {item.ingredients?.length > 0 && (
-                                                        <p
-                                                            style={{
-                                                                fontSize: "12px",
-                                                                color: "#666",
-                                                                marginTop: "5px",
-                                                                marginBottom: "0",
-                                                            }}
-                                                        >
-                                                            <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
-                                                        </p>
-                                                    )}
-                                                </td>
-                                                <td>{item.custom_variants || "None"}</td>
-                                                <td>{item.quantity}</td>
-                                                <td>
-                                                    <select
-                                                        value={item.status || "Prepare"}
-                                                        onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                                                        className="form-select form-select-sm"
-                                                    >
-                                                        <option value="Prepare">Prepare</option>
-                                                        <option value="Preparing">Preparing</option>
-                                                        <option value="Prepared">Prepared</option>
-                                                    </select>
-                                                </td>
+                            {filteredItems.length === 0 ? (
+                                <div className="alert alert-info text-center" role="alert">
+                                    No active orders for {selectedKitchen || "selected kitchen"}.
+                                </div>
+                            ) : (
+                                <div className="table-responsive text-center">
+                                    <table className="table table-bordered table-hover">
+                                        <thead className="table-dark">
+                                            <tr>
+                                                <th>Invoice</th>
+                                                <th>Table</th>
+                                                <th>Chairs</th>
+                                                <th>Delivery Type</th>
+                                                <th>Item</th>
+                                                <th>Variants</th>
+                                                <th>Quantity</th>
+                                                <th>Status</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            {filteredItems.map((item) => (
+                                                <tr key={item.id} style={getRowStyle(item.status)}>
+                                                    <td>{item.pos_invoice_id || "Unknown"}</td>
+                                                    <td>{item.tableNumber || "N/A"}</td>
+                                                    <td>{item.deliveryType === "DINE IN" ? item.chairCount : "N/A"}</td>
+                                                    <td>{item.deliveryType}</td>
+                                                    <td>
+                                                        {item.name}
+                                                        {item.custom_customer_description && (
+                                                            <p
+                                                                style={{
+                                                                    fontSize: "12px",
+                                                                    color: "#666",
+                                                                    marginTop: "5px",
+                                                                    marginBottom: "0",
+                                                                }}
+                                                            >
+                                                                <strong>Note:</strong> {item.custom_customer_description}
+                                                            </p>
+                                                        )}
+                                                        {item.ingredients?.length > 0 && (
+                                                            <p
+                                                                style={{
+                                                                    fontSize: "12px",
+                                                                    color: "#666",
+                                                                    marginTop: "5px",
+                                                                    marginBottom: "0",
+                                                                }}
+                                                            >
+                                                                <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
+                                                            </p>
+                                                        )}
+                                                    </td>
+                                                    <td>{item.custom_variants || "None"}</td>
+                                                    <td>{item.quantity}</td>
+                                                    <td>
+                                                        <select
+                                                            value={item.status || "Prepare"}
+                                                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                                                            className="form-select form-select-sm"
+                                                        >
+                                                            <option value="Prepare">Prepare</option>
+                                                            <option value="Preparing">Preparing</option>
+                                                            <option value="Prepared">Prepared</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>

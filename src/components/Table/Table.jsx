@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./table.css";
 import UserContext from "../../Context/UserContext";
 import { v4 as uuidv4 } from "uuid";
@@ -34,6 +34,8 @@ function Table() {
     });
     const [verificationCustomer, setVerificationCustomer] = useState(""); // Customer ID for verification
     const navigate = useNavigate();
+    const { state } = useLocation();
+    const { deliveryType } = state || {};
 
     // Fetch all items
     const fetchAllItems = async () => {
@@ -363,7 +365,7 @@ function Table() {
                     customerDetails = {
                         customer: customer.name,
                         customer_name: customer.customer_name,
-                        customer_phone: customer.mobile_no || customer.custom_watsapp_no || "",
+                        customer_phone: customer.customer_phone || customer.mobile_no || customer.custom_watsapp_no || "",
                         address: customer.primary_address || "",
                         email: customer.email_id || "",
                         watsappNumber: customer.custom_watsapp_no || customer.mobile_no || "",
@@ -655,12 +657,14 @@ function Table() {
                                         >
                                             Select Table
                                         </button>
-                                        <button
-                                            className="btn btn-success btn-sm"
-                                            onClick={() => handleBookTableClick(table)}
-                                        >
-                                            Book Table
-                                        </button>
+                                        {deliveryType === "TABLE BOOKING" && (
+                                            <button
+                                                className="btn btn-success btn-sm"
+                                                onClick={() => handleBookTableClick(table)}
+                                            >
+                                                Book Table
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -1013,3 +1017,4 @@ function Table() {
 }
 
 export default Table;
+

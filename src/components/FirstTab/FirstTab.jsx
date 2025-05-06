@@ -26,18 +26,18 @@ function FirstTab() {
           const types = data.message.map(item => item.types_of_delivery);
           setDeliveryTypes(types);
         } else {
-          setDeliveryTypes(["TAKE AWAY", "DINE IN", "ONLINE DELIVERY"]);
+          setDeliveryTypes(["TAKE AWAY", "DINE IN", "ONLINE DELIVERY", "TABLE BOOKING"]);
         }
       } catch (error) {
         console.error("Error fetching delivery types:", error);
-        setDeliveryTypes(["TAKE AWAY", "DINE IN", "ONLINE DELIVERY"]);
+        setDeliveryTypes(["TAKE AWAY", "DINE IN", "ONLINE DELIVERY", "TABLE BOOKING"]);
       }
     };
     fetchDeliveryTypes();
   }, []);
 
   const handleNavigation = (type) => {
-    const nextPath = type.toUpperCase() === "DINE IN" ? '/table' : '/frontpage';
+    const nextPath = ["DINE IN", "TABLE BOOKING"].includes(type.toUpperCase()) ? '/table' : '/frontpage';
     navigate(nextPath, { state: { deliveryType: type.toUpperCase(), posOpeningEntry } });
   };
 

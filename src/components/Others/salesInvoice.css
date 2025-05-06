@@ -28,3 +28,23 @@
   .table td.table-right-align {
     text-align: right;
   }
+
+
+  .offers-details {
+    border-top: 1px solid #000;
+    padding-top: 10px;
+  }
+  .offers-details p {
+    margin: 5px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .offers-details p strong {
+    text-align: left;
+    flex: 0 0 40%;
+  }
+  .offers-details p .value {
+    text-align: right;
+    flex: 0 0 60%;
+  }
