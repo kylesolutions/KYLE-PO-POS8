@@ -873,7 +873,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                                 type="button"
                                 className="btn"
                                 onClick={handleAddToCart}
-                                style={{ backgroundColor: "#358ac2", color: "white" }}
+                                style={{ backgroundColor: " #f3b27d", color: "white" }}
                             >
                                 {isUpdate ? "Update Cart" : "Add To Cart"}
                             </button>

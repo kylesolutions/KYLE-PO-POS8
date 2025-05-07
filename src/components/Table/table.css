@@ -44,6 +44,11 @@
   background: #fff3cd; /* Light yellow background */
 }
 
+.table-card.pre-booked {
+  border: 2px solid #17a2b8; /* Cyan for pre-booked */
+  background: #d1ecf1; /* Light cyan background */
+}
+
 /* Chair Container */
 .chairs-container {
   display: flex;
@@ -63,6 +68,10 @@
   color: #dc3545; /* Red for booked */
 }
 
+.chair-icon.available-chair {
+  color: #28a745; /* Green for available, matching .chair-icon */
+}
+
 /* Chair Status Text */
 .chair-status {
   margin-top: 0.5rem;
@@ -70,11 +79,25 @@
   color: #333;
 }
 
+/* Booking Status Text */
+.booking-status {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* Table Actions */
+.table-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 0.5rem;
+}
+
 /* Back Button */
 .back-button1 {
   font-size: 2rem;
   position: absolute;
-  
   left: 1rem;
   cursor: pointer;
   color: #3498db;

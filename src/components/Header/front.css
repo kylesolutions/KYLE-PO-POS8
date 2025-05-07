@@ -11,9 +11,9 @@
   
   /* Category Button */
   .category-btn {
-    background: #ffffff; /* White background */
-    color: #3498db; /* Primary blue text */
-    border: 1px solid #3498db; /* Blue border */
+    background:  #f3b27d; /* White background */
+    color: white; /* Primary blue text */
+    border: 1px solid  #634328; /* Blue border */
     padding: 12px 10px;
     font-size: 16px;
     font-weight: 600;
@@ -24,17 +24,17 @@
   }
   
   .category-btn:hover {
-    background: #3498db; /* Primary blue on hover */
-    color: #ffffff; /* White text */
-    border-color: #ffffff; /* Ensure border matches */
+    background: #ffffff; /* Primary blue on hover */
+    color: #000000; /* White text */
+    border-color: #f3b27d; /* Ensure border matches */
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2); /* Stronger blue shadow */
   }
   
   .category-btn.active {
-    background: #2783c0; /* Darker blue for active state */
-    color: #ffffff; /* White text */
-    border-color: #2783c0; /* Match border to background */
+    background: #ffffff; /* Darker blue for active state */
+    color: #000000; /* White text */
+    border-color: #f3b27d; /* Match border to background */
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inset shadow for pressed effect */
   }
   
@@ -49,7 +49,7 @@
   }
   
   .category-sidebar::-webkit-scrollbar-thumb {
-    background: #3498db; /* Blue thumb */
+    background: #f3b27d; /* Blue thumb */
     border-radius: 10px;
   }
   

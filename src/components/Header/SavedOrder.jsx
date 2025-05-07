@@ -287,4 +287,3 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
 }
 
 export default SavedOrder;
-

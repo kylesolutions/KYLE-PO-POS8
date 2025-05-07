@@ -244,9 +244,7 @@ function SalesInvoice() {
                   <th>Description</th>
                   <th>Quantity</th>
                   <th>Rate</th>
-                  <th>Amount</th>
-                  <th>Size</th>
-                  <th>Varient</th>
+                  <th>Amount</th>               
                 </tr>
               </thead>
               <tbody>
@@ -261,8 +259,6 @@ function SalesInvoice() {
                             <td>${item.qty || 0}</td>
                             <td>₹${item.rate || 0}</td>
                             <td>₹${item.amount || 0}</td>
-                            <td>${item.custom_size_variants}</td>
-                            <td>${item.custom_other_variants}</td>
                           </tr>
                         `
                         )
@@ -473,8 +469,8 @@ function SalesInvoice() {
                         <th className="table-right-align">Quantity</th>
                         <th className="table-right-align">Rate</th>
                         <th className="table-right-align">Amount</th>
-                        <th className="table-right-align">Size</th>
-                        <th className="table-right-align">Varient</th>
+                        {/* <th className="table-right-align">Size</th> */}
+                        {/* <th className="table-right-align">Varient</th> */}
                       </tr>
                     </thead>
                     <tbody>
@@ -485,8 +481,8 @@ function SalesInvoice() {
                           <td className="table-right-align">{item.qty || 0}</td>
                           <td className="table-right-align">₹{item.rate || 0}</td>
                           <td className="table-right-align">₹{item.amount || 0}</td>
-                          <td className="table-right-align">{item.custom_size_variants}</td>
-                          <td className="table-right-align">{item.custom_other_variants}</td>
+                          {/* <td className="table-right-align">{item.custom_size_variants}</td> */}
+                          {/* <td className="table-right-align">{item.custom_other_variants}</td> */}
                         </tr>
                       ))}
                     </tbody>

@@ -13,6 +13,8 @@ function Kitchen() {
     const [searchInvoiceId, setSearchInvoiceId] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedItems, setSelectedItems] = useState([]); // Track selected item IDs
+    const [bulkUpdating, setBulkUpdating] = useState(false); // Track bulk update state
 
     const fetchKitchenNotes = async () => {
         try {
@@ -281,6 +283,112 @@ function Kitchen() {
         }
     };
 
+    const handleBulkStatusChange = async () => {
+        if (selectedItems.length === 0) {
+            alert("Please select at least one item to mark as Prepared.");
+            return;
+        }
+
+        setBulkUpdating(true);
+        try {
+            for (const id of selectedItems) {
+                const item = filteredItems.find((i) => i.id === id);
+                if (!item) {
+                    console.warn(`Kitchen.jsx: Item with ID ${id} not found during bulk update`);
+                    continue;
+                }
+
+                console.log("Kitchen.jsx: Bulk updating item", item.name, "to Prepared");
+
+                // Update backend status
+                const statusResponse = await fetch(
+                    "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
+                    {
+                        method: "POST",
+                        headers: {
+                            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            item_name: item.backendId,
+                            status: "Prepared",
+                        }),
+                    }
+                );
+
+                const statusResult = await statusResponse.json();
+                console.log("Kitchen.jsx: Bulk status update response for", item.name, ":", JSON.stringify(statusResult, null, 2));
+                if (statusResult.message?.status !== "success") {
+                    throw new Error(statusResult.message?.message || statusResult.exception || `Failed to update status for ${item.name}`);
+                }
+
+                // Update local state
+                const preparedTime = new Date().toLocaleString();
+                const orderName = item.pos_invoice_id || item.id.split("-")[0];
+                const preparedItem = {
+                    ...item,
+                    preparedTime,
+                    status: "Prepared",
+                };
+
+                setPreparedOrders((prev) => {
+                    const existingOrder = prev[orderName] || {
+                        customerName: item.customer || "Unknown",
+                        tableNumber: item.tableNumber || "N/A",
+                        deliveryType: item.deliveryType || "DINE IN",
+                        chairCount: item.chairCount || 0,
+                        pos_invoice_id: orderName,
+                        items: [],
+                    };
+                    if (!existingOrder.items.some((i) => i.id === item.id)) {
+                        existingOrder.items.push(preparedItem);
+                    }
+                    const newPreparedOrders = { ...prev, [orderName]: existingOrder };
+                    localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
+                    console.log("Kitchen.jsx: Updated preparedOrders (bulk):", JSON.stringify(newPreparedOrders, null, 2));
+                    return newPreparedOrders;
+                });
+
+                setKitchenNotes((prev) =>
+                    prev.map((order) => ({
+                        ...order,
+                        cartItems: order.cartItems.map((cartItem) => {
+                            if (cartItem.id === id) {
+                                return { ...cartItem, status: "Prepared" };
+                            }
+                            return cartItem;
+                        }).filter((cartItem) => cartItem.id !== id || cartItem.status !== "Prepared"),
+                    }))
+                );
+
+                setPreparedItems((prev) => [...new Set([...prev, id])]);
+            }
+
+            localStorage.setItem("preparedItems", JSON.stringify(preparedItems));
+            setSelectedItems([]); // Clear selection
+            alert(`${selectedItems.length} item(s) marked as Prepared successfully!`);
+        } catch (error) {
+            console.error("Kitchen.jsx: Error during bulk status update:", error);
+            alert(`Failed to mark items as Prepared: ${error.message || "Please try again."}`);
+        } finally {
+            setBulkUpdating(false);
+        }
+    };
+
+    const handleSelectItem = (id) => {
+        setSelectedItems((prev) =>
+            prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+        );
+    };
+
+    const handleSelectAll = () => {
+        if (selectedItems.length === filteredItems.length) {
+            setSelectedItems([]); // Deselect all
+        } else {
+            setSelectedItems(filteredItems.map((item) => item.id)); // Select all
+        }
+    };
+
     const handleRefresh = () => {
         console.log("Kitchen.jsx: Manual refresh triggered");
         fetchKitchenNotes();
@@ -383,7 +491,24 @@ function Kitchen() {
                                 </div>
                             </div>
 
-                            <h5 className="mb-3">Current Orders - {selectedKitchen || "Select a Kitchen"}</h5>
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                <h5 className="mb-0">Current Orders - {selectedKitchen || "Select a Kitchen"}</h5>
+                                <button
+                                    className="btn btn-success btn-sm"
+                                    onClick={handleBulkStatusChange}
+                                    disabled={selectedItems.length === 0 || bulkUpdating}
+                                >
+                                    {bulkUpdating ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        `Mark Selected as Prepared (${selectedItems.length})`
+                                    )}
+                                </button>
+                            </div>
+
                             {filteredItems.length === 0 ? (
                                 <div className="alert alert-info text-center" role="alert">
                                     No active orders for {selectedKitchen || "selected kitchen"}.
@@ -393,6 +518,13 @@ function Kitchen() {
                                     <table className="table table-bordered table-hover">
                                         <thead className="table-dark">
                                             <tr>
+                                                <th>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedItems.length === filteredItems.length && filteredItems.length > 0}
+                                                        onChange={handleSelectAll}
+                                                    />
+                                                </th>
                                                 <th>Invoice</th>
                                                 <th>Table</th>
                                                 <th>Chairs</th>
@@ -406,6 +538,13 @@ function Kitchen() {
                                         <tbody>
                                             {filteredItems.map((item) => (
                                                 <tr key={item.id} style={getRowStyle(item.status)}>
+                                                    <td>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedItems.includes(item.id)}
+                                                            onChange={() => handleSelectItem(item.id)}
+                                                        />
+                                                    </td>
                                                     <td>{item.pos_invoice_id || "Unknown"}</td>
                                                     <td>{item.tableNumber || "N/A"}</td>
                                                     <td>{item.deliveryType === "DINE IN" ? item.chairCount : "N/A"}</td>

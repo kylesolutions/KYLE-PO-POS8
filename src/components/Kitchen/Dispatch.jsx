@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Dispatch() {
@@ -8,28 +8,96 @@ function Dispatch() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedItems, setSelectedItems] = useState([]);
+    const [dispatchingItems, setDispatchingItems] = useState({});
 
-    const fetchPreparedOrders = () => {
+    const fetchPreparedOrders = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const storedPreparedOrders = JSON.parse(localStorage.getItem("preparedOrders")) || {};
-            setPreparedOrders(storedPreparedOrders);
-            console.log("Dispatch.jsx: Loaded preparedOrders:", JSON.stringify(storedPreparedOrders, null, 2));
+
+            const response = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_kitchen_notes",
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch prepared orders: ${response.status} - ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log("Dispatch.jsx: Raw response from get_kitchen_notes:", JSON.stringify(data, null, 2));
+
+            if (data.message?.status !== "success") {
+                throw new Error(data.message?.message || data.exception || "Invalid response from server");
+            }
+
+            if (!data.message?.data || !Array.isArray(data.message.data)) {
+                console.warn("Dispatch.jsx: No prepared orders found in response:", data);
+                setPreparedOrders({});
+                setLoading(false);
+                return;
+            }
+
+            const formattedOrders = data.message.data.reduce((acc, order) => {
+                const chairCount = parseInt(order.custom_chair_count || order.number_of_chair) || 0;
+                acc[order.pos_invoice_id] = {
+                    customerName: order.customer_name || "Unknown",
+                    tableNumber: order.table_number || "N/A",
+                    deliveryType: order.delivery_type || "DINE IN",
+                    chairCount,
+                    pos_invoice_id: order.pos_invoice_id,
+                    items: order.items
+                        .filter(item => item.status === "Prepared" && !item.isDispatched)
+                        .map(item => ({
+                            id: item.name,
+                            backendId: item.name,
+                            item_code: item.item_name,
+                            name: item.item_name,
+                            custom_customer_description: item.customer_description || "",
+                            custom_variants: item.custom_variants || "",
+                            basePrice: parseFloat(item.basePrice) || 0,
+                            quantity: parseInt(item.quantity, 10) || 1,
+                            selectedSize: item.selectedSize || "",
+                            selectedCustomVariant: item.custom_variants || "",
+                            kitchen: item.kitchen || "Unknown",
+                            status: item.status || "Prepared",
+                            addonCounts: item.addonCounts || {},
+                            selectedCombos: item.selectedCombos || [],
+                            type: item.type || "main",
+                            preparedTime: item.prepared_time || new Date().toLocaleString(),
+                            isDispatched: item.isDispatched || false,
+                            ingredients: item.ingredients?.map((ing) => ({
+                                name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                                quantity: parseFloat(ing.quantity) || 100,
+                                unit: ing.unit || "g",
+                            })) || [],
+                        })),
+                };
+                return acc;
+            }, {});
+            setPreparedOrders(formattedOrders);
+            console.log("Dispatch.jsx: Formatted preparedOrders:", JSON.stringify(formattedOrders, null, 2));
         } catch (error) {
-            console.error("Dispatch.jsx: Error loading preparedOrders:", error);
-            setError("Failed to load prepared orders. Please try again.");
+            const errorMessage = error.message || "An unexpected error occurred";
+            console.error("Dispatch.jsx: Error fetching prepared orders:", error);
+            setError(`Failed to load prepared orders: ${errorMessage}. Please try again or contact support.`);
             setPreparedOrders({});
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchPreparedOrders();
         const intervalId = setInterval(fetchPreparedOrders, 30000);
         return () => clearInterval(intervalId);
-    }, []);
+    }, [fetchPreparedOrders]);
 
     const filteredPreparedOrders = Object.entries(preparedOrders)
         .filter(([orderName]) =>
@@ -40,7 +108,7 @@ function Dispatch() {
             ...order,
         }));
 
-    const handleSelectItem = (orderName, itemId) => {
+    const handleSelectItem = useCallback((orderName, itemId) => {
         setSelectedItems((prev) => {
             const itemKey = `${orderName}-${itemId}`;
             if (prev.some((item) => item.orderName === orderName && item.itemId === itemId)) {
@@ -48,9 +116,9 @@ function Dispatch() {
             }
             return [...prev, { orderName, itemId }];
         });
-    };
+    }, []);
 
-    const handleSelectAll = (order, isChecked) => {
+    const handleSelectAll = useCallback((order, isChecked) => {
         setSelectedItems((prev) => {
             const orderItems = order.items.map((item) => ({
                 orderName: order.orderName,
@@ -65,24 +133,95 @@ function Dispatch() {
             }
             return prev.filter((item) => item.orderName !== order.orderName);
         });
-    };
+    }, []);
 
-    const handleDispatchItem = (orderName, itemId) => {
-        setPreparedOrders((prev) => {
-            const updatedOrder = { ...prev[orderName] };
-            updatedOrder.items = updatedOrder.items.filter((item) => item.id !== itemId);
-            const newPreparedOrders = { ...prev, [orderName]: updatedOrder };
-            if (updatedOrder.items.length === 0) {
-                delete newPreparedOrders[orderName];
+    const updatePosInvoiceItemDispatchStatus = async (posInvoiceId, itemName) => {
+        try {
+            const response = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.set_pos_invoice_item_dispatch_status",
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        pos_invoice_id: posInvoiceId,
+                        item_name: itemName,
+                        is_dispatched: 1,
+                    }),
+                }
+            );
+
+            const result = await response.json();
+            console.log("Dispatch.jsx: set_pos_invoice_item_dispatch_status Response:", JSON.stringify(result, null, 2));
+            if (result.message?.status !== "success") {
+                throw new Error(result.message?.message || result.exception || "Failed to update POS Invoice item dispatch status");
             }
-            localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
-            console.log("Dispatch.jsx: Updated preparedOrders after dispatch:", JSON.stringify(newPreparedOrders, null, 2));
-            return newPreparedOrders;
-        });
-        setSelectedItems((prev) => prev.filter((item) => !(item.orderName === orderName && item.itemId === itemId)));
+            return true;
+        } catch (error) {
+            console.error("Dispatch.jsx: Error updating POS Invoice item dispatch status:", error);
+            return false;
+        }
     };
 
-    const handleDispatchSelected = () => {
+    const handleDispatchItem = useCallback(async (orderName, itemId) => {
+        setDispatchingItems(prev => ({ ...prev, [`${orderName}-${itemId}`]: true }));
+        try {
+            const order = preparedOrders[orderName];
+            const item = order?.items.find((i) => i.id === itemId);
+            if (!item) throw new Error("Item not found");
+
+            // Update Kitchen Note status
+            const kitchenResponse = await fetch(
+                "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        item_name: item.backendId,
+                        status: "Dispatched",
+                    }),
+                }
+            );
+
+            const kitchenResult = await kitchenResponse.json();
+            console.log("Dispatch.jsx: Dispatch response (Kitchen Note):", JSON.stringify(kitchenResult, null, 2));
+            if (kitchenResult.message?.status !== "success") {
+                throw new Error(kitchenResult.message?.message || kitchenResult.exception || "Failed to dispatch item in Kitchen Note");
+            }
+
+            // Update POS Invoice item dispatch status
+            const invoiceUpdateSuccess = await updatePosInvoiceItemDispatchStatus(orderName, item.item_code);
+            if (!invoiceUpdateSuccess) {
+                console.warn("Dispatch.jsx: Failed to update POS Invoice item dispatch status, but Kitchen Note updated");
+            }
+
+            setPreparedOrders((prev) => {
+                const updatedOrder = { ...prev[orderName] };
+                updatedOrder.items = updatedOrder.items.filter((item) => item.id !== itemId);
+                const newPreparedOrders = { ...prev, [orderName]: updatedOrder };
+                if (updatedOrder.items.length === 0) {
+                    delete newPreparedOrders[orderName];
+                }
+                localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
+                console.log("Dispatch.jsx: Updated preparedOrders after dispatch:", JSON.stringify(newPreparedOrders, null, 2));
+                return newPreparedOrders;
+            });
+
+            setSelectedItems((prev) => prev.filter((item) => !(item.orderName === orderName && item.itemId === itemId)));
+        } catch (error) {
+            console.error("Dispatch.jsx: Error dispatching item:", error);
+            alert(`Unable to dispatch item: ${error.message || "Please try again."}`);
+        } finally {
+            setDispatchingItems(prev => ({ ...prev, [`${orderName}-${itemId}`]: false }));
+        }
+    }, [preparedOrders]);
+
+    const handleDispatchSelected = useCallback(async () => {
         if (selectedItems.length === 0) {
             alert("No items selected for dispatch.");
             return;
@@ -93,35 +232,90 @@ function Dispatch() {
         );
         if (!confirmDispatch) return;
 
-        setPreparedOrders((prev) => {
-            const newPreparedOrders = { ...prev };
-            selectedItems.forEach(({ orderName, itemId }) => {
-                if (newPreparedOrders[orderName]) {
-                    newPreparedOrders[orderName].items = newPreparedOrders[orderName].items.filter(
-                        (item) => item.id !== itemId
-                    );
-                    if (newPreparedOrders[orderName].items.length === 0) {
-                        delete newPreparedOrders[orderName];
-                    }
-                }
-            });
-            localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
-            console.log("Dispatch.jsx: Updated preparedOrders after bulk dispatch:", JSON.stringify(newPreparedOrders, null, 2));
-            return newPreparedOrders;
-        });
-        setSelectedItems([]);
-    };
+        setDispatchingItems(prev => ({
+            ...prev,
+            ...selectedItems.reduce((acc, { orderName, itemId }) => {
+                acc[`${orderName}-${itemId}`] = true;
+                return acc;
+            }, {}),
+        }));
 
-    const formatIngredients = (ingredients) => {
+        try {
+            for (const { orderName, itemId } of selectedItems) {
+                const order = preparedOrders[orderName];
+                const item = order?.items.find((i) => i.id === itemId);
+                if (!item) continue;
+
+                // Update Kitchen Note status
+                const kitchenResponse = await fetch(
+                    "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
+                    {
+                        method: "POST",
+                        headers: {
+                            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                        "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            item_name: item.backendId,
+                            status: "Dispatched",
+                        }),
+                    }
+                );
+
+                const kitchenResult = await kitchenResponse.json();
+                if (kitchenResult.message?.status !== "success") {
+                    throw new Error(kitchenResult.message?.message || kitchenResult.exception || `Failed to dispatch item ${item.name} in Kitchen Note`);
+                }
+
+                // Update POS Invoice item dispatch status
+                const invoiceUpdateSuccess = await updatePosInvoiceItemDispatchStatus(orderName, item.item_code);
+                if (!invoiceUpdateSuccess) {
+                    console.warn(`Dispatch.jsx: Failed to update POS Invoice item dispatch status for ${item.item_code}, but Kitchen Note updated`);
+                }
+            }
+
+            setPreparedOrders((prev) => {
+                const newPreparedOrders = { ...prev };
+                selectedItems.forEach(({ orderName, itemId }) => {
+                    if (newPreparedOrders[orderName]) {
+                        newPreparedOrders[orderName].items = newPreparedOrders[orderName].items.filter(
+                            (item) => item.id !== itemId
+                        );
+                        if (newPreparedOrders[orderName].items.length === 0) {
+                            delete newPreparedOrders[orderName];
+                        }
+                    }
+                });
+                localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
+                console.log("Dispatch.jsx: Updated preparedOrders after bulk dispatch:", JSON.stringify(newPreparedOrders, null, 2));
+                return newPreparedOrders;
+            });
+
+            setSelectedItems([]);
+        } catch (error) {
+            console.error("Dispatch.jsx: Error dispatching selected items:", error);
+            alert(`Unable to dispatch selected items: ${error.message || "Please try again."}`);
+        } finally {
+            setDispatchingItems(prev => ({
+                ...prev,
+                ...selectedItems.reduce((acc, { orderName, itemId }) => {
+                    acc[`${orderName}-${itemId}`] = false;
+                    return acc;
+                }, {}),
+            }));
+        }
+    }, [selectedItems, preparedOrders]);
+
+    const formatIngredients = useCallback((ingredients) => {
         if (!ingredients || ingredients.length === 0) return "";
         return ingredients
             .map((ing) => `${ing.name} - ${ing.quantity} ${ing.unit}`)
             .join(", ");
-    };
+    }, []);
 
-    const handleBack = () => {
+    const handleBack = useCallback(() => {
         navigate(-1);
-    };
+    }, [navigate]);
 
     return (
         <div className="container mt-5">
@@ -146,6 +340,9 @@ function Dispatch() {
                     ) : error ? (
                         <div className="alert alert-danger text-center" role="alert">
                             {error}
+                            <button className="btn btn-sm btn-outline-primary ms-2" onClick={fetchPreparedOrders}>
+                                Retry
+                            </button>
                         </div>
                     ) : filteredPreparedOrders.length === 0 ? (
                         <div className="alert alert-info text-center" role="alert">
@@ -164,7 +361,7 @@ function Dispatch() {
                                 </button>
                             </div>
                             <div className="mb-3">
-                                <label htmlFor="searchInvoiceId" className="form-label fw-bold" style={{ color: "#3498db" }}>
+                                <label htmlFor="searchInvoiceId" className="form-label fw-bold">
                                     Filter by POS Invoice ID
                                 </label>
                                 <input
@@ -174,15 +371,6 @@ function Dispatch() {
                                     placeholder="Enter POS Invoice ID (e.g., POS-12345)"
                                     value={searchInvoiceId}
                                     onChange={(e) => setSearchInvoiceId(e.target.value)}
-                                    style={{
-                                        borderColor: "#007bff",
-                                        backgroundColor: "#ffffff",
-                                        color: "#333",
-                                        boxShadow: "0 2px 4px rgba(0, 123, 255, 0.1)",
-                                        transition: "all 0.3s ease",
-                                    }}
-                                    onMouseEnter={(e) => (e.target.style.boxShadow = "0 4px 8px rgba(0, 123, 255, 0.2)")}
-                                    onMouseLeave={(e) => (e.target.style.boxShadow = "0 2px 4px rgba(0, 123, 255, 0.1)")}
                                 />
                             </div>
                             <div className="prepared-orders-list">
@@ -196,33 +384,34 @@ function Dispatch() {
                                         <div
                                             key={order.orderName}
                                             className="order-section mb-3"
-                                            style={{ border: "1px solid #3498db", borderRadius: "8px" }}
+                                            style={{ border: "1px solid #dee2e6", borderRadius: "8px" }}
                                         >
                                             <div
                                                 className="order-header p-3"
-                                                style={{ backgroundColor: "#007bff", color: "#ffffff", fontWeight: "600" }}
+                                                style={{ backgroundColor: "#f8f9fa", fontWeight: "600" }}
                                             >
-                                                (Table: {order.tableNumber || "N/A"}, Chairs: {order.chairCount || 0}, Delivery: {order.deliveryType})
+                                                Order: {order.orderName} (Table: {order.tableNumber || "N/A"}, Chairs: {order.chairCount || 0}, Delivery: {order.deliveryType})
                                             </div>
                                             <div className="order-body p-0">
                                                 <div className="table-responsive">
                                                     <table className="table table-bordered table-striped mb-0">
                                                         <thead className="table-dark">
                                                             <tr>
-                                                                <th>
+                                                                <th scope="col">
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={allItemsSelected}
                                                                         onChange={(e) => handleSelectAll(order, e.target.checked)}
+                                                                        aria-label={`Select all items for order ${order.orderName}`}
                                                                     />
                                                                 </th>
-                                                                <th>Item</th>
-                                                                <th>Variants</th>
-                                                                <th>Kitchen</th>
-                                                                <th>Quantity</th>
-                                                                <th>Type</th>
-                                                                <th>Prepared Time</th>
-                                                                <th>Action</th>
+                                                                <th scope="col">Item</th>
+                                                                <th scope="col">Variants</th>
+                                                                <th scope="col">Kitchen</th>
+                                                                <th scope="col">Quantity</th>
+                                                                <th scope="col">Type</th>
+                                                                <th scope="col">Prepared Time</th>
+                                                                <th scope="col">Action</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -237,6 +426,7 @@ function Dispatch() {
                                                                                     selected.itemId === item.id
                                                                             )}
                                                                             onChange={() => handleSelectItem(order.orderName, item.id)}
+                                                                            aria-label={`Select item ${item.name}`}
                                                                         />
                                                                     </td>
                                                                     <td>
@@ -273,10 +463,15 @@ function Dispatch() {
                                                                     <td>{item.preparedTime}</td>
                                                                     <td>
                                                                         <button
-                                                                            className="btn btn-primary btn-sm"
+                                                                            className="btn btn-primary btn-sm position-relative"
                                                                             onClick={() => handleDispatchItem(order.orderName, item.id)}
+                                                                            disabled={dispatchingItems[`${order.orderName}-${item.id}`]}
+                                                                            aria-label={`Dispatch item ${item.name}`}
                                                                         >
                                                                             Dispatch
+                                                                            {dispatchingItems[`${order.orderName}-${item.id}`] && (
+                                                                                <span className="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+                                                                            )}
                                                                         </button>
                                                                     </td>
                                                                 </tr>

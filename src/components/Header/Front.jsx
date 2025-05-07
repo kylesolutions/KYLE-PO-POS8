@@ -1263,7 +1263,7 @@ function Front() {
         <>
             <div className="container-fluid">
                 <div className="row">
-                    <div className="col-lg-2 col-xl-1 category-sidebar" style={{ background: "#3498db" }}>
+                    <div className="col-lg-2 col-xl-1 category-sidebar" style={{ background: "#ffffff" }}>
                         <div className="row p-2">
                             {categories.map((category, index) => (
                                 <div key={index} className="col-lg-12 mb-2">
@@ -1746,7 +1746,7 @@ function Front() {
                                                             padding: "10px 12px",
                                                             backgroundColor: "#white",
                                                             color: "black",
-                                                            border: "1px solid #3498db",
+                                                            border: "1px solid #f3b27d;",
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
@@ -1765,7 +1765,7 @@ function Front() {
                                                             padding: "10px 12px",
                                                             background: "white",
                                                             color: "black",
-                                                            border: "1px solid #3498db",
+                                                            border: "1px solid #f3b27d",
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
@@ -1912,7 +1912,7 @@ function Front() {
                                                         onClick={cancelCart}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            backgroundColor: "#3498db",
+                                                            backgroundColor: "#f3b27d",
                                                             color: "white",
                                                             border: "none",
                                                             borderRadius: "5px",
@@ -1932,7 +1932,7 @@ function Front() {
                                                             handleCheckoutClick();
                                                             handleShow();
                                                         }}
-                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#3498db", color: "white" }}
+                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#f3b27d", color: "white" }}
                                                     >
                                                         Pay
                                                     </button>
@@ -1995,3 +1995,4 @@ function Front() {
 }
 
 export default Front;
+

@@ -10,7 +10,7 @@ function Table() {
     const [error, setError] = useState(null);
     const { setCartItems } = useContext(UserContext);
     const [activeOrders, setActiveOrders] = useState([]); // [{ tableNumber, bookedChairs }]
-    const [bookings, setBookings] = useState([]); // [{ table_number, booking_start_time, booking_end_time, customer_name, customer_phone, customer }]
+    const [bookings, setBookings] = useState([]); // [{ table_number, booking_start_time, booking_end_time, customer_name, customer_phone, customer, chair_count }]
     const [allItems, setAllItems] = useState([]);
     const [customers, setCustomers] = useState([]); // [{ name, customer_name, mobile_no }]
     const [showChairModal, setShowChairModal] = useState(false);
@@ -22,7 +22,8 @@ function Table() {
     const [bookingDetails, setBookingDetails] = useState({
         startTime: "",
         endTime: "",
-        customer: "", // Customer ID
+        customer: "",
+        chairCount: 1,
         isNewCustomer: false,
         newCustomer: {
             customer_name: "",
@@ -32,7 +33,7 @@ function Table() {
             custom_watsapp_no: "",
         },
     });
-    const [verificationCustomer, setVerificationCustomer] = useState(""); // Customer ID for verification
+    const [verificationCustomer, setVerificationCustomer] = useState("");
     const navigate = useNavigate();
     const { state } = useLocation();
     const { deliveryType } = state || {};
@@ -134,7 +135,6 @@ function Table() {
                 return;
             }
 
-            // Aggregate booked chairs per table
             const tableChairMap = {};
             result.data
                 .filter((order) => order.custom_is_draft_without_payment === 1 || order.custom_is_draft_without_payment === "1")
@@ -181,7 +181,6 @@ function Table() {
                 return;
             }
 
-            // Filter out expired bookings (end_time in the past)
             const currentTime = new Date();
             const activeBookings = result.data
                 .filter((booking) => new Date(booking.booking_end_time) > currentTime)
@@ -192,6 +191,7 @@ function Table() {
                     customer_name: booking.customer_name,
                     customer_phone: booking.customer_phone,
                     customer: booking.customer,
+                    chair_count: parseInt(booking.chair_count, 10) || 1,
                 }));
             console.log("Active Bookings:", JSON.stringify(activeBookings, null, 2));
             setBookings(activeBookings);
@@ -207,10 +207,40 @@ function Table() {
                 const tableResponse = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_table_details", {
                     headers: { Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a" },
                 });
-                if (!tableResponse.ok) throw new Error(`HTTP error! Status: ${tableResponse.status}`);
-                const tableData = await tableResponse.json();
-                console.log("Fetched Tables:", JSON.stringify(tableData, null, 2));
-                setTables(tableData.message || tableData);
+                const responseText = await tableResponse.text();
+                console.log("Fetch Tables Raw Response:", responseText);
+
+                if (!tableResponse.ok) throw new Error(`HTTP error! Status: ${tableResponse.status} - ${responseText}`);
+
+                let tableData;
+                try {
+                    tableData = JSON.parse(responseText);
+                } catch (e) {
+                    throw new Error(`Invalid JSON response from get_table_details: ${responseText}`);
+                }
+
+                console.log("Parsed Table Data:", JSON.stringify(tableData, null, 2));
+
+                let tableList = [];
+                if (Array.isArray(tableData)) {
+                    tableList = tableData;
+                } else if (tableData.message && Array.isArray(tableData.message)) {
+                    tableList = tableData.message;
+                } else if (tableData.data && Array.isArray(tableData.data)) {
+                    tableList = tableData.data;
+                } else if (tableData.message && tableData.message.data && Array.isArray(tableData.message.data)) {
+                    tableList = tableData.message.data;
+                } else {
+                    console.warn("Unexpected table data structure:", tableData);
+                    throw new Error("Invalid table data structure");
+                }
+
+                if (!tableList.length) {
+                    console.warn("No tables found in response");
+                    setTables([]);
+                } else {
+                    setTables(tableList);
+                }
 
                 await fetchAllItems();
                 await fetchCustomers();
@@ -218,31 +248,49 @@ function Table() {
                 await fetchBookings();
                 setLoading(false);
             } catch (err) {
-                setError(err.message);
+                console.error("Error in fetchTablesAndData:", err.message, err.stack);
+                setError(`Failed to load tables: ${err.message}`);
+                setTables([]);
                 setLoading(false);
             }
         };
 
         fetchTablesAndData();
 
-        // Periodically refresh bookings to free expired ones
-        const intervalId = setInterval(fetchBookings, 60000); // Every 1 minute
+        const intervalId = setInterval(fetchBookings, 60000);
         return () => clearInterval(intervalId);
     }, [fetchActiveOrders, fetchBookings]);
 
     const getBookedChairs = (tableNumber) => {
         const order = activeOrders.find((o) => o.tableNumber === String(tableNumber));
-        return order ? order.bookedChairs : 0;
+        const orderChairs = order ? order.bookedChairs : 0;
+        const currentTime = new Date();
+        const bookingChairs = bookings
+            .filter(
+                (booking) =>
+                    booking.table_number === String(tableNumber) &&
+                    new Date(booking.booking_start_time) <= currentTime &&
+                    new Date(booking.booking_end_time) > currentTime
+            )
+            .reduce((total, booking) => total + (parseInt(booking.chair_count, 10) || 0), 0);
+        return orderChairs + bookingChairs;
     };
 
-    const isTablePreBooked = (tableNumber) => {
+    const isTablePreBooked = (tableNumber, availableChairs) => {
         const currentTime = new Date();
-        return bookings.find(
-            (booking) =>
+        return bookings.find((booking) => {
+            const startTime = new Date(booking.booking_start_time);
+            const endTime = new Date(booking.booking_end_time);
+            const bufferStartTime = new Date(startTime.getTime() - 1800000);
+            // Block only if all chairs are booked within the buffer period
+            const bookingChairs = parseInt(booking.chair_count, 10) || 0;
+            return (
                 booking.table_number === String(tableNumber) &&
-                new Date(booking.booking_start_time) <= currentTime &&
-                new Date(booking.booking_end_time) > currentTime
-        );
+                bufferStartTime <= currentTime &&
+                endTime > currentTime &&
+                bookingChairs >= availableChairs
+            );
+        });
     };
 
     const getBookingDetails = (tableNumber) => {
@@ -251,20 +299,49 @@ function Table() {
 
     const handleTableClick = (table) => {
         const bookedChairs = getBookedChairs(table.table_number);
-        const available = table.number_of_chair - bookedChairs;
-        const preBooked = isTablePreBooked(table.table_number);
-        if (available <= 0) {
+        const availableChairs = table.number_of_chair - bookedChairs;
+        if (availableChairs <= 0) {
             alert("No chairs available for this table.");
             return;
         }
+
+        const preBooked = isTablePreBooked(table.table_number, table.number_of_chair);
         if (preBooked) {
-            setSelectedTable(table);
-            setAvailableChairs(available);
-            setVerificationCustomer("");
-            setShowVerificationModal(true);
+            // If all chairs are booked within the 30-minute buffer, block selection
+            alert(
+                "This table is fully reserved and cannot be selected within 30 minutes of the booking start time."
+            );
+            return;
+        }
+
+        // Check for upcoming bookings within 30-minute buffer
+        const currentTime = new Date();
+        const upcomingBooking = bookings.find(
+            (b) =>
+                b.table_number === String(table.table_number) &&
+                new Date(b.booking_start_time) > currentTime
+        );
+        if (upcomingBooking) {
+            const startTime = new Date(upcomingBooking.booking_start_time);
+            const bufferStartTime = new Date(startTime.getTime() - 1800000);
+            if (currentTime >= bufferStartTime) {
+                // Allow selection of available chairs if not all are booked
+                setSelectedTable(table);
+                setAvailableChairs(availableChairs);
+                setChairCount(1);
+                setVerificationCustomer("");
+                setShowVerificationModal(true);
+            } else {
+                // Outside buffer, allow selection without verification
+                setSelectedTable(table);
+                setAvailableChairs(availableChairs);
+                setChairCount(1);
+                setShowChairModal(true);
+            }
         } else {
+            // No upcoming bookings, allow selection
             setSelectedTable(table);
-            setAvailableChairs(available);
+            setAvailableChairs(availableChairs);
             setChairCount(1);
             setShowChairModal(true);
         }
@@ -276,6 +353,7 @@ function Table() {
             startTime: "",
             endTime: "",
             customer: "",
+            chairCount: 1,
             isNewCustomer: false,
             newCustomer: {
                 customer_name: "",
@@ -313,7 +391,6 @@ function Table() {
             const result = data.message || data;
             if (result.status !== "success") throw new Error(result.message || "Verification failed");
 
-            // Find customer details for navigation
             const customer = customers.find((c) => c.name === verificationCustomer);
             const customerDetails = customer
                 ? {
@@ -356,9 +433,8 @@ function Table() {
             const result = data.message || data;
             if (result.status !== "success" || !result.data) throw new Error(result.message || "Invalid response");
 
-            // Get customer details for pre-booked table
             let customerDetails = {};
-            const preBooked = isTablePreBooked(selectedTable.table_number);
+            const preBooked = isTablePreBooked(selectedTable.table_number, selectedTable.number_of_chair);
             if (preBooked && verificationCustomer) {
                 const customer = customers.find((c) => c.name === verificationCustomer);
                 if (customer) {
@@ -372,7 +448,6 @@ function Table() {
                     };
                 }
             } else {
-                // Check if the table has an active booking and get customer details
                 const booking = bookings.find(
                     (b) =>
                         b.table_number === String(selectedTable.table_number) &&
@@ -434,7 +509,7 @@ function Table() {
             alert("No table selected.");
             return;
         }
-        const { startTime, endTime, customer, isNewCustomer, newCustomer } = bookingDetails;
+        const { startTime, endTime, customer, chairCount, isNewCustomer, newCustomer } = bookingDetails;
         if (!startTime || !endTime) {
             console.error("Missing start or end time");
             alert("Please fill in start and end times.");
@@ -460,12 +535,52 @@ function Table() {
             alert("Please enter a valid phone number (10-15 digits).");
             return;
         }
+        if (chairCount < 1) {
+            console.error("Invalid chair count");
+            alert("Please select at least one chair.");
+            return;
+        }
+        const table = tables.find((t) => t.table_number === selectedTable.table_number);
+        if (chairCount > table.number_of_chair) {
+            console.error("Chair count exceeds table capacity");
+            alert(`Requested chair count (${chairCount}) exceeds table capacity (${table.number_of_chair}).`);
+            return;
+        }
+
+        const proposedStartTime = new Date(startTime);
+        const currentBookedChairs = getBookedChairs(table.table_number);
+        const proposedTotalChairs = currentBookedChairs + chairCount;
+        if (proposedTotalChairs > table.number_of_chair) {
+            console.error("Not enough chairs available for this booking");
+            alert(`Not enough chairs available. Only ${table.number_of_chair - currentBookedChairs} chairs are free.`);
+            return;
+        }
+
+        const existingBookingConflict = bookings.find((booking) => {
+            if (booking.table_number !== String(selectedTable.table_number)) return false;
+            const existingStart = new Date(booking.booking_start_time);
+            const existingEnd = new Date(booking.booking_end_time);
+            const bufferStart = new Date(existingStart.getTime() - 1800000);
+            const proposedEndTime = new Date(endTime);
+            return (
+                proposedStartTime <= existingEnd &&
+                proposedEndTime >= bufferStart
+            );
+        });
+        if (existingBookingConflict) {
+            console.error("Booking conflicts with another booking or its 30-minute buffer");
+            alert(
+                `Cannot book this table as it conflicts with an existing booking from ${new Date(
+                    existingBookingConflict.booking_start_time
+                ).toLocaleString()} to ${new Date(existingBookingConflict.booking_end_time).toLocaleString()}.`
+            );
+            return;
+        }
 
         try {
             let customerId = customer;
             if (isNewCustomer) {
                 console.log("Entering isNewCustomer branch");
-                // Log the new customer payload
                 console.log("Creating new customer with payload:", JSON.stringify(newCustomer, null, 2));
                 
                 const customerResponse = await fetch("/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.create_customer", {
@@ -500,7 +615,6 @@ function Table() {
                 
                 console.log("Create Customer Response:", JSON.stringify(customerData, null, 2));
                 
-                // Check the correct status field
                 if (customerData.message?.status !== "success") {
                     console.error("Customer creation failed:", JSON.stringify(customerData.message || customerData));
                     throw new Error(customerData.message?.message || "Customer creation failed");
@@ -512,16 +626,15 @@ function Table() {
             }
 
             console.log("Preparing booking payload");
-            // Log the booking payload
             const bookingPayload = {
                 table_number: selectedTable.table_number,
                 booking_start_time: startTime.replace("T", " ") + ":00",
                 booking_end_time: endTime.replace("T", " ") + ":00",
                 customer: customerId,
+                chair_count: chairCount,
             };
             console.log("Booking table with payload:", JSON.stringify(bookingPayload, null, 2));
             
-            // Book table with retries
             console.log("Starting book_table API call");
             let bookingSuccess = false;
             let bookingData;
@@ -543,7 +656,7 @@ function Table() {
                     if (attempt === 3) {
                         throw new Error(`Failed to book table after ${attempt} attempts: ${response.status} - ${responseText}`);
                     }
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     continue;
                 }
                 
@@ -566,7 +679,7 @@ function Table() {
                 if (attempt === 3) {
                     throw new Error(`Failed to book table after ${attempt} attempts: ${result.message || "Unknown error"}`);
                 }
-                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
             
             if (!bookingSuccess) {
@@ -575,12 +688,13 @@ function Table() {
             }
 
             console.log("Booking successful");
-            alert(`Table ${selectedTable.table_number} booked successfully!`);
+            alert(`Table ${selectedTable.table_number} booked successfully for ${chairCount} chair(s)!`);
             setShowBookingModal(false);
             setBookingDetails({
                 startTime: "",
                 endTime: "",
                 customer: "",
+                chairCount: 1,
                 isNewCustomer: false,
                 newCustomer: {
                     customer_name: "",
@@ -590,7 +704,7 @@ function Table() {
                     custom_watsapp_no: "",
                 },
             });
-            await fetchBookings(); // Refresh bookings
+            await fetchBookings();
             console.log("handleBookTable completed successfully");
         } catch (error) {
             console.error("Error booking table:", error.message, error.stack);
@@ -612,7 +726,7 @@ function Table() {
                         tables.map((table, index) => {
                             const bookedChairs = getBookedChairs(table.table_number);
                             const availableChairs = table.number_of_chair - bookedChairs;
-                            const preBooked = isTablePreBooked(table.table_number);
+                            const preBooked = isTablePreBooked(table.table_number, table.number_of_chair);
                             const bookingInfo = getBookingDetails(table.table_number);
                             const statusClass = preBooked
                                 ? "pre-booked"
@@ -629,7 +743,7 @@ function Table() {
                                             <i
                                                 key={chairIndex}
                                                 className={`fa-solid fa-chair chair-icon ${
-                                                    chairIndex < bookedChairs ? "booked-chair" : ""
+                                                    chairIndex < bookedChairs ? "booked-chair" : "available-chair"
                                                 }`}
                                             ></i>
                                         ))}
@@ -645,6 +759,8 @@ function Table() {
                                                     {new Date(booking.booking_end_time).toLocaleString()}
                                                     <br />
                                                     By: {booking.customer_name} ({booking.customer_phone})
+                                                    <br />
+                                                    Chairs: {booking.chair_count}
                                                     <br />
                                                 </span>
                                             ))}
@@ -670,12 +786,11 @@ function Table() {
                             );
                         })
                     ) : (
-                        <div>No tables available.</div>
+                        <div>No tables available. Check server logs or ensure tables are set up in the backend.</div>
                     )}
                 </div>
             </div>
 
-            {/* Chair Selection Modal */}
             {showChairModal && selectedTable && (
                 <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                     <div className="modal-dialog modal-dialog-centered">
@@ -731,7 +846,6 @@ function Table() {
                 </div>
             )}
 
-            {/* Booking Modal */}
             {showBookingModal && selectedTable && (
                 <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                     <div className="modal-dialog modal-dialog-centered">
@@ -772,6 +886,26 @@ function Table() {
                                         value={bookingDetails.endTime}
                                         onChange={(e) =>
                                             setBookingDetails({ ...bookingDetails, endTime: e.target.value })
+                                        }
+                                        required
+                                    />
+                                </div>
+                                <div className="mb-3">
+                                    <label htmlFor="chairCount" className="form-label">
+                                        Number of Chairs:
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        id="chairCount"
+                                        min="1"
+                                        max={selectedTable.number_of_chair}
+                                        value={bookingDetails.chairCount}
+                                        onChange={(e) =>
+                                            setBookingDetails({
+                                                ...bookingDetails,
+                                                chairCount: parseInt(e.target.value, 10) || 1,
+                                            })
                                         }
                                         required
                                     />
@@ -956,7 +1090,6 @@ function Table() {
                 </div>
             )}
 
-            {/* Verification Modal */}
             {showVerificationModal && selectedTable && (
                 <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                     <div className="modal-dialog modal-dialog-centered">
@@ -1017,4 +1150,3 @@ function Table() {
 }
 
 export default Table;
-
