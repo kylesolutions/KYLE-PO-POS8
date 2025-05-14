@@ -13,6 +13,7 @@ import SalesInvoicePage from '../Pages/SalesInvoicePage'
 import OpeningEntryPage from '../Pages/OpeningEntryPage'
 import ClosingEntryPage from '../Pages/ClosingEntryPage'
 import DispatchPage from '../Pages/DispatchPage'
+import DispatchedOrdersPage from '../Pages/DispatchedOrdersPage'
 
 function UserRouter() {
   return (
@@ -31,6 +32,7 @@ function UserRouter() {
         <Route path='openingentry' element={<OpeningEntryPage/>}/>
         <Route path='closingentry' element={<ClosingEntryPage/>}/>
         <Route path='dispatch' element={<DispatchPage/>}/>
+        <Route path='dispatchorder' element={<DispatchedOrdersPage/>}/>
     </Routes>
     </>
   )

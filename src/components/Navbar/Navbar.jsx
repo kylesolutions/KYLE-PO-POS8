@@ -127,6 +127,15 @@ function Navbar() {
               </li>
               <li className="nav-item">
                 <a
+                  className={`nav-link ${location.pathname === '/dispatch' ? 'active text-primary' : 'text-black'} cursor-pointer`}
+                  onClick={() => navigate('/dispatchorder')}
+                  title="To Bill"
+                >
+                  <img src="\menuIcons\dispatchorder.svg" alt="" className='menuicon' />
+                </a>
+              </li>
+              <li className="nav-item">
+                <a
                   className={`nav-link ${location.pathname === '/closingentry' ? 'active text-primary' : 'text-black'} cursor-pointer`}
                   onClick={handleClosingEntryNavigation}
                   title="Closing Entry"

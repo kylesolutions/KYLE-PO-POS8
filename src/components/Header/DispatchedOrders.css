@@ -1,0 +1,10 @@
+/* Optional: Add any custom table styling if needed */
+.table th,
+.table td {
+    vertical-align: middle;
+}
+
+.table .btn-sm {
+    padding: 5px 10px;
+    font-size: 0.875rem;
+}

@@ -69,17 +69,25 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     };
                 });
 
+                // Parse custom_chair_numbers into an array of integers
+                const chairNumbers = order.custom_chair_numbers
+                    ? Array.isArray(order.custom_chair_numbers)
+                        ? order.custom_chair_numbers.map(num => parseInt(num))
+                        : order.custom_chair_numbers.split(",").map(num => parseInt(num.trim()))
+                    : [];
+
                 return {
                     name: order.name,
                     customer: order.customer_name,
                     custom_table_number: order.custom_table_number,
                     contact_mobile: order.contact_mobile,
                     custom_delivery_type: order.custom_delivery_type || "DINE IN",
-                    custom_chair_count: parseInt(order.custom_chair_count) || 0, // Include chair count
+                    custom_chair_count: parseInt(order.custom_chair_count) || 0,
+                    custom_chair_numbers: chairNumbers, // Add chair numbers
                     customer_address: order.customer_address || "",
                     contact_email: order.contact_email || "",
                     posting_date: order.posting_date,
-                    posting_time:order.posting_time,
+                    posting_time: order.posting_time,
                     cartItems,
                     apply_discount_on: order.apply_discount_on || "Grand Total",
                     additional_discount_percentage: parseFloat(order.additional_discount_percentage) || 0,
@@ -134,7 +142,8 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                 tableNumber: order.custom_table_number,
                 phoneNumber: order.contact_mobile,
                 customerName: order.customer,
-                chairCount: order.custom_chair_count, // Pass chair count
+                chairCount: order.custom_chair_count,
+                chairNumbers: order.custom_chair_numbers, // Pass chair numbers
                 existingOrder: {
                     ...order,
                     items: order.cartItems.map((item) => ({
@@ -150,7 +159,8 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                     apply_discount_on: order.apply_discount_on,
                     additional_discount_percentage: order.additional_discount_percentage,
                     discount_amount: order.discount_amount,
-                    custom_chair_count: order.custom_chair_count, // Include in existingOrder
+                    custom_chair_count: order.custom_chair_count,
+                    custom_chair_numbers: order.custom_chair_numbers, // Include in existingOrder
                 },
                 deliveryType: order.custom_delivery_type,
                 address: order.customer_address,
@@ -158,23 +168,6 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
             },
         });
     };
-
-    // const handleViewInKitchen = (order) => {
-    //     navigate("/kitchen", {
-    //         state: {
-    //             order: {
-    //                 ...order,
-    //                 cartItems: order.cartItems.map((item) => ({
-    //                     ...item,
-    //                     custom_customer_description: item.description || "",
-    //                     kitchen: item.kitchen || "Unknown",
-    //                 })),
-    //                 custom_delivery_type: order.custom_delivery_type || "DINE IN",
-    //                 custom_chair_count: order.custom_chair_count, // Pass chair count
-    //             },
-    //         },
-    //     });
-    // };
 
     return (
         <div className="container mt-4">
@@ -269,12 +262,6 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                         >
                                             Select
                                         </button>
-                                        {/* <button
-                                            className="btn btn-info btn-sm"
-                                            onClick={() => handleViewInKitchen(order)}
-                                        >
-                                            Kitchen
-                                        </button> */}
                                     </td>
                                 </tr>
                             ))}

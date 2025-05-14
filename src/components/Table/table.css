@@ -1,75 +1,146 @@
 /* Table Page Container */
-.table-page {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+.d-flex.flex-column.min-vh-100.bg-light {
+  background: #f8f9fa;
 }
 
-/* Table Grid */
-.table-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1.5rem;
-  padding: 1rem;
+/* Header */
+header.p-3.bg-white.border-bottom {
+  padding: 1rem 2rem;
 }
 
-/* Table Card */
-.table-card {
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 1rem;
-  text-align: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+/* Back Arrow */
+.back-arrow {
+  font-size: 1.2rem;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  color: #3498db;
 }
 
-.table-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+/* Main Content */
+main.flex-grow-1.py-4.position-relative {
+  padding: 2rem;
 }
 
-/* Table States */
-.table-card.available {
-  border: 2px solid #28a745; /* Green for available */
+/* Table Box */
+.table-box {
+  display: inline-block;
+  padding: 15px;
+  border: 2px solid #333;
+  border-radius: 10px;
+  background-color: #f0f0f0;
+  margin-bottom: 10px;
 }
 
-.table-card.booked {
-  border: 2px solid #dc3545; /* Red for fully booked */
-  background: #f8d7da; /* Light red background */
+/* Table Container and Shape */
+.table-container {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto;
+  transition: transform 0.2s ease-in-out;
 }
 
-.table-card.partially-booked {
-  border: 2px solid #ffc107; /* Yellow for partially booked */
-  background: #fff3cd; /* Light yellow background */
+.table-container:hover {
+  transform: scale(1.05);
 }
 
-.table-card.pre-booked {
-  border: 2px solid #17a2b8; /* Cyan for pre-booked */
-  background: #d1ecf1; /* Light cyan background */
+.table-shape {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-/* Chair Container */
-.chairs-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+/* Chair Styling */
+.chair-wrapper {
+  position: absolute;
+  display: inline-block;
+  padding: 5px;
+  border-radius: 5px;
+  transition: background-color 0.2s ease, transform 0.2s;
 }
 
-/* Chair Icon */
 .chair-icon {
-  font-size: 1.5rem;
-  color: #28a745; /* Green for available */
+  font-size: 24px;
+  color: #ced4da; /* Default gray for unknown status */
+  cursor: pointer;
+  transition: color 0.3s, transform 0.2s;
 }
 
-.chair-icon.booked-chair {
+.chair-icon:hover {
+  transform: scale(1.1);
+}
+
+.chair-icon.booked-chair,
+.chair-icon.booked {
   color: #dc3545; /* Red for booked */
 }
 
-.chair-icon.available-chair {
-  color: #28a745; /* Green for available, matching .chair-icon */
+.chair-icon.available-chair,
+.chair-icon.available {
+  color: #28a745; /* Green for available */
+}
+
+.chair-icon.reserved {
+  color: #ff69b4; /* Pink for reserved */
+}
+
+.chair-icon.selected-chair {
+  color: white; /* White for selected chairs in modal */
+}
+
+.chair-wrapper.available-chair-wrapper {
+  cursor: pointer;
+}
+
+.chair-wrapper.booked-chair-wrapper {
+  cursor: not-allowed;
+}
+
+.chair-wrapper.available-chair-wrapper:hover {
+  background-color: #e6ffe6; /* Light green on hover */
+}
+
+.chair-wrapper.selected-chair-wrapper {
+  background-color: #28a745; /* Green for selected */
+}
+
+.chair-number {
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #000;
+}
+
+/* Table Card */
+.card {
+  border-radius: 10px;
+  transition: box-shadow 0.3s;
+  background-color: #ffffff;
+}
+
+.card:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+}
+
+.card.pre-booked {
+  border: 2px solid #17a2b8;
+  background: #d1ecf1;
+}
+
+.card.booked {
+  border: 2px solid #dc3545;
+  background: #f8d7da;
+}
+
+.card.partially-booked {
+  border: 2px solid #ffc107;
+  background: #fff3cd;
+}
+
+.card.available {
+  border: 2px solid #28a745;
 }
 
 /* Chair Status Text */
@@ -94,16 +165,27 @@
   margin-top: 0.5rem;
 }
 
-/* Back Button */
-.back-button1 {
-  font-size: 2rem;
-  position: absolute;
-  left: 1rem;
-  cursor: pointer;
-  color: #3498db;
+/* Color Legend */
+.color-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid #333;
 }
 
-/* Modal Backdrop */
+.color-box.booked {
+  background-color: #dc3545;
+}
+
+.color-box.reserved {
+  background-color: #ff69b4;
+}
+
+.color-box.available {
+  background-color: #28a745;
+}
+
+/* Modal Styles */
 .modal {
   z-index: 1050;
 }
@@ -111,3 +193,18 @@
 .modal-backdrop {
   z-index: 1040;
 }
+
+/* Responsive Grid */
+.row-cols-1 > .col,
+.row-cols-sm-2 > .col,
+.row-cols-md-3 > .col,
+.row-cols-lg-4 > .col {
+  width: 20%; /* Match reference layout */
+}
+
+/* Modal Table Container */
+.modal .table-container {
+  width: 200px;
+  height: 200px;
+}
+

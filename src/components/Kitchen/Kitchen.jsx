@@ -68,35 +68,37 @@ function Kitchen() {
                     custom_delivery_type: note.delivery_type || "DINE IN",
                     custom_chair_count: chairCount,
                     posting_date: note.order_time,
-                    cartItems: note.items.map((item) => {
-                        const itemId = item.name; // Use backend item.name as unique ID
-                        const isPrepared = Object.values(storedPreparedOrders).some(o =>
-                            o.items.some(i => i.id === itemId && i.status === "Prepared")
-                        );
-                        console.log(`Kitchen.jsx: Item ${item.item_name} (ID: ${itemId}) - isPrepared: ${isPrepared}, backend status: ${item.status}`);
-                        return {
-                            id: itemId,
-                            backendId: item.name,
-                            item_code: item.item_name,
-                            name: item.item_name,
-                            custom_customer_description: item.customer_description || "",
-                            custom_variants: item.custom_variants || "",
-                            basePrice: 0,
-                            quantity: parseInt(item.quantity, 10) || 1,
-                            selectedSize: "",
-                            selectedCustomVariant: "",
-                            kitchen: item.kitchen || "Unknown",
-                            status: item.status || "Prepare", // Trust backend status, override only if prepared
-                            addonCounts: {},
-                            selectedCombos: [],
-                            type: "main",
-                            ingredients: item.ingredients?.map((ing) => ({
-                                name: ing.name || ing.ingredients_name || "Unknown Ingredient",
-                                quantity: parseFloat(ing.quantity) || 100,
-                                unit: ing.unit || "g",
-                            })) || [],
-                        };
-                    }),
+                    cartItems: note.items
+                        .filter(item => item.status !== "Prepared" && item.status !== "Dispatched") // Exclude Prepared and Dispatched items
+                        .map((item) => {
+                            const itemId = item.name; // Use backend item.name as unique ID
+                            const isPrepared = Object.values(storedPreparedOrders).some(o =>
+                                o.items.some(i => i.id === itemId && i.status === "Prepared")
+                            );
+                            console.log(`Kitchen.jsx: Item ${item.item_name} (ID: ${itemId}) - isPrepared: ${isPrepared}, backend status: ${item.status}`);
+                            return {
+                                id: itemId,
+                                backendId: item.name,
+                                item_code: item.item_name,
+                                name: item.item_name,
+                                custom_customer_description: item.customer_description || "",
+                                custom_variants: item.custom_variants || "",
+                                basePrice: 0,
+                                quantity: parseInt(item.quantity, 10) || 1,
+                                selectedSize: "",
+                                selectedCustomVariant: "",
+                                kitchen: item.kitchen || "Unknown",
+                                status: item.status || "Prepare", // Trust backend status
+                                addonCounts: {},
+                                selectedCombos: [],
+                                type: "main",
+                                ingredients: item.ingredients?.map((ing) => ({
+                                    name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                                    quantity: parseFloat(ing.quantity) || 100,
+                                    unit: ing.unit || "g",
+                                })) || [],
+                            };
+                        }),
                 };
             });
 
@@ -114,28 +116,30 @@ function Kitchen() {
                 const passedOrder = {
                     ...location.state.order,
                     custom_chair_count: parseInt(location.state.order.custom_chair_count) || 0,
-                    cartItems: location.state.order.cartItems.map(item => ({
-                        id: item.name, // Use item.name for consistency
-                        backendId: item.name,
-                        item_code: item.item_code || item.name,
-                        name: item.name,
-                        custom_customer_description: item.custom_customer_description || "",
-                        custom_variants: item.custom_variants || "",
-                        basePrice: parseFloat(item.basePrice) || 0,
-                        quantity: parseInt(item.quantity, 10) || 1,
-                        selectedSize: item.selectedSize || "",
-                        selectedCustomVariant: item.selectedCustomVariant || "",
-                        kitchen: item.kitchen || "Unknown",
-                        status: item.status || "Prepare",
-                        addonCounts: item.addonCounts || {},
-                        selectedCombos: item.selectedCombos || [],
-                        type: "main",
-                        ingredients: item.ingredients?.map((ing) => ({
-                            name: ing.name || ing.ingredients_name || "Unknown Ingredient",
-                            quantity: parseFloat(ing.quantity) || 100,
-                            unit: ing.unit || "g",
-                        })) || [],
-                    })),
+                    cartItems: location.state.order.cartItems
+                        .filter(item => item.status !== "Prepared" && item.status !== "Dispatched") // Exclude Prepared and Dispatched items
+                        .map(item => ({
+                            id: item.name, // Use item.name for consistency
+                            backendId: item.name,
+                            item_code: item.item_code || item.name,
+                            name: item.name,
+                            custom_customer_description: item.custom_customer_description || "",
+                            custom_variants: item.custom_variants || "",
+                            basePrice: parseFloat(item.basePrice) || 0,
+                            quantity: parseInt(item.quantity, 10) || 1,
+                            selectedSize: item.selectedSize || "",
+                            selectedCustomVariant: item.selectedCustomVariant || "",
+                            kitchen: item.kitchen || "Unknown",
+                            status: item.status || "Prepare",
+                            addonCounts: item.addonCounts || {},
+                            selectedCombos: item.selectedCombos || [],
+                            type: "main",
+                            ingredients: item.ingredients?.map((ing) => ({
+                                name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                                quantity: parseFloat(ing.quantity) || 100,
+                                unit: ing.unit || "g",
+                            })) || [],
+                        })),
                 };
                 console.log(`Kitchen.jsx: Passed order - custom_chair_count: ${passedOrder.custom_chair_count}`);
                 if (passedOrder.custom_delivery_type === "DINE IN" && passedOrder.custom_chair_count === 0) {
@@ -172,7 +176,7 @@ function Kitchen() {
         if (allKitchens.length > 0 && !selectedKitchen && !location.state?.order) {
             const kitchenWithItems = allKitchens.find((kitchen) =>
                 kitchenNotes.some((order) =>
-                    order.cartItems.some((item) => item.kitchen === kitchen && item.status !== "Prepared")
+                    order.cartItems.some((item) => item.kitchen === kitchen && item.status !== "Prepared" && item.status !== "Dispatched")
                 )
             );
             setSelectedKitchen(kitchenWithItems || allKitchens[0]);
@@ -182,7 +186,7 @@ function Kitchen() {
     const filteredItemsMap = new Map();
     kitchenNotes.forEach((order) => {
         order.cartItems.forEach((item) => {
-            if (item.kitchen === selectedKitchen && item.status !== "Prepared") {
+            if (item.kitchen === selectedKitchen && item.status !== "Prepared" && item.status !== "Dispatched") {
                 filteredItemsMap.set(item.id, {
                     ...item,
                     pos_invoice_id: order.pos_invoice_id,
@@ -270,7 +274,7 @@ function Kitchen() {
                 setKitchenNotes((prev) =>
                     prev.map((order) => ({
                         ...order,
-                        cartItems: order.cartItems.filter((cartItem) => cartItem.id !== id || cartItem.status !== "Prepared"),
+                        cartItems: order.cartItems.filter((cartItem) => cartItem.id !== id || (cartItem.status !== "Prepared" && cartItem.status !== "Dispatched")),
                     }))
                 );
                 setPreparedItems((prev) => [...new Set([...prev, id])]);
@@ -352,12 +356,14 @@ function Kitchen() {
                 setKitchenNotes((prev) =>
                     prev.map((order) => ({
                         ...order,
-                        cartItems: order.cartItems.map((cartItem) => {
-                            if (cartItem.id === id) {
-                                return { ...cartItem, status: "Prepared" };
-                            }
-                            return cartItem;
-                        }).filter((cartItem) => cartItem.id !== id || cartItem.status !== "Prepared"),
+                        cartItems: order.cartItems
+                            .map((cartItem) => {
+                                if (cartItem.id === id) {
+                                    return { ...cartItem, status: "Prepared" };
+                                }
+                                return cartItem;
+                            })
+                            .filter((cartItem) => cartItem.id !== id || (cartItem.status !== "Prepared" && cartItem.status !== "Dispatched")),
                     }))
                 );
 

@@ -45,39 +45,40 @@ function Dispatch() {
             }
 
             const formattedOrders = data.message.data.reduce((acc, order) => {
-                const chairCount = parseInt(order.custom_chair_count || order.number_of_chair) || 0;
+                const chairCount = parseInt(order.number_of_chair) || 0;
+                // Only include orders that have at least one "Prepared" item not yet "Dispatched"
+                const preparedItems = order.items.filter(item => item.status === "Prepared" && item.status !== "Dispatched");
+                if (preparedItems.length === 0) return acc; // Skip orders with no relevant items
+
                 acc[order.pos_invoice_id] = {
                     customerName: order.customer_name || "Unknown",
                     tableNumber: order.table_number || "N/A",
                     deliveryType: order.delivery_type || "DINE IN",
                     chairCount,
                     pos_invoice_id: order.pos_invoice_id,
-                    items: order.items
-                        .filter(item => item.status === "Prepared" && !item.isDispatched)
-                        .map(item => ({
-                            id: item.name,
-                            backendId: item.name,
-                            item_code: item.item_name,
-                            name: item.item_name,
-                            custom_customer_description: item.customer_description || "",
-                            custom_variants: item.custom_variants || "",
-                            basePrice: parseFloat(item.basePrice) || 0,
-                            quantity: parseInt(item.quantity, 10) || 1,
-                            selectedSize: item.selectedSize || "",
-                            selectedCustomVariant: item.custom_variants || "",
-                            kitchen: item.kitchen || "Unknown",
-                            status: item.status || "Prepared",
-                            addonCounts: item.addonCounts || {},
-                            selectedCombos: item.selectedCombos || [],
-                            type: item.type || "main",
-                            preparedTime: item.prepared_time || new Date().toLocaleString(),
-                            isDispatched: item.isDispatched || false,
-                            ingredients: item.ingredients?.map((ing) => ({
-                                name: ing.name || ing.ingredients_name || "Unknown Ingredient",
-                                quantity: parseFloat(ing.quantity) || 100,
-                                unit: ing.unit || "g",
-                            })) || [],
-                        })),
+                    items: preparedItems.map(item => ({
+                        id: item.name,
+                        backendId: item.name,
+                        item_code: item.item_name,
+                        name: item.item_name,
+                        custom_customer_description: item.customer_description || "",
+                        custom_variants: item.custom_variants || "",
+                        basePrice: 0, // Not available in Kitchen Note, set to 0 or fetch from POS Invoice if needed
+                        quantity: parseInt(item.quantity, 10) || 1,
+                        selectedSize: "", // Not available in Kitchen Items
+                        selectedCustomVariant: item.custom_variants || "",
+                        kitchen: item.kitchen || "Unknown",
+                        status: item.status || "Prepared",
+                        addonCounts: {}, // Not available in Kitchen Items
+                        selectedCombos: [], // Not available in Kitchen Items
+                        type: "main",
+                        preparedTime: new Date().toLocaleString(), // Not available in Kitchen Items, using current time
+                        ingredients: item.ingredients?.map((ing) => ({
+                            name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                            quantity: parseFloat(ing.quantity) || 100,
+                            unit: ing.unit || "g",
+                        })) || [],
+                    })),
                 };
                 return acc;
             }, {});
@@ -253,7 +254,7 @@ function Dispatch() {
                         method: "POST",
                         headers: {
                             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                        "Content-Type": "application/json",
+                            "Content-Type": "application/json",
                         },
                         body: JSON.stringify({
                             item_name: item.backendId,
@@ -290,7 +291,6 @@ function Dispatch() {
                 console.log("Dispatch.jsx: Updated preparedOrders after bulk dispatch:", JSON.stringify(newPreparedOrders, null, 2));
                 return newPreparedOrders;
             });
-
             setSelectedItems([]);
         } catch (error) {
             console.error("Dispatch.jsx: Error dispatching selected items:", error);
