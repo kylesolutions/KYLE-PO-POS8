@@ -444,11 +444,12 @@ function Table() {
     );
     const orderChairs = order ? order.bookedChairs : 0;
     const currentTime = new Date();
+    const bufferTime = 30 * 60 * 1000; // 30 minutes in milliseconds
     const bookingChairs = bookings
       .filter(
         (booking) =>
           booking.table_number === String(tableNumber) &&
-          new Date(booking.booking_start_time) <= currentTime &&
+          new Date(booking.booking_start_time).getTime() - bufferTime <= currentTime.getTime() &&
           new Date(booking.booking_end_time) > currentTime
       )
       .reduce(
@@ -464,11 +465,12 @@ function Table() {
     );
     const orderChairNumbers = order && order.chairNumbers ? order.chairNumbers : [];
     const currentTime = new Date();
+    const bufferTime = 30 * 60 * 1000; // 30 minutes in milliseconds
     const bookingChairNumbers = bookings
       .filter(
         (booking) =>
           booking.table_number === String(tableNumber) &&
-          new Date(booking.booking_start_time) <= currentTime &&
+          new Date(booking.booking_start_time).getTime() - bufferTime <= currentTime.getTime() &&
           new Date(booking.booking_end_time) > currentTime
       )
       .flatMap((booking) => booking.chair_numbers || []);
@@ -482,13 +484,14 @@ function Table() {
     const currentTime = new Date();
     const proposedStartTime = startTime ? new Date(startTime) : null;
     const proposedEndTime = endTime ? new Date(endTime) : null;
+    const bufferTime = 30 * 60 * 1000; // 30 minutes in milliseconds
 
     const overlappingBookingChairNumbers = bookings
       .filter((booking) => {
         if (booking.table_number !== String(tableNumber)) return false;
         const existingStart = new Date(booking.booking_start_time);
         const existingEnd = new Date(booking.booking_end_time);
-        const bufferStart = new Date(existingStart.getTime() - 1800000);
+        const bufferStart = new Date(existingStart.getTime() - bufferTime);
         return (
           proposedStartTime &&
           proposedEndTime &&
@@ -542,7 +545,7 @@ function Table() {
       table.number_of_chair
     );
     if (availableChairs.length === 0) {
-      alert("No chairs available for this table. Please check active bookings.");
+      alert("No chairs available for this table. Please check active bookings or upcoming reservations.");
       return;
     }
     setSelectedTable(table);
@@ -691,7 +694,7 @@ function Table() {
       alert(
         `Chairs ${invalidChairs.join(
           ", "
-        )} are currently occupied by other active orders or bookings.`
+        )} are currently occupied or reserved (including upcoming bookings within 30 minutes).`
       );
       return;
     }
@@ -817,7 +820,7 @@ function Table() {
       alert(
         `Chairs ${invalidChairs.join(
           ", "
-        )} are not available for the selected time slot.`
+        )} are not available for the selected time slot (including upcoming bookings within 30 minutes).`
       );
       return;
     }
@@ -972,9 +975,7 @@ function Table() {
     const totalChairs = table.number_of_chair || table.totalChairs;
     const chairs = [];
     const radius = 60; // Radius for chair positioning
-    const bookedChairNumbers = isModal
-      ? getBookedChairNumbers(table.table_number)
-      : getBookedChairNumbers(table.table_number);
+    const bookedChairNumbers = getBookedChairNumbers(table.table_number);
     for (let i = 0; i < totalChairs; i++) {
       const chairNumber = i + 1;
       const angle = (360 / totalChairs) * i;
@@ -986,7 +987,7 @@ function Table() {
         transform: "translate(-50%, -50%)",
       };
       const isBooked = bookedChairNumbers.includes(chairNumber);
-      const isAvailable = availableChairsList.includes(chairNumber);
+      const isAvailable = isModal ? availableChairsList.includes(chairNumber) : !isBooked;
       const isSelected = selectedChairs.includes(chairNumber);
       const status = isModal && toggleFunction ? (isBooked ? "booked" : isAvailable ? "available" : "booked") : (isBooked ? "booked" : "available");
       chairs.push(
@@ -1064,8 +1065,8 @@ function Table() {
                   return (
                     <div
                       key={table.table_number}
-                      className="col"
-                      style={{ width: "20%" }}
+                      className="col-12 col-xxl-3 col-lg-4 col-md-6"
+                      
                     >
                       <div className={`card shadow-sm border-0 p-3 ${statusClass}`}>
                         <div className="text-center">
@@ -1091,11 +1092,11 @@ function Table() {
                           </div>
                           <div className="mt-2">
                             <h5 className="fw-bold">Table {table.table_number}</h5>
-                            <p className="chair-status small">
+                            {/* <p className="chair-status small">
                               {availableChairs} of {table.number_of_chair} chairs
                               available
-                            </p>
-                            {bookingInfo.length > 0 && (
+                            </p> */}
+                            {/* {bookingInfo.length > 0 && (
                               <div className="booking-status text-muted small">
                                 {bookingInfo.map((booking, idx) => (
                                   <div key={idx}>
@@ -1119,7 +1120,7 @@ function Table() {
                                   </div>
                                 ))}
                               </div>
-                            )}
+                            )} */}
                             <div className="table-actions mt-2">
                               <button
                                 className="btn btn-primary btn-sm"

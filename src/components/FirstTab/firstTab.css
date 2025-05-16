@@ -1,70 +1,141 @@
+
 /* Container styling */
 .main {
-    padding: 20px; /* Add padding for breathing room */
-    min-height: 100vh; /* Full height for centering */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    background-color: #f8f9fa; /* Light background for contrast */
+  padding: 2rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: #f8f9fa;
+  position: relative;
 }
 
 /* Back button styling */
 .back-button {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    font-size: 2rem; /* Larger icon */
-    color: #007bff; /* Bootstrap primary color */
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: color 0.3s ease;
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  font-size: 2rem;
+  color: #007bff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.2s ease;
+  z-index: 1000;
 }
 
 .back-button:hover {
-    color: #0056b3; /* Darker shade on hover */
+  color: #0056b3;
+  transform: scale(1.1);
+}
+
+.back-button:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
 }
 
 /* Main button styling */
 .main-button {
-    width: 100%; /* Full width of column */
-    max-width: 250px; /* Cap button width */
-    padding: 15px 20px; /* Larger padding for touch targets */
-    font-size: 1.2rem; /* Larger text */
-    font-weight: bold;
-    text-transform: uppercase; /* Consistent with your design */
-    color: white;
-    background-color:#f3b27d;; /* Bootstrap primary color */
-    border: none;
-    border-radius: 8px; /* Rounded corners */
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+  width: 100%;
+  max-width: 220px;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #fff;
+  background-color: #007bff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .main-button:hover {
-    background-color: #f7c8a3;; /* Darker shade on hover */
-    transform: scale(1.05); /* Slight scale-up effect */
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .main-button:active {
-    transform: scale(0.95); /* Slight press effect */
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.main-button:focus {
+  outline: 2px solid #0056b3;
+  outline-offset: 2px;
+}
+
+/* Heading and subheading */
+.display-5 {
+  font-size: 2.5rem;
+  color: #343a40;
+}
+
+.text-muted {
+  font-size: 1rem;
+  color: #6c757d;
 }
 
 /* Responsive adjustments */
 @media (max-width: 767px) {
-    .main-button {
-        font-size: 1rem; /* Smaller text on mobile */
-        padding: 12px 15px; /* Adjust padding */
-    }
+  .main {
+    padding: 1.5rem;
+  }
+
+  .main-button {
+    font-size: 1rem;
+    padding: 0.75rem;
+    max-width: 180px;
+  }
+
+  .display-5 {
+    font-size: 2rem;
+  }
+
+  .text-muted {
+    font-size: 0.9rem;
+  }
 }
 
 @media (max-width: 575px) {
-    .main {
-        padding: 15px; /* Reduce padding on small screens */
-    }
-    .back-button {
-        font-size: 1.5rem; /* Smaller icon on mobile */
-        top: 10px;
-        left: 10px;
-    }
+  .main {
+    padding: 1rem;
+  }
+
+  .back-button {
+    font-size: 1.5rem;
+    top: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .main-button {
+    max-width: 100%;
+  }
+
+  .display-5 {
+    font-size: 1.75rem;
+  }
+}
+
+/* Accessibility: High contrast for low vision */
+@media (prefers-contrast: high) {
+  .main-button {
+    background-color: #003087;
+    color: #fff;
+  }
+
+  .back-button {
+    color: #003087;
+  }
+}
+
+/* Reduced motion for users who prefer less animation */
+@media (prefers-reduced-motion: reduce) {
+  .main-button,
+  .back-button {
+    transition: none;
+    transform: none;
+  }
 }

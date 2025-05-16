@@ -839,7 +839,7 @@ function Front() {
             qty: item.quantity || 1,
             rate: (parseFloat(item.basePrice) || 0) + variantPrice + ingredientPrice,
             amount: ((parseFloat(item.basePrice) || 0) + variantPrice + ingredientPrice) * (item.quantity || 1),
-            income_account: defaultIncomeAccount || "Sales - P",
+            income_account: defaultIncomeAccount ,
             custom_size_variants: item.selectedSize || "",
             custom_other_variants: item.selectedCustomVariant || "",
             custom_kitchen: kitchen,
