@@ -109,15 +109,6 @@ function Navbar() {
               </li>
               <li className="nav-item">
                 <a
-                  className={`nav-link ${location.pathname === '/salesinvoice' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={() => navigate('/salesinvoice')}
-                  title="Sales Invoice"
-                >
-                  <img src="\menuIcons\save.svg" alt="" className='menuicon' />
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
                   className={`nav-link ${location.pathname === '/dispatch' ? 'active text-primary' : 'text-black'} cursor-pointer`}
                   onClick={() => navigate('/dispatch')}
                   title="Dispatch"
@@ -132,6 +123,15 @@ function Navbar() {
                   title="To Bill"
                 >
                   <img src="\menuIcons\dispatchorder.svg" alt="" className='menuicon' />
+                </a>
+              </li>
+              <li className="nav-item">
+                <a
+                  className={`nav-link ${location.pathname === '/salesinvoice' ? 'active text-primary' : 'text-black'} cursor-pointer`}
+                  onClick={() => navigate('/salesinvoice')}
+                  title="Sales Invoice"
+                >
+                  <img src="\menuIcons\save.svg" alt="" className='menuicon' />
                 </a>
               </li>
               <li className="nav-item">
