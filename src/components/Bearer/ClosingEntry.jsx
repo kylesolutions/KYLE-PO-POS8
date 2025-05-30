@@ -10,7 +10,6 @@ function ClosingEntry() {
   const { state } = useLocation();
   const userData = useSelector((state) => state.user);
   const closingAmountRefs = useRef([]);
-
   const [openingEntries, setOpeningEntries] = useState([]);
   const [posOpeningEntry, setPosOpeningEntry] = useState(state?.posOpeningEntry || localStorage.getItem('posOpeningEntry') || '');
   const [periodStartDate, setPeriodStartDate] = useState('');
