@@ -598,9 +598,9 @@ function Dispatch() {
                                 </th>
                                 <th scope="col">Item</th>
                                 <th scope="col">Variants</th>
-                                <th scope="col">Kitchen</th>
+                                
                                 <th scope="col">Quantity</th>
-                                <th scope="col">Type</th>
+                                
                                 <th scope="col">Prepared Time</th>
                                 <th scope="col">Action</th>
                               </tr>
@@ -623,35 +623,13 @@ function Dispatch() {
                                     </td>
                                     <td>
                                       {item.name}
-                                      {item.custom_customer_description && (
-                                        <p
-                                          style={{
-                                            fontSize: "12px",
-                                            color: "#666",
-                                            marginTop: "5px",
-                                            marginBottom: "0",
-                                          }}
-                                        >
-                                          <strong>Note:</strong> {item.custom_customer_description}
-                                        </p>
-                                      )}
-                                      {item.ingredients?.length > 0 && (
-                                        <p
-                                          style={{
-                                            fontSize: "12px",
-                                            color: "#666",
-                                            marginTop: "5px",
-                                            marginBottom: "0",
-                                          }}
-                                        >
-                                          <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
-                                        </p>
-                                      )}
+                                      
+                                      
                                     </td>
                                     <td>{item.custom_variants || "None"}</td>
-                                    <td>{item.kitchen}</td>
+                                    
                                     <td>{item.quantity}</td>
-                                    <td>{item.type}</td>
+                                    
                                     <td>{item.preparedTime}</td>
                                     <td>
                                       <button

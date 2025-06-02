@@ -3,7 +3,7 @@ import UserContext from '../../Context/UserContext';
 import './foodDetails.css';
 import { v4 as uuidv4 } from 'uuid';
 
-const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, onAddToCart }) => {
+const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) => {
     if (!item) return null;
 
     const { addToCart, updateCartItem } = useContext(UserContext);
@@ -22,7 +22,6 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
     const [mainQuantity, setMainQuantity] = useState(cartItem?.quantity || 1);
     const [itemTotal, setItemTotal] = useState(0);
     const [isAdding, setIsAdding] = useState(false);
-    const [customIngredientQuantities, setCustomIngredientQuantities] = useState({});
 
     useEffect(() => {
         if (!isUpdate) {
@@ -32,11 +31,9 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
             setAddonCounts({});
             setSelectedCombos([]);
             setDescription("");
-            setCustomIngredientQuantities({});
         }
     }, [isUpdate]);
 
-    // Sync state with cartItem when updating
     useEffect(() => {
         if (isUpdate && cartItem) {
             setMainQuantity(cartItem.quantity || 1);
@@ -45,14 +42,9 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
             setAddonCounts(cartItem.addonCounts || {});
             setSelectedCombos(cartItem.selectedCombos || []);
             setDescription(cartItem.custom_customer_description || "");
-            setCustomIngredientQuantities(cartItem.ingredients?.reduce((acc, ing) => ({
-                ...acc,
-                [ing.ingredients_name]: parseFloat(ing.quantity) || 100,
-            }), {}) || {});
         }
     }, [isUpdate, cartItem]);
 
-    // Debugging logs
     useEffect(() => {
         console.log('FoodDetails props:', { item, cartItem, isUpdate });
         console.log('State:', { selectedSize, addonCounts, selectedCombos, mainQuantity });
@@ -126,12 +118,6 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                         ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
                     );
                     if (hasSizeVariants && !selectedSize) setSelectedSize("M");
-                    setCustomIngredientQuantities(
-                        (selectedItem.ingredients || []).reduce((acc, ing) => ({
-                            ...acc,
-                            [ing.ingredients_name]: parseFloat(ing.quantity) || 100,
-                        }), {})
-                    );
                 } else {
                     console.error(`Item not found: ${item.name}, ${item.item_code}`);
                 }
@@ -289,53 +275,35 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
         }));
     };
 
-    const handleCustomQuantityChange = (ingredientName, value) => {
-        const quantity = parseFloat(value) || 0;
-        setCustomIngredientQuantities((prev) => ({
-            ...prev,
-            [ingredientName]: Math.max(0, quantity),
-        }));
-    };
-
     const hasSizeVariants = fetchedItem && localAllItems.some((i) =>
         i.item_code.startsWith(fetchedItem.item_code.replace(/-[SML]$/, '')) &&
         ['-S', '-M', '-L'].some((suffix) => i.item_code.endsWith(suffix))
     );
 
     const getAggregatedIngredients = useMemo(() => {
-        if (!fetchedItem) return { ingredients: [], totals: { calories: 0, protein: 0, carbohydrates: 0, fiber: 0, fat: 0, quantity: 0 } };
+        if (!fetchedItem) return { ingredients: [], totals: { calories: 0, protein: 0, carbohydrates: 0, fiber: 0, fat: 0 } };
 
         let ingredients = [];
         if (hasSizeVariants && selectedSize) {
             const selectedItemCode = getItemCodeForSize(selectedSize);
             const selectedItem = localAllItems.find((i) => i.item_code === selectedItemCode);
-            ingredients = (selectedItem?.ingredients || fetchedItem.ingredients).map(ing => {
-                const customQty = customIngredientQuantities[ing.ingredients_name] || parseFloat(ing.quantity) || 100;
-                const scaleFactor = customQty / 100;
-                return {
-                    ...ing,
-                    quantity: scaleFactor * mainQuantity,
-                    calories: (parseFloat(ing.calories) || 0) * scaleFactor * mainQuantity,
-                    protein: (parseFloat(ing.protein) || 0) * scaleFactor * mainQuantity,
-                    carbohydrates: (parseFloat(ing.carbohydrates) || 0) * scaleFactor * mainQuantity,
-                    fiber: (parseFloat(ing.fiber) || 0) * scaleFactor * mainQuantity,
-                    fat: (parseFloat(ing.fat) || 0) * scaleFactor * mainQuantity,
-                };
-            });
+            ingredients = (selectedItem?.ingredients || fetchedItem.ingredients).map(ing => ({
+                ...ing,
+                calories: (parseFloat(ing.calories) || 0) * mainQuantity,
+                protein: (parseFloat(ing.protein) || 0) * mainQuantity,
+                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * mainQuantity,
+                fiber: (parseFloat(ing.fiber) || 0) * mainQuantity,
+                fat: (parseFloat(ing.fat) || 0) * mainQuantity,
+            }));
         } else {
-            ingredients = fetchedItem.ingredients.map(ing => {
-                const customQty = customIngredientQuantities[ing.ingredients_name] || parseFloat(ing.quantity) || 100;
-                const scaleFactor = customQty / 100;
-                return {
-                    ...ing,
-                    quantity: scaleFactor * mainQuantity,
-                    calories: (parseFloat(ing.calories) || 0) * scaleFactor * mainQuantity,
-                    protein: (parseFloat(ing.protein) || 0) * scaleFactor * mainQuantity,
-                    carbohydrates: (parseFloat(ing.carbohydrates) || 0) * scaleFactor * mainQuantity,
-                    fiber: (parseFloat(ing.fiber) || 0) * scaleFactor * mainQuantity,
-                    fat: (parseFloat(ing.fat) || 0) * scaleFactor * mainQuantity,
-                };
-            });
+            ingredients = fetchedItem.ingredients.map(ing => ({
+                ...ing,
+                calories: (parseFloat(ing.calories) || 0) * mainQuantity,
+                protein: (parseFloat(ing.protein) || 0) * mainQuantity,
+                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * mainQuantity,
+                fiber: (parseFloat(ing.fiber) || 0) * mainQuantity,
+                fat: (parseFloat(ing.fat) || 0) * mainQuantity,
+            }));
         }
 
         Object.entries(addonCounts).forEach(([addonName, { quantity }]) => {
@@ -344,19 +312,14 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                 if (addonItem?.ingredients?.length) {
                     ingredients = [
                         ...ingredients,
-                        ...addonItem.ingredients.map(ing => {
-                            const customQty = customIngredientQuantities[ing.ingredients_name] || parseFloat(ing.quantity) || 100;
-                            const scaleFactor = customQty / 100;
-                            return {
-                                ...ing,
-                                quantity: scaleFactor * quantity * mainQuantity,
-                                calories: (parseFloat(ing.calories) || 0) * scaleFactor * quantity * mainQuantity,
-                                protein: (parseFloat(ing.protein) || 0) * scaleFactor * quantity * mainQuantity,
-                                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * scaleFactor * quantity * mainQuantity,
-                                fiber: (parseFloat(ing.fiber) || 0) * scaleFactor * quantity * mainQuantity,
-                                fat: (parseFloat(ing.fat) || 0) * scaleFactor * quantity * mainQuantity,
-                            };
-                        }),
+                        ...addonItem.ingredients.map(ing => ({
+                            ...ing,
+                            calories: (parseFloat(ing.calories) || 0) * quantity * mainQuantity,
+                            protein: (parseFloat(ing.protein) || 0) * quantity * mainQuantity,
+                            carbohydrates: (parseFloat(ing.carbohydrates) || 0) * quantity * mainQuantity,
+                            fiber: (parseFloat(ing.fiber) || 0) * quantity * mainQuantity,
+                            fat: (parseFloat(ing.fat) || 0) * quantity * mainQuantity,
+                        })),
                     ];
                 }
             }
@@ -374,19 +337,14 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                 if (comboIngredients.length) {
                     ingredients = [
                         ...ingredients,
-                        ...comboIngredients.map(ing => {
-                            const customQty = customIngredientQuantities[ing.ingredients_name] || parseFloat(ing.quantity) || 100;
-                            const scaleFactor = customQty / 100;
-                            return {
-                                ...ing,
-                                quantity: scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                calories: (parseFloat(ing.calories) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                protein: (parseFloat(ing.protein) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                fiber: (parseFloat(ing.fiber) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                fat: (parseFloat(ing.fat) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                            };
-                        }),
+                        ...comboIngredients.map(ing => ({
+                            ...ing,
+                            calories: (parseFloat(ing.calories) || 0) * (combo.quantity || 1) * mainQuantity,
+                            protein: (parseFloat(ing.protein) || 0) * (combo.quantity || 1) * mainQuantity,
+                            carbohydrates: (parseFloat(ing.carbohydrates) || 0) * (combo.quantity || 1) * mainQuantity,
+                            fiber: (parseFloat(ing.fiber) || 0) * (combo.quantity || 1) * mainQuantity,
+                            fat: (parseFloat(ing.fat) || 0) * (combo.quantity || 1) * mainQuantity,
+                        })),
                     ];
                 }
             }
@@ -404,7 +362,6 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                     carbohydrates: 0,
                     fiber: 0,
                     fat: 0,
-                    quantity: 0,
                 };
             }
             aggregated[key].calories += parseFloat(ing.calories) || 0;
@@ -412,7 +369,6 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
             aggregated[key].carbohydrates += parseFloat(ing.carbohydrates) || 0;
             aggregated[key].fiber += parseFloat(ing.fiber) || 0;
             aggregated[key].fat += parseFloat(ing.fat) || 0;
-            aggregated[key].quantity += parseFloat(ing.quantity) || 0;
         });
 
         const aggregatedIngredients = Object.values(aggregated);
@@ -424,13 +380,12 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                 carbohydrates: acc.carbohydrates + (parseFloat(ing.carbohydrates) || 0),
                 fiber: acc.fiber + (parseFloat(ing.fiber) || 0),
                 fat: acc.fat + (parseFloat(ing.fat) || 0),
-                quantity: acc.quantity + (parseFloat(ing.quantity) || 0),
             }),
-            { calories: 0, protein: 0, carbohydrates: 0, fiber: 0, fat: 0, quantity: 0 }
+            { calories: 0, protein: 0, carbohydrates: 0, fiber: 0, fat: 0 }
         );
 
         return { ingredients: aggregatedIngredients, totals };
-    }, [fetchedItem, hasSizeVariants, selectedSize, addonCounts, selectedCombos, mainQuantity, localAllItems, customIngredientQuantities]);
+    }, [fetchedItem, hasSizeVariants, selectedSize, addonCounts, selectedCombos, mainQuantity, localAllItems]);
 
     const handleAddToCart = () => {
         if (!fetchedItem || isAdding) return;
@@ -457,8 +412,6 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
         const adjustedIngredients = aggregatedIngredients.map((ing) => ({
             name: ing.name,
             ingredients_name: ing.ingredients_name,
-            quantity: Math.max(0, ing.quantity),
-            unit: "g",
             nutrition: {
                 calories: ing.calories,
                 protein: ing.protein,
@@ -496,23 +449,17 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                     rate,
                     kitchen: comboItem.custom_kitchen || combo.kitchen || "Unknown",
                     custom_customer_description: description || "",
-                    ingredients: (comboItem?.ingredients || []).map((ing) => {
-                        const customQty = customIngredientQuantities[ing.ingredients_name] || parseFloat(ing.quantity) || 100;
-                        const scaleFactor = customQty / 100;
-                        return {
-                            name: ing.name || ing.ingredients_name || "Unknown Ingredient",
-                            ingredients_name: ing.ingredients_name,
-                            quantity: scaleFactor * (combo.quantity || 1) * mainQuantity,
-                            unit: "g",
-                            nutrition: {
-                                calories: (parseFloat(ing.calories) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                protein: (parseFloat(ing.protein) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                carbohydrates: (parseFloat(ing.carbohydrates) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                fiber: (parseFloat(ing.fiber) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                                fat: (parseFloat(ing.fat) || 0) * scaleFactor * (combo.quantity || 1) * mainQuantity,
-                            },
-                        };
-                    }),
+                    ingredients: (comboItem?.ingredients || []).map((ing) => ({
+                        name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                        ingredients_name: ing.ingredients_name,
+                        nutrition: {
+                            calories: (parseFloat(ing.calories) || 0) * (combo.quantity || 1) * mainQuantity,
+                            protein: (parseFloat(ing.protein) || 0) * (combo.quantity || 1) * mainQuantity,
+                            carbohydrates: (parseFloat(ing.carbohydrates) || 0) * (combo.quantity || 1) * mainQuantity,
+                            fiber: (parseFloat(ing.fiber) || 0) * (combo.quantity || 1) * mainQuantity,
+                            fat: (parseFloat(ing.fat) || 0) * (combo.quantity || 1) * mainQuantity,
+                        },
+                    })),
                     addons: comboItem?.addons || [],
                     variants: comboItem?.variants || [],
                 };
@@ -841,49 +788,31 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                                                         <thead style={{ backgroundColor: "#007bff", color: "#000000" }}>
                                                             <tr>
                                                                 <th>Ingredient</th>
-                                                                <th>Custom Quantity (g)</th>
-                                                                <th>Calories</th>
-                                                                <th>Protein</th>
-                                                                <th>Carbohydrates</th>
-                                                                <th>Fiber</th>
-                                                                <th>Fat</th>
-                                                                <th>Quantity (g)</th>
+                                                                {nutritionFields.map((field) => (
+                                                                    <th key={field}>{field.charAt(0).toUpperCase() + field.slice(1)}</th>
+                                                                ))}
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {getAggregatedIngredients.ingredients.map((ingredient, index) => (
                                                                 <tr key={index} style={{ transition: "background-color 0.2s" }} className="ingredient-row">
                                                                     <td>{ingredient.name || 'N/A'}</td>
-                                                                    <td>
-                                                                        <input
-                                                                            type="number"
-                                                                            className="form-control"
-                                                                            style={{ width: "100px" }}
-                                                                            value={customIngredientQuantities[ingredient.ingredients_name] || 100}
-                                                                            onChange={(e) => handleCustomQuantityChange(ingredient.ingredients_name, e.target.value)}
-                                                                            min="0"
-                                                                            step="1"
-                                                                        />
-                                                                    </td>
                                                                     {nutritionFields.map((field) => (
                                                                         <td key={field}>
                                                                             {(parseFloat(ingredient[field]) || 0).toFixed(2)}
                                                                         </td>
                                                                     ))}
-                                                                    <td>{(ingredient.quantity || 0).toFixed(2)}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
                                                         <tfoot style={{ backgroundColor: "#f0f0f0", fontWeight: "bold" }}>
                                                             <tr>
                                                                 <td>Total</td>
-                                                                <td>-</td>
                                                                 {nutritionFields.map((field) => (
                                                                     <td key={field}>
                                                                         {(getAggregatedIngredients.totals[field] || 0).toFixed(2)}
                                                                     </td>
                                                                 ))}
-                                                                <td>{(getAggregatedIngredients.totals.quantity || 0).toFixed(2)}</td>
                                                             </tr>
                                                         </tfoot>
                                                     </table>
@@ -935,7 +864,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
                                 type="button"
                                 className="btn"
                                 onClick={handleAddToCart}
-                                style={{ backgroundColor: "#ffffff", border:"0a2400" }}
+                                style={{ backgroundColor: "#ffffff", borderColor: "#2a4c2a" }}
                             >
                                 {isUpdate ? "Update Cart" : "Add To Cart"}
                             </button>
