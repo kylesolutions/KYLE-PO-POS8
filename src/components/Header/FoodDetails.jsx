@@ -36,6 +36,28 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate, on
         }
     }, [isUpdate]);
 
+    // Sync state with cartItem when updating
+    useEffect(() => {
+        if (isUpdate && cartItem) {
+            setMainQuantity(cartItem.quantity || 1);
+            setSelectedSize(cartItem.selectedSize || null);
+            setSelectedCustomVariant(cartItem.selectedCustomVariant || null);
+            setAddonCounts(cartItem.addonCounts || {});
+            setSelectedCombos(cartItem.selectedCombos || []);
+            setDescription(cartItem.custom_customer_description || "");
+            setCustomIngredientQuantities(cartItem.ingredients?.reduce((acc, ing) => ({
+                ...acc,
+                [ing.ingredients_name]: parseFloat(ing.quantity) || 100,
+            }), {}) || {});
+        }
+    }, [isUpdate, cartItem]);
+
+    // Debugging logs
+    useEffect(() => {
+        console.log('FoodDetails props:', { item, cartItem, isUpdate });
+        console.log('State:', { selectedSize, addonCounts, selectedCombos, mainQuantity });
+    }, [item, cartItem, isUpdate, selectedSize, addonCounts, selectedCombos, mainQuantity]);
+
     useEffect(() => {
         const fetchItemDetails = async () => {
             try {

@@ -126,7 +126,7 @@ function Dispatch() {
     }
   }, []);
 
-  const createHomeDeliveryOrder = useCallback(async (order, item) => {
+  const createHomeDeliveryOrder = useCallback(async (order, items) => {
     try {
       const selectedDeliveryBoy = selectedDeliveryBoys[order.pos_invoice_id];
       if (!selectedDeliveryBoy) {
@@ -153,23 +153,22 @@ function Dispatch() {
         throw new Error("POS Invoice not found");
       }
 
-      const itemPrice =
-        posInvoiceData.data.items?.find((i) => i.item_name === item.item_code)?.rate ||
-        item.basePrice;
-
       const payload = {
         invoice_id: order.pos_invoice_id,
         employee_name: selectedDeliveryBoy,
         customer_name: posInvoiceData.data.customer_name || "Unknown",
         customer_address: posInvoiceData.data.customer_address || "Unknown",
         customer_phone: posInvoiceData.data.contact_mobile || "Unknown",
-        items: [
-          {
+        items: items.map((item) => {
+          const itemPrice =
+            posInvoiceData.data.items?.find((i) => i.item_name === item.item_code)?.rate ||
+            item.basePrice;
+          return {
             item_name: item.name,
             price: parseFloat(itemPrice) || 0,
             variants: item.custom_variants || "",
-          },
-        ],
+          };
+        }),
       };
 
       const deliveryResponse = await fetch(
@@ -192,7 +191,7 @@ function Dispatch() {
       return true;
     } catch (error) {
       console.error("Dispatch.jsx: Error creating Home Delivery Order:", JSON.stringify(error, null, 2));
-      throw error; // Rethrow to handle in caller
+      throw error;
     }
   }, [selectedDeliveryBoys]);
 
@@ -264,7 +263,7 @@ function Dispatch() {
         let homeDeliverySuccess = true;
         if (order.deliveryType === "DELIVERY") {
           try {
-            homeDeliverySuccess = await createHomeDeliveryOrder(order, item);
+            homeDeliverySuccess = await createHomeDeliveryOrder(order, [item]);
             if (!homeDeliverySuccess) {
               console.warn("Dispatch.jsx: Failed to create Home Delivery Order, but item dispatched");
             }
@@ -332,51 +331,67 @@ function Dispatch() {
 
       let dispatchErrors = [];
       try {
-        for (const { orderName, itemId } of selectedItems) {
+        // Group items by invoice (orderName)
+        const itemsByInvoice = selectedItems.reduce((acc, { orderName, itemId }) => {
+          if (!acc[orderName]) {
+            acc[orderName] = [];
+          }
           const order = preparedOrders[orderName];
           const item = order?.items.find((i) => i.id === itemId);
-          if (!item) continue;
+          if (item) {
+            acc[orderName].push(item);
+          }
+          return acc;
+        }, {});
 
-          const kitchenResponse = await fetch(
-            "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
-            {
-              method: "POST",
-              headers: {
-                Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                item_name: item.backendId,
-                status: "Dispatched",
-              }),
+        for (const [orderName, items] of Object.entries(itemsByInvoice)) {
+          const order = preparedOrders[orderName];
+
+          // Update Kitchen Note status for each item
+          for (const item of items) {
+            const kitchenResponse = await fetch(
+              "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  item_name: item.backendId,
+                  status: "Dispatched",
+                }),
+              }
+            );
+
+            const kitchenResult = await kitchenResponse.json();
+            if (kitchenResult.message?.status !== "success") {
+              throw new Error(kitchenResult.message?.message || `Failed to dispatch item ${item.name}`);
             }
-          );
 
-          const kitchenResult = await kitchenResponse.json();
-          if (kitchenResult.message?.status !== "success") {
-            throw new Error(kitchenResult.message?.message || `Failed to dispatch item ${item.name}`);
+            const invoiceUpdateSuccess = await updatePosInvoiceItemDispatchStatus(orderName, item.item_code);
+            if (!invoiceUpdateSuccess) {
+              console.warn(`Dispatch.jsx: Failed to update POS Invoice item dispatch status for ${item.item_code}, but Kitchen Note updated`);
+            }
           }
 
-          const invoiceUpdateSuccess = await updatePosInvoiceItemDispatchStatus(orderName, item.item_code);
-          if (!invoiceUpdateSuccess) {
-            console.warn(`Dispatch.jsx: Failed to update POS Invoice item dispatch status for ${item.item_code}, but Kitchen Note updated`);
-          }
-
+          // Create Home Delivery Order for all items in this invoice
           let homeDeliverySuccess = true;
           if (order.deliveryType === "DELIVERY") {
             try {
-              homeDeliverySuccess = await createHomeDeliveryOrder(order, item);
+              homeDeliverySuccess = await createHomeDeliveryOrder(order, items);
               if (!homeDeliverySuccess) {
-                console.warn(`Dispatch.jsx: Failed to create Home Delivery for ${item.item_code}, but item dispatched`);
+                console.warn(`Dispatch.jsx: Failed to create Home Delivery for invoice ${orderName}, but items dispatched`);
               }
             } catch (deliveryError) {
-              console.warn(`Dispatch.jsx: Failed to create Home Delivery for ${item.item_code}:`, deliveryError.message);
+              console.warn(`Dispatch.jsx: Failed to create Home Delivery for invoice ${orderName}:`, deliveryError.message);
               homeDeliverySuccess = false;
-              dispatchErrors.push(`Item ${item.name}: ${deliveryError.message}`);
+              dispatchErrors.push(`Invoice ${orderName}: ${deliveryError.message}`);
             }
           }
         }
 
+        // Update state to remove dispatched items
         setPreparedOrders((prev) => {
           const newPreparedOrders = { ...prev };
           selectedItems.forEach(({ orderName, itemId }) => {
@@ -404,14 +419,13 @@ function Dispatch() {
         console.error("Dispatch.jsx: Error dispatching selected items:", error);
         alert(`Unable to dispatch selected items: ${error.message || "Please try again."}`);
       } finally {
-        setDispatchingItems((prev) => ({
-          ...prev,
-          ...selectedItems.reduce((acc, { orderName, itemId }) => {
-            acc[`${orderName}-${itemId}`] = false;
-            return acc;
-          }, {}),
-        }));
-      }
+  setDispatchingItems((prev) => ({
+    ...prev,
+    ...Object.fromEntries(
+      selectedItems.map(({ orderName, itemId }) => [`${orderName}-${itemId}`, false])
+    ),
+  }));
+}
     },
     [selectedItems, preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus]
   );
@@ -685,4 +699,3 @@ function Dispatch() {
 }
 
 export default Dispatch;
-

@@ -1379,39 +1379,43 @@ function Front() {
     return (
         <>
             <div className="container-fluid">
-                <div className="row">
-                    <div className="col-lg-2 col-xl-1 category-sidebar" style={{ background: " #0a2400" }}>
-                        <div className="row p-2">
-                            {categories.map((category, index) => (
-                                <div key={index} className="col-lg-12 mb-2">
-                                    <button
-                                        className={`category-btn w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active' : ''}`}
-                                        onClick={() => handleFilter(category)}
-                                    >
-                                        <span className='fs-12'>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
-                                    </button>
+                <div className="row px-3">
+                    <div className="col-lg-7 col-xl-8">
+                        <div className="row">
+                            <div className="col-lg-12 col-xl-12 mt-2 category-sidebar" >
+                                <div className="row p-2">
+                                    {categories.map((category, index) => (
+                                        <div key={index} className="col-lg-2">
+                                            <button
+                                                className={`category-btn w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active' : ''}`}
+                                                onClick={() => handleFilter(category)}
+                                            >
+                                                <span className='fs-12'>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            </div>
+
+                            <div className="col-lg-12 col-xl-12 row2">
+                                <div className="row g-3 mt-1"> {/* Added g-3 for gutter spacing, removed overflowY */}
+                                    {filteredItems.map((item, index) => (
+                                        <div className="col-xl-3 col-lg-6 col-md-4 col-6 my-2" key={item.id}>
+                                            <div className="card item-card" onClick={() => handleItemClick(item)}>
+                                                <div className="image-box">
+                                                    <img src={item.image} alt={item.name} className="card-img-top" />
+                                                </div>
+                                                <div className="card-body p-2 mb-0 category-name">
+                                                    <h4 className="card-title text-center mb-0">{item.name}</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
                         </div>
                     </div>
-
-                    <div className="col-lg-5 col-xl-7 row2">
-                        <div className="row" style={{ overflowY: 'scroll' }}>
-                            {filteredItems.map((item, index) => (
-                                <div className="col-xl-3 col-lg-6 col-md-4 col-6 align-items-center my-2" key={item.id}>
-                                    <div className="card" onClick={() => handleItemClick(item)}>
-                                        <div className='image-box'>
-                                            <img src={item.image} alt={item.name} />
-                                        </div>
-                                        <div className="card-body p-2 mb-0 category-name">
-                                            <h4 className="card-title text-center mb-0" style={{ fontSize: "14px" }}>{item.name}</h4>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
                     <div className="col-lg-5 col-xl-4 row1 px-4">
                         <div className="d-flex flex-column" style={{ height: '90vh' }}>
                             <div className="row p-2 mt-2 border shadow rounded flex-grow-1" style={{ overflowY: 'auto' }}>
@@ -1637,94 +1641,109 @@ function Front() {
                                             )}
                                         </div>
 
-                                        <div className="table-responsive mt-3">
-                                            <table className="table border text-start" style={{ fontSize: "13px" }}>
-                                                <thead>
-                                                    <tr>
-                                                        <th>T.No.</th>
-                                                        <th>Item Name</th>
-                                                        <th>Qty</th>
-                                                        <th className="text-end">Price</th>
-                                                        <th></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {cartItems.flatMap((item) => {
-                                                        const rows = [
-                                                            {
-                                                                type: "main",
-                                                                name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}${item.selectedCustomVariant ? ` (${item.selectedCustomVariant})` : ""}`,
-                                                                quantity: item.quantity || 1,
-                                                                price: (parseFloat(item.basePrice) || 0) + (parseFloat(item.customVariantPrice) || 0),
-                                                                note: item.custom_customer_description,
-                                                                ingredients: item.ingredients || [],
-                                                                isMain: true,
-                                                                cartItem: item,
-                                                            },
-                                                            ...Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
-                                                                type: "addon",
-                                                                name: `+ ${addonName} x${quantity}`,
-                                                                quantity: null,
-                                                                price: parseFloat(price) || 0,
-                                                                note: null,
-                                                                ingredients: [],
-                                                                isMain: false,
-                                                            })),
-                                                            ...(item.selectedCombos || []).map((combo, idx) => ({
-                                                                type: "combo",
-                                                                name: `+ ${combo.name1} x${combo.quantity || 1}${combo.selectedSize || combo.selectedCustomVariant ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ")})` : ""}`,
-                                                                quantity: null,
-                                                                price: parseFloat(combo.rate) || 0,
-                                                                note: combo.custom_customer_description,
-                                                                ingredients: combo.ingredients || [],
-                                                                isMain: false,
-                                                            })),
-                                                        ];
+                                        <div className="cart-items-container mt-3">
+                                            {cartItems.length === 0 ? (
+                                                <div className="empty-cart-message text-center p-3">
+                                                    <p className="text-muted mb-0">No items in cart.</p>
+                                                </div>
+                                            ) : (
+                                                cartItems.flatMap((item) => {
+                                                    const rows = [
+                                                        {
+                                                            type: "main",
+                                                            name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}${item.selectedCustomVariant ? ` (${item.selectedCustomVariant})` : ""}`,
+                                                            quantity: item.quantity || 1,
+                                                            price: (parseFloat(item.basePrice) || 0) + (parseFloat(item.customVariantPrice) || 0),
+                                                            note: item.custom_customer_description,
+                                                            ingredients: item.ingredients || [],
+                                                            isMain: true,
+                                                            cartItem: item,
+                                                        },
+                                                        ...Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                                                            type: "addon",
+                                                            name: `+ ${addonName} x${quantity}`,
+                                                            quantity: null,
+                                                            price: parseFloat(price) || 0,
+                                                            note: null,
+                                                            ingredients: [],
+                                                            isMain: false,
+                                                        })),
+                                                        ...(item.selectedCombos || []).map((combo, idx) => ({
+                                                            type: "combo",
+                                                            name: `+ ${combo.name1} x${combo.quantity || 1}${combo.selectedSize || combo.selectedCustomVariant ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ")})` : ""}`,
+                                                            quantity: null,
+                                                            price: parseFloat(combo.rate) || 0,
+                                                            note: combo.custom_customer_description,
+                                                            ingredients: combo.ingredients || [],
+                                                            isMain: false,
+                                                        })),
+                                                    ];
 
-                                                        return rows.map((row, idx) => (
-                                                            <tr key={`${item.cartItemId}-${idx}`}>
-                                                                <td>{row.isMain ? tableNumber : ""}</td>
-                                                                <td>
-                                                                    <span
-                                                                        style={{ marginLeft: row.isMain ? "0" : "10px", cursor: row.isMain ? "pointer" : "default" }}
-                                                                        onClick={() => row.isMain && handleItemClick(allItems.find(i => i.item_code === item.item_code), item)}
-                                                                    >
-                                                                        {row.name}
-                                                                    </span>
-                                                                    {row.note && (
-                                                                        <p style={{ fontSize: "12px", color: "#666", marginTop: "5px", marginBottom: "0", marginLeft: row.isMain ? "0" : "10px" }}>
+                                                    return rows.map((row, idx) => (
+                                                        <div
+                                                            key={`${item.cartItemId}-${idx}`}
+                                                            className={`cart-item-card ${row.isMain ? 'main-item' : 'sub-item'} p-3 mb-2 rounded-lg shadow-sm`}
+                                                        >
+                                                            <div className="d-flex justify-content-between align-items-start">
+                                                                <div className="item-details">
+                                                                    <div className="d-flex align-items-center">
+                                                                        {row.isMain && tableNumber && (
+                                                                            <span className="table-number-badge me-2">
+                                                                                T No: {tableNumber}
+                                                                            </span>
+                                                                        )}
+                                                                        <span
+                                                                            className={`item-name ${row.isMain ? 'clickable' : ''}`}
+                                                                            onClick={() => row.isMain && handleItemClick(allItems.find(i => i.item_code === item.item_code), item)}
+                                                                        >
+                                                                            {row.name}
+                                                                        </span>
+                                                                    </div>
+                                                                    {/* {row.note && (
+                                                                        <p className="item-note mt-1 mb-0">
                                                                             <strong>Note:</strong> {row.note}
                                                                         </p>
                                                                     )}
-                                                                </td>
-                                                                <td>
+                                                                    {row.ingredients && row.ingredients.length > 0 && (
+                                                                        <div className="ingredients-list mt-1">
+                                                                            <strong>Ingredients:</strong>
+                                                                            <ul className="mb-0">
+                                                                                {row.ingredients.map((ing, i) => (
+                                                                                    <li key={i}>
+                                                                                        {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                    )} */}
+                                                                </div>
+                                                                <div className="item-actions d-flex align-items-center">
                                                                     {row.quantity && (
                                                                         <input
                                                                             type="number"
-                                                                            className="form-control form-control-sm"
+                                                                            className="form-control form-control-sm quantity-input me-2"
                                                                             value={row.quantity}
                                                                             onChange={(e) => handleQuantityChange(item, e.target.value)}
                                                                             min="1"
-                                                                            style={{ width: "60px", padding: "2px", textAlign: "center" }}
                                                                         />
                                                                     )}
-                                                                </td>
-                                                                <td className="text-end">₹{(row.price || 0).toFixed(2)}</td>
-                                                                <td>
+                                                                    <span className="item-price">
+                                                                        ₹{(row.price || 0).toFixed(2)}
+                                                                    </span>
                                                                     {row.isMain && (
                                                                         <button
-                                                                            className="btn btn-sm"
+                                                                            className="btn btn-sm remove-btn ms-2"
                                                                             onClick={() => removeFromCart(row.cartItem)}
                                                                         >
                                                                             <i className="bi bi-trash"></i>
                                                                         </button>
                                                                     )}
-                                                                </td>
-                                                            </tr>
-                                                        ));
-                                                    })}
-                                                </tbody>
-                                            </table>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ));
+                                                })
+                                            )}
                                         </div>
                                     </div>
                                 </div>

@@ -2,10 +2,10 @@
 /* Category Sidebar */
 .category-sidebar {
     background: #ffffff; /* White background */
-    height: 90vh;
+    /* height: 90vh; */
     padding: 10px 5px;
     box-shadow: 2px 0 8px rgba(0, 123, 255, 0.15); /* Subtle blue shadow */
-   
+    border-radius: 5px;
     overflow-y: auto;
   }
   
@@ -25,7 +25,7 @@
   }
   
   .category-btn:hover {
-    background: #def7bd; /* Primary blue on hover */
+    background: #2a410e; /* Primary blue on hover */
     color: #ffffff; /* White text */
     border-color: #0a2400; /* Ensure border matches */
     transform: translateY(-2px);
@@ -33,9 +33,9 @@
   }
   
   .category-btn.active {
-    background: #ffffff; /* Darker blue for active state */
-    color: #000000; /* White text */
-    border-color:#002c07; /* Match border to background */
+    background: #2a410e; /* Darker blue for active state */
+    color: #ffffff; /* White text */
+    border-color:#ffffff; /* Match border to background */
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inset shadow for pressed effect */
   }
   
@@ -57,49 +57,87 @@
   .category-sidebar::-webkit-scrollbar-track {
     background: #e9ecef; /* Light grayish-white track */
   }
+  
 
 /* Card Styling */
-.card {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: rgba(0, 0, 0, 0.16) 0px 3px 6px;
-    width: 100%; /* Ensures card scales with its container */
+.card.item-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  background: #ffffff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.card.item-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Image Box */
+.image-box {
+  height: 180px; /* Reduced for compactness */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 /* Card Image Styling */
 .card-img-top {
-    width: 100%; /* Full width of the card */
-    aspect-ratio: 1 / 1; /* Enforces square shape */
-    object-fit: cover; /* Ensures image fills the square */
-    border-radius: 4px; /* Matches your existing style */
-    display: block; /* Removes bottom gap */
-    background-color:#e7e7e7;
-}
-.image-box{
-    height: 220px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #ecf0f1;;
-}
-@media (min-width: 1200px) and (max-width: 1700px) { 
-    .image-box{
-        height: 150px !important;
-        
-    }
-    .image-box img {
-        width: 100px !important;
-        height: 100px !important;
-    }
-}
-.image-box img {
-    width: 170px;
-    height: 170px;
+  width: 100%;
+  max-width: 140px; /* Smaller, responsive */
+  aspect-ratio: 1 / 1;
+  object-fit: contain; /* Prevents stretching */
+  border-radius: 8px;
+  transition: transform 0.2s ease;
 }
 
+.card-img-top:hover {
+  transform: scale(1.05); /* Subtle zoom on hover */
+}
+
+/* Card Body */
 .card-body {
-    font-family: 'Dubai Medium';
+  font-family: 'Dubai Medium';
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.card-title {
+  font-size: 16px; /* Slightly larger */
+  color: #2a410e; /* Match front.css primary color */
+  margin: 0;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Responsive Adjustments */
+@media (min-width: 1200px) and (max-width: 1700px) {
+  .image-box {
+    height: 140px;
+  }
+  .card-img-top {
+    max-width: 100px;
+  }
+}
+
+@media (max-width: 767px) {
+  .image-box {
+    height: 120px;
+  }
+  .card-img-top {
+    max-width: 80px;
+  }
+  .card-title {
+    font-size: 14px;
+  }
 }
 
 .grand-tot-div {
@@ -124,4 +162,151 @@
     padding: 5px;
     font-size: 10px;
 }
+
+/* Existing styles from previous response */
+.cart-container {
+  height: 90vh;
+  background: #f9fafb;
+  border-left: 1px solid #e5e7eb;
+  padding: 0.5rem;
+}
+
+/* ... (other existing styles: .table-info, .customer-input, etc.) */
+
+/* New styles for cart items */
+.cart-items-container {
+  max-height: 400px; /* Adjust based on your layout */
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.cart-item-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.cart-item-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.main-item {
+  background: #f9fafb;
+  border-left: 4px solid #2a410e; /* Highlight main items */
+}
+
+.sub-item {
+  margin-left: 1rem;
+  font-size: 0.85rem; /* Slightly smaller for addons/combos */
+}
+
+.table-number-badge {
+  background: #2a410e;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: 'Dubai Medium', sans-serif;
+}
+
+.item-details {
+  flex: 1;
+  max-width: 60%;
+}
+
+.item-name {
+  font-size: 0.875rem; /* 14px */
+  color: #2a410e;
+  font-family: 'Dubai Medium', sans-serif;
+}
+
+.item-name.clickable {
+  cursor: pointer;
+}
+
+.item-name.clickable:hover {
+  text-decoration: underline;
+}
+
+.item-note {
+  font-size: 0.75rem; /* 12px */
+  color: #4b5563;
+  margin-top: 4px;
+}
+
+.ingredients-list {
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.ingredients-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item-actions {
+  min-width: 120px;
+  text-align: right;
+}
+
+.quantity-input {
+  width: 60px;
+  padding: 4px;
+  text-align: center;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  border: 2px solid #d1d5db;
+}
+
+.quantity-input:focus {
+  border-color: #2a410e;
+  box-shadow: 0 0 0 2px rgba(42, 65, 14, 0.1);
+}
+
+.item-price {
+  font-size: 0.875rem;
+  color: #2a410e;
+  font-weight: 600;
+  min-width: 60px;
+  text-align: right;
+}
+
+.remove-btn {
+  color: #dc3545;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+}
+
+.remove-btn:hover {
+  background: #fee2e2;
+  border-radius: 4px;
+}
+
+.empty-cart-message {
+  background: #f1f5f9;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: 'Dubai Medium', sans-serif;
+}
+
+/* Scrollbar */
+.cart-items-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cart-items-container::-webkit-scrollbar-thumb {
+  background: #2a410e;
+  border-radius: 3px;
+}
+
+.cart-items-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+/* Ensure existing styles are not overwritten unless specified */
 
