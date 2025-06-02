@@ -1,0 +1,49 @@
+.nav-icons-container {
+  background-color: #f8f9fa; /* Light gray background */
+  height: 100vh; /* Full height of the viewport */
+  padding-top: 20px;
+  border-right: 1px solid #dee2e6;
+}
+
+.nav.flex-column {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-item {
+  margin-bottom: 15px;
+}
+.nav-icons-container .nav-link{
+    width: 70%;
+    display: flex;
+    justify-content: center;
+    padding: 30px 20px;
+    border-radius: 10px;
+}
+.nav-icons-container .nav-item{
+    display: flex;
+    justify-content: center;
+}
+
+.nav-link {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  transition: background-color 0.3s;
+}
+
+.nav-link:hover {
+  background-color: #e9ecef;
+}
+
+.nav-link.active {
+  background-color: #d2ffc9;
+  color: white !important;
+}
+
+.menuicon {
+  width: 30px; /* Adjust size as needed */
+  height: auto;
+}

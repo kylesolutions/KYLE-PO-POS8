@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { persistor } from '../../Redux/store';
 import { logout } from '../../Redux/Slices/userSlice';
 import './navbar.css';
@@ -8,9 +8,7 @@ import './navbar.css';
 function Navbar() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const location = useLocation(); 
   const user = useSelector((state) => state.user.user);
-  const posProfile = useSelector((state) => state.user.posProfile);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -48,112 +46,23 @@ function Navbar() {
     }
   };
 
-  const handleClosingEntryNavigation = () => {
-    const posOpeningEntry = localStorage.getItem('posOpeningEntry') || '';
-    console.log('Navigating to Closing Entry with posOpeningEntry:', posOpeningEntry);
-    navigate('/closingentry', { state: { posOpeningEntry } });
-  };
-
   return (
     <div>
       <nav className="navbar navbar-expand-lg navbar-light bg-white">
         <div className="container-fluid">
-          <button
-            className="navbar-toggler bg-light"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#navbarSupportedContent"
-            aria-controls="navbarSupportedContent"
-            aria-expanded="false"
-            aria-label="Toggle navigation"
-          >
-            <span className="navbar-toggler-icon"></span>
-          </button>
-          <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul className="navbar-nav mb-2 mb-lg-0">
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/frontpage' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={() => navigate('/frontpage')}
-                  title="Home"
-                >
-                  <img src="/menuIcons/home.svg" alt="" className='menuicon' />
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/firsttab' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={() => navigate('/firsttab')}
-                  title="Type Of Delivery"
-                >
-                  <img src="/menuIcons/delivery.svg" alt="" style={{ width:"45px" }}/>
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/table' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={() => navigate('/table')}
-                  title="Table"
-                >
-                  <img src="/menuIcons/table1.svg" alt="" style={{ width:"45px" }} />
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/kitchen' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={() => navigate('/kitchen')}
-                  title="Kitchen"
-                >
-                  <img src="/menuIcons/kitchen.svg" alt="" className='menuicon' />
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/dispatch' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={() => navigate('/dispatch')}
-                  title="Dispatch"
-                >
-                  <img src="\menuIcons\dispatch.svg" alt="" className='menuicon' />
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/dispatch' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={() => navigate('/dispatchorder')}
-                  title="To Bill"
-                >
-                  <img src="\menuIcons\dispatchorder.svg" alt="" className='menuicon' />
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/salesinvoice' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={() => navigate('/salesinvoice')}
-                  title="Sales Invoice"
-                >
-                  <img src="\menuIcons\save.svg" alt="" className='menuicon' />
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${location.pathname === '/closingentry' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={handleClosingEntryNavigation}
-                  title="Closing Entry"
-                >
-                   <img src="\menuIcons\closingentry.svg" alt="" className='menuicon' />
-                </a>
-              </li>
-            </ul>
-
-            <div className="user-info ms-auto pe-3">
-              <div className="d-flex align-items-center">
-                <img src="\menuIcons\poweroff.svg" alt="" style={{width:"18px"}} className={`nav-link ${location.pathname === '/logout' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-                  onClick={handleLogout}/>
-                <span className="ms-2 text-black mb-0">{user || "Guest"}</span>
-              </div>
-              <small className="d-block text-muted text-end mt-1">{formattedDate}</small>
-              <small className="d-block text-muted text-end">{formattedTime}</small>
+          <div className="user-info ms-auto pe-3">
+            <div className="d-flex align-items-center">
+              <img
+                src="\menuIcons\poweroff.svg"
+                alt="Logout"
+                style={{ width: "18px" }}
+                className="nav-link cursor-pointer"
+                onClick={handleLogout}
+              />
+              <span className="ms-2 text-black mb-0">{user || "Guest"}</span>
             </div>
+            <small className="d-block text-muted text-end mt-1">{formattedDate}</small>
+            <small className="d-block text-muted text-end">{formattedTime}</small>
           </div>
         </div>
       </nav>
