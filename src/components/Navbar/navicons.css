@@ -13,6 +13,7 @@
 
 .nav-item {
   margin-bottom: 15px;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8x;
 }
 .nav-icons-container .nav-link{
     width: 70%;
@@ -41,6 +42,7 @@
 .nav-link.active {
   background-color: #d2ffc9;
   color: white !important;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
 }
 
 .menuicon {

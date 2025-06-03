@@ -13,7 +13,7 @@
   .category-btn {
     background:  #ffffff; /* White background */
     color: rgb(0, 0, 0); /* Primary blue text */
-    border: 1px solid  #002c07; /* Blue border */
+    border: 1px solid rgb(206, 206, 206);
     padding: 12px 10px;
     font-size: 16px;
     font-weight: 600;
@@ -25,18 +25,16 @@
   }
   
   .category-btn:hover {
-    background: #2a410e; /* Primary blue on hover */
-    color: #ffffff; /* White text */
-    border-color: #0a2400; /* Ensure border matches */
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 255, 55, 0.2); /* Stronger blue shadow */
+    background:rgb(210, 255, 201); /* Primary blue on hover */
+    color: #000000; /* White text */
+    border: none;
   }
   
   .category-btn.active {
-    background: #2a410e; /* Darker blue for active state */
-    color: #ffffff; /* White text */
+    background: rgb(210, 255, 201); /* Darker blue for active state */
+    color: #000000; /* White text */
     border-color:#ffffff; /* Match border to background */
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inset shadow for pressed effect */
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1); 
   }
   
   .category-btn i {
@@ -50,7 +48,7 @@
   }
   
   .category-sidebar::-webkit-scrollbar-thumb {
-    background: #f3b27d; /* Blue thumb */
+    background: #b8b8b8; /* Blue thumb */
     border-radius: 10px;
   }
   
@@ -143,7 +141,6 @@
 .grand-tot-div {
     background: rgb(238, 238, 238);
     border-radius: 5px;
-    border-style: groove;
     align-items: center;
     justify-content: space-between;
     display: flex;
@@ -310,3 +307,78 @@
 
 /* Ensure existing styles are not overwritten unless specified */
 
+.carousel.carousel-slider .control-arrow{
+  background-color: #cacaca !important;
+  opacity: 1 !important;
+  border-radius: 5px !important;
+  display: flex;
+  align-items: center;
+}
+.category-carousel {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.category-carousel .carousel {
+    overflow: hidden;
+}
+
+.category-slide {
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    padding: 0 2px; /* Minimal padding between slides */
+}
+
+.category-btn {
+    min-width: 80px; /* Base width for buttons */
+    height: 40px;
+    font-size: 12px;
+    padding: 0 8px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (min-width: 1200px) {
+    .category-btn {
+        min-width: 100px; /* Larger buttons on big screens */
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 991px) {
+    .category-btn {
+        min-width: 90px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 767px) {
+    .category-btn {
+        min-width: 80px;
+        font-size: 11px;
+        height: 35px;
+    }
+}
+
+@media (max-width: 576px) {
+    .category-btn {
+        min-width: 70px;
+        font-size: 10px;
+        height: 30px;
+        padding: 0 5px;
+    }
+}
+
+/* Optional: Style the arrows for better visibility */
+.carousel .control-arrow {
+    background: rgba(0, 0, 0, 0.5) !important;
+    width: 30px;
+    height: 100%;
+    opacity: 0.8;
+}
+
+.carousel .control-arrow:hover {
+    opacity: 1;
+}

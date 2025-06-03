@@ -8,6 +8,20 @@ import SavedOrder from './SavedOrder';
 import { useSelector } from 'react-redux';
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
+import { Carousel } from 'react-responsive-carousel';
+import "react-responsive-carousel/lib/styles/carousel.min.css";
+
+const useWindowWidth = () => {
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    return windowWidth;
+};
 
 function Front() {
     const [allItems, setAllItems] = useState([]);
@@ -52,6 +66,7 @@ function Front() {
     const [filteredCustomers, setFilteredCustomers] = useState([]);
     const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
     const [selectedChairNumbers, setSelectedChairNumbers] = useState(location.state?.chairNumbers || []);
+
 
     useEffect(() => {
         if (location.state) {
@@ -1376,29 +1391,50 @@ function Front() {
         addToCart(itemToAdd);
     };
 
+    const windowWidth = useWindowWidth();
+    const getCenterSlidePercentage = () => {
+        if (windowWidth >= 1200) return 20; // 5 categories (100/5)
+        if (windowWidth >= 992) return 25; // 4 categories (100/4)
+        if (windowWidth >= 768) return 33.33; // 3 categories (100/3)
+        return 50; // 2 categories (100/2)
+    };
+
     return (
         <>
             <div className="container-fluid">
                 <div className="row px-3">
                     <div className="col-lg-7 col-xl-8">
                         <div className="row">
-                            <div className="col-lg-12 col-xl-12 mt-2 category-sidebar" >
-                                <div className="row p-2">
-                                    {categories.map((category, index) => (
-                                        <div key={index} className="col-lg-2">
-                                            <button
-                                                className={`category-btn w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active' : ''}`}
-                                                onClick={() => handleFilter(category)}
-                                            >
-                                                <span className='fs-12'>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
-                                            </button>
-                                        </div>
-                                    ))}
+                            <div className="col-lg-12 col-xl-12 mt-2 category-sidebar">
+                                <div className="p-2">
+                                    <Carousel
+                                        showArrows={true}
+                                        showStatus={false}
+                                        showIndicators={false}
+                                        showThumbs={false}
+                                        infiniteLoop={true}
+                                        centerMode={true}
+                                        centerSlidePercentage={getCenterSlidePercentage()}
+                                        selectedItem={categories.indexOf(selectedCategory)}
+                                        onChange={(index) => handleFilter(categories[index] || 'All')}
+                                        className="category-carousel"
+                                    >
+                                        {categories.map((category, index) => (
+                                            <div key={index} className="category-slide px-1">
+                                                <button
+                                                    className={`category-btn w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active' : ''}`}
+                                                    onClick={() => handleFilter(category)}
+                                                >
+                                                    <span className="fs-12">{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </Carousel>
                                 </div>
                             </div>
 
                             <div className="col-lg-12 col-xl-12 row2">
-                                <div className="row g-3 mt-1"> {/* Added g-3 for gutter spacing, removed overflowY */}
+                                <div className="row g-3 mt-1">
                                     {filteredItems.map((item, index) => (
                                         <div className="col-xl-3 col-lg-6 col-md-4 col-6 my-2" key={item.id}>
                                             <div className="card item-card" onClick={() => handleItemClick(item)}>
@@ -1413,7 +1449,6 @@ function Front() {
                                     ))}
                                 </div>
                             </div>
-
                         </div>
                     </div>
                     <div className="col-lg-5 col-xl-4 row1 px-4">
@@ -1427,14 +1462,14 @@ function Front() {
                                                     <div className='col-lg-2 text-start' style={{ position: "relative" }}>
                                                         <p
                                                             style={{
-                                                                background: tableNumber ? " #0a2400" : "transparent",
-                                                                color: tableNumber ? "white" : "inherit",
+                                                                background: tableNumber ? "rgb(203, 205, 202)" : "transparent",
+                                                                color: tableNumber ? "Black" : "inherit",
                                                                 borderRadius: tableNumber ? "5px" : "0",
                                                                 padding: tableNumber ? "4px 10px" : "0",
                                                                 display: "flex",
                                                                 alignItems: "center",
                                                                 justifyContent: "center",
-                                                                fontSize: "12px",
+                                                                fontSize: "10px",
                                                                 marginBottom: "0"
                                                             }}
                                                         >
@@ -1444,12 +1479,13 @@ function Front() {
                                                             <p
                                                                 style={{
                                                                     fontSize: "12px",
-                                                                    color: "#fff",
-                                                                    background: " #0a2400",
+                                                                    color: "Black",
+                                                                    background: "rgb(203, 205, 202)",
                                                                     borderRadius: "5px",
                                                                     padding: "2px 10px",
                                                                     marginTop: "5px",
                                                                     textAlign: "center",
+                                                                    justifyContent: "center",
                                                                     marginBottom: "0"
                                                                 }}
                                                             >
@@ -1520,7 +1556,7 @@ function Front() {
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
                                                     </div>
-                                                    <div className='col-2 col-lg-2' style={{ background: " #0a2400", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <div className='col-2 col-lg-2' style={{ background: "rgb(203, 205, 202)", color: "Black", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                         <span
                                                             onClick={handleCustomerSubmit}
                                                             style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
@@ -1594,7 +1630,7 @@ function Front() {
                                                             style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
                                                         />
                                                     </div>
-                                                    <div className='col-2 col-lg-2 mb-2' style={{ background: " #0a2400", color: "white", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <div className='col-2 col-lg-2 mb-2' style={{ background: "rgb(203, 205, 202)", color: "Black", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                         <span
                                                             onClick={handleCustomerSubmit}
                                                             style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
@@ -1758,12 +1794,13 @@ function Front() {
                                                 onClick={() => setShowDiscountModal(true)}
                                                 style={{
                                                     padding: "10px",
-                                                    backgroundColor: " #0a2400",
-                                                    color: "white",
+                                                    backgroundColor: " #d2ffc9",
+                                                    color: "Black",
                                                     border: "none",
                                                     borderRadius: "5px",
                                                     fontWeight: "bold",
                                                     cursor: "pointer",
+                                                    boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"
                                                 }}
                                             >
                                                 Discount
@@ -1842,31 +1879,31 @@ function Front() {
                                             <div className="row">
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
-                                                    <div className='grand-tot-div justify-content-end'>
+                                                    <div className='grand-tot-div justify-content-end'  style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
                                                         <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
-                                                    <div className='grand-tot-div'>
+                                                    <div className='grand-tot-div' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
                                                         <span>₹</span><span>{getSubTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
-                                                    <div className='grand-tot-div justify-content-end'>
+                                                    <div className='grand-tot-div justify-content-end' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
                                                         <span>₹{getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Discount</h5>
-                                                    <div className='grand-tot-div justify-content-end'>
+                                                    <div className='grand-tot-div justify-content-end'  style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
                                                         <span>-₹{getDiscountAmount().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-12 mb-2 col-12 col-lg-12 col-xl-12">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
-                                                    <div className='grand-tot-div justify-content-end'>
+                                                    <div className='grand-tot-div justify-content-end'  style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
                                                         <span>₹{getGrandTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
@@ -1883,11 +1920,11 @@ function Front() {
                                                             padding: "10px 12px",
                                                             backgroundColor: "#white",
                                                             color: "black",
-                                                            border: "1px solid rgb(0, 54, 3)",
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
                                                             fontSize: "10px",
+                                                            boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"
                                                         }}
                                                     >
                                                         Save/New
@@ -1902,11 +1939,11 @@ function Front() {
                                                             padding: "10px 12px",
                                                             background: "white",
                                                             color: "black",
-                                                            border: "1px solid rgb(0, 54, 3)",
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
-                                                            fontSize: "10px"
+                                                            fontSize: "10px",
+                                                            boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"
                                                         }}
                                                     >
                                                         Print
@@ -2049,13 +2086,14 @@ function Front() {
                                                         onClick={cancelCart}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            backgroundColor: " #0a2400",
-                                                            color: "white",
+                                                            backgroundColor: "  #d2ffc9",
+                                                            color: "Black",
                                                             border: "none",
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
                                                             cursor: "pointer",
-                                                            fontSize: "10px"
+                                                            fontSize: "10px",
+                                                            boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"
                                                         }}
                                                     >
                                                         Cancel
@@ -2069,7 +2107,7 @@ function Front() {
                                                             handleCheckoutClick();
                                                             handleShow();
                                                         }}
-                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: " #0a2400", color: "white" }}
+                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "  #d2ffc9", color: "Black", boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px" }}
                                                     >
                                                         Pay
                                                     </button>

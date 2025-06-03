@@ -50,6 +50,7 @@ function Navbar() {
     <div>
       <nav className="navbar navbar-expand-lg navbar-light bg-white">
         <div className="container-fluid">
+          <h1>Restaurant POS</h1>
           <div className="user-info ms-auto pe-3">
             <div className="d-flex align-items-center">
               <img
