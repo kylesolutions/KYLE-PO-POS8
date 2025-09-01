@@ -14,6 +14,11 @@ import OpeningEntryPage from '../Pages/OpeningEntryPage'
 import ClosingEntryPage from '../Pages/ClosingEntryPage'
 import DispatchPage from '../Pages/DispatchPage'
 import DispatchedOrdersPage from '../Pages/DispatchedOrdersPage'
+import Design1Page from '../Pages/Design1Page'
+import Design2Page from '../Pages/Design2Page'
+import Design4Page from '../Pages/Design4Page'
+
+
 
 function UserRouter() {
   return (
@@ -33,6 +38,9 @@ function UserRouter() {
         <Route path='closingentry' element={<ClosingEntryPage/>}/>
         <Route path='dispatch' element={<DispatchPage/>}/>
         <Route path='dispatchorder' element={<DispatchedOrdersPage/>}/>
+        <Route path='design1' element={<Design1Page/>}/>
+        <Route path='design2' element={<Design2Page/>}/>
+        <Route path='design4' element={<Design4Page/>}/>
     </Routes>
     </>
   )
