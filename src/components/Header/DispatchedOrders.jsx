@@ -94,77 +94,79 @@ function DispatchedOrders() {
 
             // Step 3: Map kitchen orders and enrich with custom_chair_numbers from POS invoices
             const dispatchedOrders = allKitchenOrders
-    .map(kitchenOrder => {
-        const dispatchedItems = kitchenOrder.items.filter(item => item.status === 'Dispatched');
-        if (dispatchedItems.length === 0) return null;
+                .map(kitchenOrder => {
+                    // Skip orders with delivery_type = "DELIVERY"
+                    if (kitchenOrder.delivery_type === "DELIVERY") {
+                        return null;
+                    }
 
-        const posInvoice = posInvoices.find(invoice => invoice.name === kitchenOrder.pos_invoice_id);
+                    const dispatchedItems = kitchenOrder.items.filter(item => item.status === 'Dispatched');
+                    if (dispatchedItems.length === 0) return null;
 
-        const chairNumbers = posInvoice?.custom_chair_numbers
-            ? Array.isArray(posInvoice.custom_chair_numbers)
-                ? posInvoice.custom_chair_numbers.map(num => parseInt(num))
-                : posInvoice.custom_chair_numbers.split(",").map(num => parseInt(num.trim()))
-            : [];
+                    const posInvoice = posInvoices.find(invoice => invoice.name === kitchenOrder.pos_invoice_id);
 
-        return {
-            name: kitchenOrder.pos_invoice_id,
-            customer: kitchenOrder.customer_name || "One Time Customer",
-            custom_table_number: kitchenOrder.table_number || "",
-            custom_delivery_type: kitchenOrder.delivery_type || "DINE IN",
-            custom_chair_count: parseInt(kitchenOrder.number_of_chair) || 0,
-            custom_chair_numbers: chairNumbers,
-            contact_mobile: posInvoice?.contact_mobile || "",
-            customer_address: posInvoice?.customer_address || "",
-            contact_email: posInvoice?.contact_email || "",
-            posting_date: kitchenOrder.order_time ? kitchenOrder.order_time.split(" ")[0] : "",
-            posting_time: kitchenOrder.order_time ? kitchenOrder.order_time.split(" ")[1] : "",
-            apply_discount_on: posInvoice?.apply_discount_on || "Grand Total",
-            additional_discount_percentage: parseFloat(posInvoice?.additional_discount_percentage) || 0,
-            discount_amount: parseFloat(posInvoice?.discount_amount) || 0,
-            dispatchedItems: dispatchedItems.map(item => {
-                // Extract selectedSize and selectedCustomVariant from custom_variants
-                let selectedSize = "";
-                let selectedCustomVariant = "";
-                if (item.custom_variants) {
-                    const variants = item.custom_variants.split(" - ");
-                    selectedSize = variants[0] || "";
-                    selectedCustomVariant = variants[1] || "";
-                }
+                    const chairNumbers = posInvoice?.custom_chair_numbers
+                        ? Array.isArray(posInvoice.custom_chair_numbers)
+                            ? posInvoice.custom_chair_numbers.map(num => parseInt(num))
+                            : posInvoice.custom_chair_numbers.split(",").map(num => parseInt(num.trim()))
+                        : [];
 
-                // Get the item_code from the POS invoice
-                const posItem = posInvoice?.items?.find(i => i.item_name === item.item_name && i.custom_size_variants === selectedSize);
-                const itemCode = posItem?.item_code || item.item_name;
+                    return {
+                        name: kitchenOrder.pos_invoice_id,
+                        customer: kitchenOrder.customer_name || "One Time Customer",
+                        custom_table_number: kitchenOrder.table_number || "",
+                        custom_delivery_type: kitchenOrder.delivery_type || "DINE IN",
+                        custom_chair_count: parseInt(kitchenOrder.number_of_chair) || 0,
+                        custom_chair_numbers: chairNumbers,
+                        contact_mobile: posInvoice?.contact_mobile || "",
+                        customer_address: posInvoice?.customer_address || "",
+                        contact_email: posInvoice?.contact_email || "",
+                        posting_date: kitchenOrder.order_time ? kitchenOrder.order_time.split(" ")[0] : "",
+                        posting_time: kitchenOrder.order_time ? kitchenOrder.order_time.split(" ")[1] : "",
+                        apply_discount_on: posInvoice?.apply_discount_on || "Grand Total",
+                        additional_discount_percentage: parseFloat(posInvoice?.additional_discount_percentage) || 0,
+                        discount_amount: parseFloat(posInvoice?.discount_amount) || 0,
+                        dispatchedItems: dispatchedItems.map(item => {
+                            let selectedSize = "";
+                            let selectedCustomVariant = "";
+                            if (item.custom_variants) {
+                                const variants = item.custom_variants.split(" - ");
+                                selectedSize = variants[0] || "";
+                                selectedCustomVariant = variants[1] || "";
+                            }
 
-                // Determine if this item is a combo by checking the POS invoice items
-                const isCombo = posInvoice?.items?.some(i => i.item_name === item.item_name && i.custom_size_variants && i.item_code !== item.item_name);
+                            const posItem = posInvoice?.items?.find(i => i.item_name === item.item_name && i.custom_size_variants === selectedSize);
+                            const itemCode = posItem?.item_code || item.item_name;
 
-                return {
-                    item_code: itemCode,
-                    name: item.item_name,
-                    description: item.customer_description || "",
-                    basePrice: parseFloat(item.price) || 0,
-                    quantity: parseInt(item.quantity, 10) || 1,
-                    selectedSize: selectedSize,
-                    selectedCustomVariant: selectedCustomVariant,
-                    kitchen: item.kitchen || "Unknown",
-                    addonCounts: {}, // Addons are separate in kitchen notes
-                    selectedCombos: isCombo ? [{
-                        name1: item.item_name,
-                        selectedSize: selectedSize,
-                        selectedCustomVariant: selectedCustomVariant,
-                        custom_customer_description: item.customer_description || "",
-                        quantity: parseInt(item.quantity, 10) || 1,
-                        rate: parseFloat(item.price) || 0,
-                        kitchen: item.kitchen || "Unknown",
-                        ingredients: item.ingredients || [],
-                        status: item.status || "Not Dispatched"
-                    }] : [],
-                    ingredients: item.ingredients || [],
-                };
-            }),
-        };
-    })
-    .filter(order => order !== null);
+                            const isCombo = posInvoice?.items?.some(i => i.item_name === item.item_name && i.custom_size_variants && i.item_code !== item.item_name);
+
+                            return {
+                                item_code: itemCode,
+                                name: item.item_name,
+                                description: item.customer_description || "",
+                                basePrice: parseFloat(item.price) || 0,
+                                quantity: parseInt(item.quantity, 10) || 1,
+                                selectedSize: selectedSize,
+                                selectedCustomVariant: selectedCustomVariant,
+                                kitchen: item.kitchen || "Unknown",
+                                addonCounts: {},
+                                selectedCombos: isCombo ? [{
+                                    name1: item.item_name,
+                                    selectedSize: selectedSize,
+                                    selectedCustomVariant: selectedCustomVariant,
+                                    custom_customer_description: item.customer_description || "",
+                                    quantity: parseInt(item.quantity, 10) || 1,
+                                    rate: parseFloat(item.price) || 0,
+                                    kitchen: item.kitchen || "Unknown",
+                                    ingredients: item.ingredients || [],
+                                    status: item.status || "Not Dispatched"
+                                }] : [],
+                                ingredients: item.ingredients || [],
+                            };
+                        }),
+                    };
+                })
+                .filter(order => order !== null);
 
             setOrders(dispatchedOrders);
             console.log("DispatchedOrders.jsx: Formatted dispatched orders:", JSON.stringify(dispatchedOrders, null, 2));
@@ -173,6 +175,61 @@ function DispatchedOrders() {
             console.error('DispatchedOrders.jsx: Error fetching dispatched orders:', error);
             setError(`Failed to load dispatched orders: ${errorMessage}. Please try again or contact support.`);
             setOrders([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleMarkPaid = async (invoiceId) => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.mark_pos_invoice_paid', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                },
+                body: JSON.stringify({
+                    invoice_id: invoiceId,
+                    mode_of_payment: "Cash" // Adjust as needed, could be dynamic
+                }),
+            });
+
+            if (!response.ok) {
+                const responseText = await response.text();
+                console.error('mark_pos_invoice_paid failed:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    responseText,
+                });
+                throw new Error(`Failed to mark POS Invoice as Paid: ${response.status} - ${response.statusText}`);
+            }
+
+            let result;
+            try {
+                result = await response.json();
+            } catch (jsonError) {
+                console.error('Error parsing mark_pos_invoice_paid JSON response:', jsonError);
+                throw new Error('Invalid response format from server: Unable to parse JSON');
+            }
+
+            console.log('DispatchedOrders.jsx: mark_pos_invoice_paid Response:', JSON.stringify(result, null, 2));
+
+            if (result.message.status !== 'success') {
+                throw new Error(result.message.message || 'Failed to mark POS Invoice as Paid');
+            }
+
+            alert(`POS Invoice ${invoiceId} marked as Paid successfully!`);
+            // Refresh orders after marking as paid
+            await fetchDispatchedOrders();
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error('DispatchedOrders.jsx: Error marking POS Invoice as Paid:', error);
+            setError(`Failed to mark POS Invoice as Paid: ${errorMessage}`);
+            alert(`Failed to mark POS Invoice as Paid: ${errorMessage}`);
         } finally {
             setLoading(false);
         }
@@ -355,7 +412,7 @@ function DispatchedOrders() {
                                     <td>{order.posting_date} {order.posting_time}</td>
                                     <td>
                                         <button
-                                            className="btn btn-primary btn-sm"
+                                            className="btn btn-primary btn-sm me-2"
                                             onClick={() => handleSelectOrder(order)}
                                         >
                                             Select for Billing

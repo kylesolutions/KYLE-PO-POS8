@@ -383,7 +383,6 @@ function SalesInvoice() {
                 <th>Invoice ID</th>
                 <th>Customer Name</th>
                 <th>Grand Total</th>
-                <th>Discount</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -393,10 +392,6 @@ function SalesInvoice() {
                   <td>{invoice.name}</td>
                   <td>{invoice.customer_details?.customer_name || "N/A"}</td>
                   <td>₹{invoice.grand_total || 0}</td>
-                  <td>
-                    {formatDiscount(invoice)}
-                    {invoice.apply_discount_on ? `(${invoice.apply_discount_on})` : ""}
-                  </td>
                   <td>
                     <button
                       className="btn btn-sm btn-info"

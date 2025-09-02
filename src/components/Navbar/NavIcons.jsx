@@ -57,7 +57,7 @@ function NavIcons() {
             onClick={() => navigate('/dispatch')}
             title="Dispatch"
           >
-            <img src="\menuIcons\dispatch.svg" alt="Dispatch" className="menuicon" />
+            <img src="/menuIcons/dispatch.svg" alt="Dispatch" className="menuicon" />
           </a>
         </li>
         <li className="nav-item">
@@ -66,7 +66,7 @@ function NavIcons() {
             onClick={() => navigate('/dispatchorder')}
             title="To Bill"
           >
-            <img src="\menuIcons\dispatchorder.svg" alt="To Bill" className="menuicon" />
+            <img src="/menuIcons/dispatchorder.svg" alt="To Bill" className="menuicon" />
           </a>
         </li>
         <li className="nav-item">
@@ -75,7 +75,16 @@ function NavIcons() {
             onClick={() => navigate('/salesinvoice')}
             title="Sales Invoice"
           >
-            <img src="\menuIcons\save.svg" alt="Sales Invoice" className="menuicon" />
+            <img src="/menuIcons/save.svg" alt="Sales Invoice" className="menuicon" />
+          </a>
+        </li>
+        <li className="nav-item">
+          <a
+            className={`nav-link ${location.pathname === '/homedelivery' ? 'active text-primary' : 'text-black'} cursor-pointer`}
+            onClick={() => navigate('/homedelivery')}
+            title="Home Delivery Orders"
+          >
+            <img src="/menuIcons/homedelivery.svg" alt="Home Delivery Orders" className="menuicon" />
           </a>
         </li>
         <li className="nav-item">
@@ -84,7 +93,7 @@ function NavIcons() {
             onClick={handleClosingEntryNavigation}
             title="Closing Entry"
           >
-            <img src="\menuIcons\closingentry.svg" alt="Closing Entry" className="menuicon" />
+            <img src="/menuIcons/closingentry.svg" alt="Closing Entry" className="menuicon" />
           </a>
         </li>
       </ul>

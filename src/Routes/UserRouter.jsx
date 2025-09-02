@@ -17,6 +17,7 @@ import DispatchedOrdersPage from '../Pages/DispatchedOrdersPage'
 import Design1Page from '../Pages/Design1Page'
 import Design2Page from '../Pages/Design2Page'
 import Design4Page from '../Pages/Design4Page'
+import HomeDeliveryOrdersPage from '../Pages/HomeDeliveryOrdersPage'
 
 
 
@@ -41,6 +42,7 @@ function UserRouter() {
         <Route path='design1' element={<Design1Page/>}/>
         <Route path='design2' element={<Design2Page/>}/>
         <Route path='design4' element={<Design4Page/>}/>
+        <Route path='homedelivery' element={<HomeDeliveryOrdersPage/>}/>
     </Routes>
     </>
   )

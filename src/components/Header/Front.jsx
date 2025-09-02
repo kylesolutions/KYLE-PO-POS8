@@ -2151,7 +2151,6 @@ function Front() {
                     </div>
                     <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} />
                 </div>
-
                 <FoodDetails
                     item={selectedItem}
                     allItems={allItems}
