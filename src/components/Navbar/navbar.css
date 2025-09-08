@@ -16,8 +16,8 @@
     padding: 0.5rem 1rem;
     transition: color 0.3s ease;
 }
-.power{
-    color: black;
+.bi-power {
+  fill: black !important; /* Ensure the icon is black */
 }
 
 .nav-link:hover {

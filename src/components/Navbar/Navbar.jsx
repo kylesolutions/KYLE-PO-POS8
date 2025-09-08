@@ -53,9 +53,12 @@ function Navbar() {
           <h1>Restaurant POS</h1>
           <div className="user-info ms-auto pe-3">
             <div className="d-flex align-items-center">
-              <i class="bi bi-power" style={{width:"18px"}}
-                className="nav-link cursor-pointer power"
-                onClick={handleLogout}></i>
+              <i 
+                className="bi bi-power nav-link cursor-pointer power"
+                style={{ width: "10px", fill: "black" }}
+                onClick={handleLogout}
+              >
+              </i>
               <span className="ms-2 text-black mb-0">{user || "Guest"}</span>
             </div>
             <small className="d-block text-muted text-end mt-1">{formattedDate}</small>

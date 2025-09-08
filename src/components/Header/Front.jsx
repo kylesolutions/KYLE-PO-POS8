@@ -2167,6 +2167,4 @@ function Front() {
         </>
     );
 }
-
 export default Front;
-
