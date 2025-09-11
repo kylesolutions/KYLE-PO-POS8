@@ -8,6 +8,11 @@ function HomeDeliveryOrders() {
   const [error, setError] = useState(null);
   const [payingInvoices, setPayingInvoices] = useState({});
   const [printingInvoices, setPrintingInvoices] = useState({});
+  const [deliveryBoys, setDeliveryBoys] = useState([]);
+  const [selectedDeliveryBoys, setSelectedDeliveryBoys] = useState({});
+  const [secretCodes, setSecretCodes] = useState({});
+  const [verifiedStates, setVerifiedStates] = useState({});
+  const [updatingInvoices, setUpdatingInvoices] = useState({});
 
   const fetchHomeDeliveryOrders = useCallback(async () => {
     try {
@@ -45,6 +50,135 @@ function HomeDeliveryOrders() {
       setLoading(false);
     }
   }, []);
+
+  const fetchDeliveryBoys = useCallback(async () => {
+    try {
+      const response = await fetch(
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_available_delivery_boys",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch delivery boys: ${response.status} - ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("HomeDeliveryOrders.jsx: get_available_delivery Response:", JSON.stringify(data, null, 2));
+
+      if (!data.message || data.message.status !== "Success") {
+        throw new Error(data.message?.message || "Failed to retrieve delivery boys");
+      }
+
+      setDeliveryBoys(data.message.data || []);
+    } catch (error) {
+      console.error("HomeDeliveryOrders.jsx: Error fetching delivery boys:", error.message, error);
+      setError(`Failed to load delivery boys: ${error.message}. Please try again.`);
+    }
+  }, []);
+
+  const verifySecretCode = useCallback(async (employeeName, secretCode, invoiceId) => {
+    try {
+      const response = await fetch(
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.verify_delivery_boy_code",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            employee_name: employeeName,
+            secret_code: secretCode
+          }),
+        }
+      );
+
+      const result = await response.json();
+      console.log("HomeDeliveryOrders.jsx: verify_delivery_boy_code Response:", JSON.stringify(result, null, 2));
+      
+      if (result.message.status === "success") {
+        setVerifiedStates(prev => ({ ...prev, [invoiceId]: true }));
+        alert("Secret code verified successfully");
+      } else {
+        setVerifiedStates(prev => ({ ...prev, [invoiceId]: false }));
+        alert(result.message.message || "The secret code is wrong");
+      }
+      
+      return result.message;
+    } catch (error) {
+      console.error("HomeDeliveryOrders.jsx: Error verifying secret code:", error);
+      alert(`Failed to verify secret code: ${error.message || "Please try again."}`);
+      return { status: "error", message: "Failed to verify code" };
+    }
+  }, []);
+
+  const handleUpdateDeliveryBoy = useCallback(async (invoiceId) => {
+    const employeeName = selectedDeliveryBoys[invoiceId];
+    const secretCode = secretCodes[invoiceId];
+    
+    if (!employeeName || !secretCode) {
+      alert("Please select a delivery boy and enter a secret code");
+      return;
+    }
+
+    // Verify secret code first
+    const verifyResult = await verifySecretCode(employeeName, secretCode, invoiceId);
+    if (verifyResult.status !== "success") {
+      return;
+    }
+
+    setUpdatingInvoices(prev => ({ ...prev, [invoiceId]: true }));
+    try {
+      const selectedBoy = deliveryBoys.find(boy => boy.employee_name === employeeName);
+      const employeeNumber = selectedBoy?.cell_number || "";
+      
+      if (!employeeNumber) {
+        console.warn(`HomeDeliveryOrders.jsx: No cell_number found for employee ${employeeName}`);
+        alert("Warning: No phone number found for the selected delivery boy. Proceeding with empty employee number.");
+      }
+
+      const response = await fetch(
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_homedelivery_order_delivery_boy",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            invoice_id: invoiceId,
+            employee_name: employeeName,
+            secret_code: secretCode,
+            employee_number: employeeNumber
+          }),
+        }
+      );
+
+      const result = await response.json();
+      console.log("HomeDeliveryOrders.jsx: update_homedelivery_order_delivery_boy Response:", JSON.stringify(result, null, 2));
+
+      if (result.message.status !== "success") {
+        throw new Error(result.message.message || "Failed to update delivery boy");
+      }
+
+      await fetchHomeDeliveryOrders();
+      alert(`Delivery boy updated successfully for invoice ${invoiceId}.`);
+    } catch (error) {
+      console.error("HomeDeliveryOrders.jsx: Error updating delivery boy:", error.message, error);
+      alert(`Failed to update delivery boy: ${error.message || "Please try again."}`);
+    } finally {
+      setUpdatingInvoices(prev => ({ ...prev, [invoiceId]: false }));
+      setSelectedDeliveryBoys(prev => ({ ...prev, [invoiceId]: "" }));
+      setSecretCodes(prev => ({ ...prev, [invoiceId]: "" }));
+      setVerifiedStates(prev => ({ ...prev, [invoiceId]: false }));
+    }
+  }, [selectedDeliveryBoys, secretCodes, deliveryBoys, fetchHomeDeliveryOrders]);
 
   const handleMarkPaid = useCallback(async (invoiceId) => {
     if (!window.confirm(`Are you sure you want to mark POS Invoice ${invoiceId} as Paid?`)) {
@@ -85,7 +219,6 @@ function HomeDeliveryOrders() {
   const handlePrintInvoice = useCallback(async (invoiceId) => {
     setPrintingInvoices((prev) => ({ ...prev, [invoiceId]: true }));
     try {
-      // Fetch detailed invoice data
       const response = await fetch(
         `/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices?doc_name=${invoiceId}`,
         {
@@ -110,7 +243,6 @@ function HomeDeliveryOrders() {
 
       const invoice = result.message.data;
 
-      // Generate printable HTML
       const printWindow = window.open("", "_blank");
       printWindow.document.write(`
         <html>
@@ -150,7 +282,6 @@ function HomeDeliveryOrders() {
                     <th>Quantity</th>
                     <th>Rate</th>
                     <th>Amount</th>
-                    
                   </tr>
                 </thead>
                 <tbody>
@@ -162,7 +293,6 @@ function HomeDeliveryOrders() {
                           <td>${item.qty}</td>
                           <td>$${parseFloat(item.rate).toFixed(2)}</td>
                           <td>$${parseFloat(item.amount).toFixed(2)}</td>
-                          
                         </tr>
                       `
                     )
@@ -180,7 +310,7 @@ function HomeDeliveryOrders() {
             <script>
               window.onload = () => {
                 window.print();
-                setTimeout(() => window.close(), 1000); // Close window after printing
+                setTimeout(() => window.close(), 1000);
               };
             </script>
           </body>
@@ -195,15 +325,42 @@ function HomeDeliveryOrders() {
     }
   }, []);
 
+  const handleDeliveryBoyChange = useCallback((invoiceId, employeeName) => {
+    setSelectedDeliveryBoys(prev => ({
+      ...prev,
+      [invoiceId]: employeeName,
+    }));
+    setSecretCodes(prev => ({
+      ...prev,
+      [invoiceId]: "",
+    }));
+    setVerifiedStates(prev => ({
+      ...prev,
+      [invoiceId]: false,
+    }));
+  }, []);
+
+  const handleSecretCodeChange = useCallback((invoiceId, code) => {
+    setSecretCodes(prev => ({
+      ...prev,
+      [invoiceId]: code,
+    }));
+    setVerifiedStates(prev => ({
+      ...prev,
+      [invoiceId]: false,
+    }));
+  }, []);
+
   const handleBack = useCallback(() => {
     navigate(-1);
   }, [navigate]);
 
   useEffect(() => {
     fetchHomeDeliveryOrders();
+    fetchDeliveryBoys();
     const intervalId = setInterval(fetchHomeDeliveryOrders, 30000);
     return () => clearInterval(intervalId);
-  }, [fetchHomeDeliveryOrders]);
+  }, [fetchHomeDeliveryOrders, fetchDeliveryBoys]);
 
   const totalAmount = orders.reduce((sum, order) => sum + (order.invoice_amount || 0), 0);
 
@@ -255,6 +412,7 @@ function HomeDeliveryOrders() {
                       <th>Amount</th>
                       <th>Status</th>
                       <th>Action</th>
+                      <th>Update Delivery Boy</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -296,6 +454,66 @@ function HomeDeliveryOrders() {
                             >
                               Print
                               {printingInvoices[order.invoice_id] && (
+                                <span
+                                  className="spinner-border spinner-border-sm ms-2"
+                                  role="status"
+                                  aria-hidden="true"
+                                ></span>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="d-flex flex-column gap-2">
+                            <select
+                              className="form-select"
+                              value={selectedDeliveryBoys[order.invoice_id] || ""}
+                              onChange={(e) => handleDeliveryBoyChange(order.invoice_id, e.target.value)}
+                              disabled={order.invoice_status === "Paid" || updatingInvoices[order.invoice_id]}
+                            >
+                              <option value="">Select a delivery boy</option>
+                              {deliveryBoys.map((boy) => (
+                                <option key={boy.employee_name} value={boy.employee_name}>
+                                  {boy.employee_name}
+                                </option>
+                              ))}
+                            </select>
+                            {selectedDeliveryBoys[order.invoice_id] && (
+                              <div className="d-flex align-items-center gap-2">
+                                <input
+                                  type="password"
+                                  className="form-control"
+                                  placeholder="Enter secret code"
+                                  value={secretCodes[order.invoice_id] || ""}
+                                  onChange={(e) => handleSecretCodeChange(order.invoice_id, e.target.value)}
+                                  disabled={order.invoice_status === "Paid" || updatingInvoices[order.invoice_id]}
+                                />
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => verifySecretCode(selectedDeliveryBoys[order.invoice_id], secretCodes[order.invoice_id], order.invoice_id)}
+                                  disabled={!secretCodes[order.invoice_id] || order.invoice_status === "Paid" || updatingInvoices[order.invoice_id]}
+                                >
+                                  Verify
+                                </button>
+                                {verifiedStates[order.invoice_id] && (
+                                  <i className="bi bi-check-circle text-success" style={{ fontSize: '1.5rem' }}></i>
+                                )}
+                              </div>
+                            )}
+                            <button
+                              className="btn btn-warning btn-sm position-relative"
+                              onClick={() => handleUpdateDeliveryBoy(order.invoice_id)}
+                              disabled={
+                                !selectedDeliveryBoys[order.invoice_id] ||
+                                !secretCodes[order.invoice_id] ||
+                                !verifiedStates[order.invoice_id] ||
+                                order.invoice_status === "Paid" ||
+                                updatingInvoices[order.invoice_id]
+                              }
+                              aria-label={`Update delivery boy for ${order.invoice_id}`}
+                            >
+                              Update
+                              {updatingInvoices[order.invoice_id] && (
                                 <span
                                   className="spinner-border spinner-border-sm ms-2"
                                   role="status"

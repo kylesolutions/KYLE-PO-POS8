@@ -11,6 +11,8 @@ function Dispatch() {
   const [dispatchingItems, setDispatchingItems] = useState({});
   const [deliveryBoys, setDeliveryBoys] = useState([]);
   const [selectedDeliveryBoys, setSelectedDeliveryBoys] = useState({});
+  const [secretCodes, setSecretCodes] = useState({}); // New state for secret codes
+  const [verifiedStates, setVerifiedStates] = useState({}); // New state for verification status
 
   const fetchPreparedOrders = useCallback(async () => {
     try {
@@ -126,11 +128,59 @@ function Dispatch() {
     }
   }, []);
 
-  const createHomeDeliveryOrder = useCallback(async (order, items) => {
+  const verifySecretCode = async (employeeName, secretCode) => {
+    try {
+      const response = await fetch(
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.verify_delivery_boy_code",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            employee_name: employeeName,
+            secret_code: secretCode
+          }),
+        }
+      );
+
+      const result = await response.json();
+      return result.message || result; // Adjust based on API response structure
+    } catch (error) {
+      console.error("Error verifying secret code:", error);
+      return { status: "error", message: "Failed to verify code" };
+    }
+  };
+
+  const handleVerify = useCallback(async (orderName) => {
+    const employeeName = selectedDeliveryBoys[orderName];
+    const code = secretCodes[orderName];
+    
+    if (!employeeName || !code) {
+      alert("Please select delivery boy and enter code");
+      return;
+    }
+
+    const result = await verifySecretCode(employeeName, code);
+    
+    if (result.status === "success") {
+      setVerifiedStates(prev => ({ ...prev, [orderName]: true }));
+      alert("Code verified successfully");
+    } else {
+      setVerifiedStates(prev => ({ ...prev, [orderName]: false }));
+      alert(result.message || "The code is wrong");
+    }
+  }, [selectedDeliveryBoys, secretCodes]);
+
+  const createHomeDeliveryOrder = useCallback(async (order, items, secretCode) => {
     try {
       const selectedDeliveryBoy = selectedDeliveryBoys[order.pos_invoice_id];
       if (!selectedDeliveryBoy) {
         throw new Error("No delivery boy selected for this order");
+      }
+      if (!secretCode) {
+        throw new Error("Secret code is required for delivery boy verification");
       }
 
       const posInvoiceResponse = await fetch(
@@ -156,6 +206,7 @@ function Dispatch() {
       const payload = {
         invoice_id: order.pos_invoice_id,
         employee_name: selectedDeliveryBoy,
+        secret_code: secretCode,
         customer_name: posInvoiceData.data.customer_name || "Unknown",
         customer_address: posInvoiceData.data.customer_address || "Unknown",
         customer_phone: posInvoiceData.data.contact_mobile || "Unknown",
@@ -234,6 +285,8 @@ function Dispatch() {
         const item = order?.items.find((i) => i.id === itemId);
         if (!item) throw new Error("Item not found");
 
+        const secretCode = secretCodes[orderName] || "";
+
         const kitchenResponse = await fetch(
           "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
           {
@@ -263,7 +316,7 @@ function Dispatch() {
         let homeDeliverySuccess = true;
         if (order.deliveryType === "DELIVERY") {
           try {
-            homeDeliverySuccess = await createHomeDeliveryOrder(order, [item]);
+            homeDeliverySuccess = await createHomeDeliveryOrder(order, [item], secretCode);
             if (!homeDeliverySuccess) {
               console.warn("Dispatch.jsx: Failed to create Home Delivery Order, but item dispatched");
             }
@@ -306,7 +359,7 @@ function Dispatch() {
         setDispatchingItems((prev) => ({ ...prev, [`${orderName}-${itemId}`]: false }));
       }
     },
-    [preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus]
+    [preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus, secretCodes]
   );
 
   const handleDispatchSelected = useCallback(
@@ -331,7 +384,6 @@ function Dispatch() {
 
       let dispatchErrors = [];
       try {
-        // Group items by invoice (orderName)
         const itemsByInvoice = selectedItems.reduce((acc, { orderName, itemId }) => {
           if (!acc[orderName]) {
             acc[orderName] = [];
@@ -346,8 +398,8 @@ function Dispatch() {
 
         for (const [orderName, items] of Object.entries(itemsByInvoice)) {
           const order = preparedOrders[orderName];
+          const secretCode = secretCodes[orderName] || "";
 
-          // Update Kitchen Note status for each item
           for (const item of items) {
             const kitchenResponse = await fetch(
               "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
@@ -375,11 +427,10 @@ function Dispatch() {
             }
           }
 
-          // Create Home Delivery Order for all items in this invoice
           let homeDeliverySuccess = true;
           if (order.deliveryType === "DELIVERY") {
             try {
-              homeDeliverySuccess = await createHomeDeliveryOrder(order, items);
+              homeDeliverySuccess = await createHomeDeliveryOrder(order, items, secretCode);
               if (!homeDeliverySuccess) {
                 console.warn(`Dispatch.jsx: Failed to create Home Delivery for invoice ${orderName}, but items dispatched`);
               }
@@ -391,7 +442,6 @@ function Dispatch() {
           }
         }
 
-        // Update state to remove dispatched items
         setPreparedOrders((prev) => {
           const newPreparedOrders = { ...prev };
           selectedItems.forEach(({ orderName, itemId }) => {
@@ -419,15 +469,15 @@ function Dispatch() {
         console.error("Dispatch.jsx: Error dispatching selected items:", error);
         alert(`Unable to dispatch selected items: ${error.message || "Please try again."}`);
       } finally {
-  setDispatchingItems((prev) => ({
-    ...prev,
-    ...Object.fromEntries(
-      selectedItems.map(({ orderName, itemId }) => [`${orderName}-${itemId}`, false])
-    ),
-  }));
-}
+        setDispatchingItems((prev) => ({
+          ...prev,
+          ...Object.fromEntries(
+            selectedItems.map(({ orderName, itemId }) => [`${orderName}-${itemId}`, false])
+          ),
+        }));
+      }
     },
-    [selectedItems, preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus]
+    [selectedItems, preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus, secretCodes]
   );
 
   const handleSelectItem = useCallback((orderName, itemId) => {
@@ -456,6 +506,25 @@ function Dispatch() {
     setSelectedDeliveryBoys((prev) => ({
       ...prev,
       [orderName]: employeeName,
+    }));
+    setSecretCodes((prev) => ({
+      ...prev,
+      [orderName]: "",
+    }));
+    setVerifiedStates((prev) => ({
+      ...prev,
+      [orderName]: false,
+    }));
+  }, []);
+
+  const handleSecretCodeChange = useCallback((orderName, code) => {
+    setSecretCodes((prev) => ({
+      ...prev,
+      [orderName]: code,
+    }));
+    setVerifiedStates((prev) => ({
+      ...prev,
+      [orderName]: false,
     }));
   }, []);
 
@@ -547,6 +616,7 @@ function Dispatch() {
                       (selected) => selected.orderName === order.orderName && selected.itemId === item.id
                     )
                   ) || false;
+                  const isVerified = verifiedStates[order.orderName] || false;
                   return (
                     <div
                       key={order.orderName}
@@ -568,7 +638,7 @@ function Dispatch() {
                             </label>
                             <select
                               id={`deliveryBoy-${order.orderName}`}
-                              className="form-select"
+                              className="form-select mb-2"
                               value={selectedDeliveryBoys[order.orderName] || ""}
                               onChange={(e) => handleDeliveryBoyChange(order.orderName, e.target.value)}
                             >
@@ -579,6 +649,34 @@ function Dispatch() {
                                 </option>
                               ))}
                             </select>
+                            {selectedDeliveryBoys[order.orderName] && (
+                              <div className="d-flex align-items-center">
+                                <div className="flex-grow-1">
+                                  <label
+                                    htmlFor={`secretCode-${order.orderName}`}
+                                    className="form-label fw-bold"
+                                  >
+                                    Enter Secret Code
+                                  </label>
+                                  <input
+                                    type="password"
+                                    id={`secretCode-${order.orderName}`}
+                                    className="form-control"
+                                    placeholder="Enter delivery boy secret code"
+                                    value={secretCodes[order.orderName] || ""}
+                                    onChange={(e) => handleSecretCodeChange(order.orderName, e.target.value)}
+                                  />
+                                </div>
+                                <button
+                                  className="btn btn-secondary ms-2"
+                                  onClick={() => handleVerify(order.orderName)}
+                                  disabled={!secretCodes[order.orderName]}
+                                >
+                                  Verify
+                                </button>
+                                {isVerified && <i className="bi bi-check-circle text-success ms-2" style={{fontSize: '1.5rem'}}></i>}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -598,9 +696,7 @@ function Dispatch() {
                                 </th>
                                 <th scope="col">Item</th>
                                 <th scope="col">Variants</th>
-                                
                                 <th scope="col">Quantity</th>
-                                
                                 <th scope="col">Prepared Time</th>
                                 <th scope="col">Action</th>
                               </tr>
@@ -621,15 +717,9 @@ function Dispatch() {
                                         aria-label={`Select item ${item.name}`}
                                       />
                                     </td>
-                                    <td>
-                                      {item.name}
-                                      
-                                      
-                                    </td>
+                                    <td>{item.name}</td>
                                     <td>{item.custom_variants || "None"}</td>
-                                    
                                     <td>{item.quantity}</td>
-                                    
                                     <td>{item.preparedTime}</td>
                                     <td>
                                       <button
@@ -637,7 +727,10 @@ function Dispatch() {
                                         onClick={() => handleDispatchItem(order.orderName, item.id)}
                                         disabled={
                                           dispatchingItems[`${order.orderName}-${item.id}`] ||
-                                          (order.deliveryType === "DELIVERY" && !selectedDeliveryBoys[order.orderName])
+                                          (order.deliveryType === "DELIVERY" &&
+                                            (!selectedDeliveryBoys[order.orderName] ||
+                                             !secretCodes[order.orderName] ||
+                                             !verifiedStates[order.orderName]))
                                         }
                                         aria-label={`Dispatch item ${item.name}`}
                                       >
@@ -677,4 +770,3 @@ function Dispatch() {
 }
 
 export default Dispatch;
-
