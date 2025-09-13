@@ -142,11 +142,11 @@
 }
 
 .quantity-btn.minus {
-  background-color: #bd4f5a;
+  background-color: #795548;
 }
 
 .quantity-btn.minus:hover {
-  background-color: #b02a37;
+  background-color: #795548;
 }
 
 .quantity-value {
@@ -218,7 +218,7 @@
   font-size: 22px;
   font-weight: bold;
   border: none;
-  background-color: #f3b27d;;
+  background-color: #795548;
   color: white;
   border-radius: 8px;
   cursor: pointer;
@@ -226,7 +226,7 @@
 }
 
 .quantity-btn:hover {
-  background-color: #f0bf97;;
+  background-color: #795548;;
   transform: scale(1.1);
 }
 
@@ -235,11 +235,11 @@
 }
 
 .quantity-btn.minus {
-  background-color: #f3b27d;
+  background-color:#795548;
 }
 
 .quantity-btn.minus:hover {
-  background-color: #f7c398;;
+  background-color:#795548;
 }
 
 .quantity-value {

@@ -1794,8 +1794,8 @@ function Front() {
                                                 onClick={() => setShowDiscountModal(true)}
                                                 style={{
                                                     padding: "10px",
-                                                    backgroundColor: " #d2ffc9",
-                                                    color: "Black",
+                                                    backgroundColor: "#795548",
+                                                    color: "white",
                                                     border: "none",
                                                     borderRadius: "5px",
                                                     fontWeight: "bold",
@@ -2086,8 +2086,8 @@ function Front() {
                                                         onClick={cancelCart}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            backgroundColor: "  #d2ffc9",
-                                                            color: "Black",
+                                                            backgroundColor: "#795548",
+                                                            color: "white",
                                                             border: "none",
                                                             borderRadius: "5px",
                                                             fontWeight: "bold",
@@ -2107,7 +2107,7 @@ function Front() {
                                                             handleCheckoutClick();
                                                             handleShow();
                                                         }}
-                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "  #d2ffc9", color: "Black", boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px" }}
+                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#795548", color: "white", boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px" }}
                                                     >
                                                         Pay
                                                     </button>
@@ -2167,4 +2167,6 @@ function Front() {
         </>
     );
 }
+
 export default Front;
+

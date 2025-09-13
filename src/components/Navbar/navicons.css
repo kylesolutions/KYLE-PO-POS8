@@ -38,7 +38,7 @@
 }
 
 .nav-link.active {
-  background-color: #d2ffc9;
+  background-color: #795548;
   color: white !important;
   box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
 }
