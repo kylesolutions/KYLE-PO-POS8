@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Dispatch() {
@@ -282,10 +282,19 @@ function Dispatch() {
       let dispatchError = null;
       try {
         const order = preparedOrders[orderName];
-        const item = order?.items.find((i) => i.id === itemId);
+        if (!order) throw new Error("Order not found");
+        const item = order?.items?.find((i) => i.id === itemId);
         if (!item) throw new Error("Item not found");
 
         const secretCode = secretCodes[orderName] || "";
+
+        if (order.deliveryType === "DELIVERY") {
+          const verifyResult = await verifySecretCode(selectedDeliveryBoys[orderName], secretCode);
+          if (verifyResult.status !== "success") {
+            alert(verifyResult.message || "The secret code is wrong. Item can't be dispatched.");
+            return;
+          }
+        }
 
         const kitchenResponse = await fetch(
           "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
@@ -328,13 +337,14 @@ function Dispatch() {
         }
 
         setPreparedOrders((prev) => {
-          const updatedOrder = { ...prev[orderName] };
-          updatedOrder.items = updatedOrder.items.filter((i) => i.id !== itemId);
-          const newPreparedOrders = { ...prev, [orderName]: updatedOrder };
+          const newPrev = prev ? {...prev} : {};
+          if (!newPrev[orderName]) return newPrev;
+          const updatedOrder = { ...newPrev[orderName] };
+          updatedOrder.items = updatedOrder.items ? updatedOrder.items.filter((i) => i.id !== itemId) : [];
+          const newPreparedOrders = { ...newPrev, [orderName]: updatedOrder };
           if (updatedOrder.items.length === 0) {
             delete newPreparedOrders[orderName];
           }
-          localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
           console.log("Dispatch.jsx: Updated preparedOrders after dispatch:", JSON.stringify(newPreparedOrders, null, 2));
           return newPreparedOrders;
         });
@@ -359,7 +369,7 @@ function Dispatch() {
         setDispatchingItems((prev) => ({ ...prev, [`${orderName}-${itemId}`]: false }));
       }
     },
-    [preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus, secretCodes]
+    [preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus, secretCodes, selectedDeliveryBoys, verifySecretCode]
   );
 
   const handleDispatchSelected = useCallback(
@@ -389,7 +399,7 @@ function Dispatch() {
             acc[orderName] = [];
           }
           const order = preparedOrders[orderName];
-          const item = order?.items.find((i) => i.id === itemId);
+          const item = order?.items?.find((i) => i.id === itemId);
           if (item) {
             acc[orderName].push(item);
           }
@@ -399,6 +409,18 @@ function Dispatch() {
         for (const [orderName, items] of Object.entries(itemsByInvoice)) {
           const order = preparedOrders[orderName];
           const secretCode = secretCodes[orderName] || "";
+
+          if (order.deliveryType === "DELIVERY") {
+            if (!selectedDeliveryBoys[orderName] || !secretCode) {
+              dispatchErrors.push(`No delivery boy or secret code for order ${orderName}`);
+              continue;
+            }
+            const verifyResult = await verifySecretCode(selectedDeliveryBoys[orderName], secretCode);
+            if (verifyResult.status !== "success") {
+              dispatchErrors.push(verifyResult.message || `The secret code is wrong for order ${orderName}. Items can't be dispatched.`);
+              continue;
+            }
+          }
 
           for (const item of items) {
             const kitchenResponse = await fetch(
@@ -443,25 +465,24 @@ function Dispatch() {
         }
 
         setPreparedOrders((prev) => {
-          const newPreparedOrders = { ...prev };
+          const newPreparedOrders = prev ? {...prev} : {};
           selectedItems.forEach(({ orderName, itemId }) => {
             if (newPreparedOrders[orderName]) {
-              newPreparedOrders[orderName].items = newPreparedOrders[orderName].items.filter(
+              newPreparedOrders[orderName].items = newPreparedOrders[orderName].items ? newPreparedOrders[orderName].items.filter(
                 (i) => i.id !== itemId
-              );
+              ) : [];
               if (newPreparedOrders[orderName].items.length === 0) {
                 delete newPreparedOrders[orderName];
               }
             }
           });
-          localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
           console.log("Dispatch.jsx: Updated preparedOrders after bulk dispatch:", JSON.stringify(newPreparedOrders, null, 2));
           return newPreparedOrders;
         });
         setSelectedItems([]);
 
         if (dispatchErrors.length > 0) {
-          alert(`Selected items dispatched successfully, but some delivery assignments failed:\n${dispatchErrors.join("\n")}`);
+          alert(`Some issues occurred:\n${dispatchErrors.join("\n")}`);
         } else {
           alert("Selected items dispatched successfully.");
         }
@@ -477,28 +498,30 @@ function Dispatch() {
         }));
       }
     },
-    [selectedItems, preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus, secretCodes]
+    [selectedItems, preparedOrders, createHomeDeliveryOrder, updatePosInvoiceItemDispatchStatus, secretCodes, selectedDeliveryBoys, verifySecretCode]
   );
 
   const handleSelectItem = useCallback((orderName, itemId) => {
     setSelectedItems((prev) => {
-      if (prev.some((item) => item.orderName === orderName && item.itemId === itemId)) {
-        return prev.filter((item) => !(item.orderName === orderName && item.itemId === itemId));
+      const newPrev = prev ? [...prev] : [];
+      if (newPrev.some((item) => item.orderName === orderName && item.itemId === itemId)) {
+        return newPrev.filter((item) => !(item.orderName === orderName && item.itemId === itemId));
       }
-      return [...prev, { orderName, itemId }];
+      return [...newPrev, { orderName, itemId }];
     });
   }, []);
 
   const handleSelectAll = useCallback((order, isChecked) => {
     setSelectedItems((prev) => {
-      const orderItems = order.items.map((item) => ({
+      const newPrev = prev ? [...prev] : [];
+      const orderItems = order.items ? order.items.map((item) => ({
         orderName: order.orderName,
         itemId: item.id,
-      }));
+      })) : [];
       if (isChecked) {
-        return [...prev.filter((item) => item.orderName !== order.orderName), ...orderItems];
+        return [...newPrev.filter((item) => item.orderName !== order.orderName), ...orderItems];
       }
-      return prev.filter((item) => item.orderName !== order.orderName);
+      return newPrev.filter((item) => item.orderName !== order.orderName);
     });
   }, []);
 
@@ -546,12 +569,15 @@ function Dispatch() {
     return () => clearInterval(intervalId);
   }, [fetchPreparedOrders, fetchDeliveryBoys]);
 
-  const filteredPreparedOrders = Object.entries(preparedOrders)
-    .filter(([orderName]) => orderName.toLowerCase().includes(searchInvoiceId.toLowerCase()))
-    .map(([orderName, order]) => ({
-      orderName,
-      ...order,
-    }));
+  const filteredPreparedOrders = useMemo(() => {
+    if (!preparedOrders || typeof preparedOrders !== 'object') return [];
+    return Object.entries(preparedOrders)
+      .filter(([orderName]) => orderName.toLowerCase().includes(searchInvoiceId.toLowerCase()))
+      .map(([orderName, order]) => ({
+        orderName,
+        ...order,
+      }));
+  }, [preparedOrders, searchInvoiceId]);
 
   return (
     <div className="container mt-5">
@@ -667,13 +693,13 @@ function Dispatch() {
                                     onChange={(e) => handleSecretCodeChange(order.orderName, e.target.value)}
                                   />
                                 </div>
-                                <button
+                                {/* <button
                                   className="btn btn-secondary ms-2"
                                   onClick={() => handleVerify(order.orderName)}
                                   disabled={!secretCodes[order.orderName]}
                                 >
                                   Verify
-                                </button>
+                                </button> */}
                                 {isVerified && <i className="bi bi-check-circle text-success ms-2" style={{fontSize: '1.5rem'}}></i>}
                               </div>
                             )}
@@ -729,8 +755,7 @@ function Dispatch() {
                                           dispatchingItems[`${order.orderName}-${item.id}`] ||
                                           (order.deliveryType === "DELIVERY" &&
                                             (!selectedDeliveryBoys[order.orderName] ||
-                                             !secretCodes[order.orderName] ||
-                                             !verifiedStates[order.orderName]))
+                                             !secretCodes[order.orderName]))
                                         }
                                         aria-label={`Dispatch item ${item.name}`}
                                       >
@@ -748,7 +773,7 @@ function Dispatch() {
                                 ))
                               ) : (
                                 <tr>
-                                  <td colSpan="8" className="text-center">
+                                  <td colSpan="6" className="text-center">
                                     No prepared items available
                                   </td>
                                 </tr>

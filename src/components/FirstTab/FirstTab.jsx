@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import './firstTab.css';
+import { ArrowLeft, ShoppingBag, Utensils, Truck, Calendar } from 'lucide-react';
+import './firsttab.css';
 
 function FirstTab() {
   const navigate = useNavigate();
@@ -48,44 +49,86 @@ function FirstTab() {
     navigate(nextPath, { state: { deliveryType: type.toUpperCase(), posOpeningEntry } });
   };
 
+  const getDeliveryIcon = (type) => {
+    const normalizedType = type.toUpperCase();
+    switch (normalizedType) {
+      case 'TAKE AWAY':
+        return <ShoppingBag size={32} />;
+      case 'DINE IN':
+        return <Utensils size={32} />;
+      case 'ONLINE DELIVERY':
+        return <Truck size={32} />;
+      case 'TABLE BOOKING':
+        return <Calendar size={32} />;
+      default:
+        return <ShoppingBag size={32} />;
+    }
+  };
+
+  const getDeliveryDescription = (type) => {
+    const normalizedType = type.toUpperCase();
+    switch (normalizedType) {
+      case 'TAKE AWAY':
+        return 'Order and pick up at the store';
+      case 'DINE IN':
+        return 'Enjoy your meal in our restaurant';
+      case 'ONLINE DELIVERY':
+        return 'Have your order delivered to you';
+      case 'TABLE BOOKING':
+        return 'Reserve a table for dining';
+      default:
+        return 'Choose this delivery option';
+    }
+  };
+
   return (
-    <div className="container-fluid main">
+    <div className="delivery-selection-container">
       <button
         className="back-button"
         onClick={() => navigate('/')}
         aria-label="Go back to previous page"
-        title="Back"
       >
-        <i className="bi bi-arrow-left-circle"></i>
+        <ArrowLeft size={24} />
       </button>
-      <div className="row justify-content-center align-items-center">
-        <div className="col-12 text-center mb-4">
-          <h1 className="display-5 fw-bold">Select Delivery Type</h1>
-          <p className="text-muted">Choose how you'd like to place your order</p>
+
+      <div className="content-wrapper">
+        <div className="header-section">
+          <h1 className="main-title">Choose Your Experience</h1>
+          <p className="subtitle">Select how you'd like to enjoy your order</p>
         </div>
+
         {isLoading ? (
-          <div className="col-12 text-center">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
+          <div className="loading-container">
+            <div className="loading-spinner">
+              <div className="spinner"></div>
             </div>
+            <p className="loading-text">Loading delivery options...</p>
           </div>
         ) : error ? (
-          <div className="col-12 text-center">
-            <div className="alert alert-warning" role="alert">
-              {error}
+          <div className="error-container">
+            <div className="error-message">
+              <p>{error}</p>
             </div>
           </div>
         ) : (
-          <div className="row g-3 justify-content-center">
+          <div className="delivery-grid">
             {deliveryTypes.map((type, index) => (
-              <div key={index} className="col-12 col-sm-6 col-md-4 col-lg-3 d-flex justify-content-center">
+              <div key={index} className="delivery-card-wrapper">
                 <button
-                  className="main-button"
+                  className="delivery-card"
                   onClick={() => handleNavigation(type)}
                   aria-label={`Select ${type} delivery type`}
-                  title={`Choose ${type}`}
                 >
-                  {type.toUpperCase()}
+                  <div className="card-icon">
+                    {getDeliveryIcon(type)}
+                  </div>
+                  <div className="card-content">
+                    <h3 className="card-title">{type.toUpperCase()}</h3>
+                    <p className="card-description">{getDeliveryDescription(type)}</p>
+                  </div>
+                  <div className="card-arrow">
+                    <ArrowLeft size={20} />
+                  </div>
                 </button>
               </div>
             ))}

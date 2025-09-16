@@ -13,6 +13,7 @@ function HomeDeliveryOrders() {
   const [secretCodes, setSecretCodes] = useState({});
   const [verifiedStates, setVerifiedStates] = useState({});
   const [updatingInvoices, setUpdatingInvoices] = useState({});
+  const [cancelingInvoices, setCancelingInvoices] = useState({});
 
   const fetchHomeDeliveryOrders = useCallback(async () => {
     try {
@@ -179,6 +180,42 @@ function HomeDeliveryOrders() {
       setVerifiedStates(prev => ({ ...prev, [invoiceId]: false }));
     }
   }, [selectedDeliveryBoys, secretCodes, deliveryBoys, fetchHomeDeliveryOrders]);
+
+  const handleCancel = useCallback(async (invoiceId) => {
+    if (!window.confirm(`Are you sure you want to cancel the home delivery order for invoice ${invoiceId}?`)) {
+      return;
+    }
+
+    setCancelingInvoices((prev) => ({ ...prev, [invoiceId]: true }));
+    try {
+      const response = await fetch(
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.cancel_homedelivery_order",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ invoice_id: invoiceId }),
+        }
+      );
+
+      const result = await response.json();
+      console.log("HomeDeliveryOrders.jsx: cancel_homedelivery_order Response:", JSON.stringify(result, null, 2));
+
+      if (result.message.status !== "success") {
+        throw new Error(result.message.message || "Failed to cancel home delivery order");
+      }
+
+      await fetchHomeDeliveryOrders();
+      alert(`Home delivery order for invoice ${invoiceId} canceled successfully.`);
+    } catch (error) {
+      console.error("HomeDeliveryOrders.jsx: Error canceling home delivery order:", error.message, error);
+      alert(`Failed to cancel home delivery order: ${error.message || "Please try again."}`);
+    } finally {
+      setCancelingInvoices((prev) => ({ ...prev, [invoiceId]: false }));
+    }
+  }, [fetchHomeDeliveryOrders]);
 
   const handleMarkPaid = useCallback(async (invoiceId) => {
     if (!window.confirm(`Are you sure you want to mark POS Invoice ${invoiceId} as Paid?`)) {
@@ -410,9 +447,11 @@ function HomeDeliveryOrders() {
                       <th>Address</th>
                       <th>Phone</th>
                       <th>Amount</th>
-                      <th>Status</th>
+                      <th>Invoice Status</th>
+                      <th>Delivery Status</th>
                       <th>Action</th>
                       <th>Update Delivery Boy</th>
+                      <th>Cancel</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -425,6 +464,7 @@ function HomeDeliveryOrders() {
                         <td>{order.customer_phone}</td>
                         <td>${(order.invoice_amount || 0).toFixed(2)}</td>
                         <td>{order.invoice_status}</td>
+                        <td>{order.delivery_status || "Pending"}</td>
                         <td>
                           <div className="d-flex gap-2">
                             {order.invoice_status !== "Paid" ? (
@@ -469,7 +509,7 @@ function HomeDeliveryOrders() {
                               className="form-select"
                               value={selectedDeliveryBoys[order.invoice_id] || ""}
                               onChange={(e) => handleDeliveryBoyChange(order.invoice_id, e.target.value)}
-                              disabled={order.invoice_status === "Paid" || updatingInvoices[order.invoice_id]}
+                              disabled={order.invoice_status === "Paid" || updatingInvoices[order.invoice_id] || order.delivery_status === "Cancel"}
                             >
                               <option value="">Select a delivery boy</option>
                               {deliveryBoys.map((boy) => (
@@ -486,12 +526,12 @@ function HomeDeliveryOrders() {
                                   placeholder="Enter secret code"
                                   value={secretCodes[order.invoice_id] || ""}
                                   onChange={(e) => handleSecretCodeChange(order.invoice_id, e.target.value)}
-                                  disabled={order.invoice_status === "Paid" || updatingInvoices[order.invoice_id]}
+                                  disabled={order.invoice_status === "Paid" || updatingInvoices[order.invoice_id] || order.delivery_status === "Cancel"}
                                 />
                                 <button
                                   className="btn btn-secondary btn-sm"
                                   onClick={() => verifySecretCode(selectedDeliveryBoys[order.invoice_id], secretCodes[order.invoice_id], order.invoice_id)}
-                                  disabled={!secretCodes[order.invoice_id] || order.invoice_status === "Paid" || updatingInvoices[order.invoice_id]}
+                                  disabled={!secretCodes[order.invoice_id] || order.invoice_status === "Paid" || updatingInvoices[order.invoice_id] || order.delivery_status === "Cancel"}
                                 >
                                   Verify
                                 </button>
@@ -508,7 +548,8 @@ function HomeDeliveryOrders() {
                                 !secretCodes[order.invoice_id] ||
                                 !verifiedStates[order.invoice_id] ||
                                 order.invoice_status === "Paid" ||
-                                updatingInvoices[order.invoice_id]
+                                updatingInvoices[order.invoice_id] ||
+                                order.delivery_status === "Cancel"
                               }
                               aria-label={`Update delivery boy for ${order.invoice_id}`}
                             >
@@ -522,6 +563,25 @@ function HomeDeliveryOrders() {
                               )}
                             </button>
                           </div>
+                        </td>
+                        <td>
+                          {order.invoice_status !== "Paid" && order.delivery_status !== "Cancel" && (
+                            <button
+                              className="btn btn-danger btn-sm position-relative"
+                              onClick={() => handleCancel(order.invoice_id)}
+                              disabled={cancelingInvoices[order.invoice_id]}
+                              aria-label={`Cancel ${order.invoice_id}`}
+                            >
+                              Cancel
+                              {cancelingInvoices[order.invoice_id] && (
+                                <span
+                                  className="spinner-border spinner-border-sm ms-2"
+                                  role="status"
+                                  aria-hidden="true"
+                                ></span>
+                              )}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
