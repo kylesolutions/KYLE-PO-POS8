@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-
 function HomeDeliveryOrders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
@@ -14,12 +13,11 @@ function HomeDeliveryOrders() {
   const [verifiedStates, setVerifiedStates] = useState({});
   const [updatingInvoices, setUpdatingInvoices] = useState({});
   const [cancelingInvoices, setCancelingInvoices] = useState({});
-
+  const [deliveringInvoices, setDeliveringInvoices] = useState({});
   const fetchHomeDeliveryOrders = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
       const response = await fetch(
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_user_homedelivery_orders",
         {
@@ -30,18 +28,14 @@ function HomeDeliveryOrders() {
           },
         }
       );
-
       if (!response.ok) {
         throw new Error(`Failed to fetch Home Delivery Orders: ${response.status} - ${response.statusText}`);
       }
-
       const data = await response.json();
       console.log("HomeDeliveryOrders.jsx: Raw response from get_user_homedelivery_orders:", JSON.stringify(data, null, 2));
-
       if (data.message.status !== "success") {
         throw new Error(data.message.message || "Invalid response from server");
       }
-
       setOrders(data.message.data || []);
     } catch (error) {
       console.error("HomeDeliveryOrders.jsx: Error fetching Home Delivery Orders:", error.message, error);
@@ -51,7 +45,6 @@ function HomeDeliveryOrders() {
       setLoading(false);
     }
   }, []);
-
   const fetchDeliveryBoys = useCallback(async () => {
     try {
       const response = await fetch(
@@ -64,25 +57,20 @@ function HomeDeliveryOrders() {
           },
         }
       );
-
       if (!response.ok) {
         throw new Error(`Failed to fetch delivery boys: ${response.status} - ${response.statusText}`);
       }
-
       const data = await response.json();
       console.log("HomeDeliveryOrders.jsx: get_available_delivery Response:", JSON.stringify(data, null, 2));
-
       if (!data.message || data.message.status !== "Success") {
         throw new Error(data.message?.message || "Failed to retrieve delivery boys");
       }
-
       setDeliveryBoys(data.message.data || []);
     } catch (error) {
       console.error("HomeDeliveryOrders.jsx: Error fetching delivery boys:", error.message, error);
       setError(`Failed to load delivery boys: ${error.message}. Please try again.`);
     }
   }, []);
-
   const verifySecretCode = useCallback(async (employeeName, secretCode, invoiceId) => {
     try {
       const response = await fetch(
@@ -99,10 +87,9 @@ function HomeDeliveryOrders() {
           }),
         }
       );
-
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: verify_delivery_boy_code Response:", JSON.stringify(result, null, 2));
-      
+     
       if (result.message.status === "success") {
         setVerifiedStates(prev => ({ ...prev, [invoiceId]: true }));
         alert("Secret code verified successfully");
@@ -110,7 +97,7 @@ function HomeDeliveryOrders() {
         setVerifiedStates(prev => ({ ...prev, [invoiceId]: false }));
         alert(result.message.message || "The secret code is wrong");
       }
-      
+     
       return result.message;
     } catch (error) {
       console.error("HomeDeliveryOrders.jsx: Error verifying secret code:", error);
@@ -118,32 +105,28 @@ function HomeDeliveryOrders() {
       return { status: "error", message: "Failed to verify code" };
     }
   }, []);
-
   const handleUpdateDeliveryBoy = useCallback(async (invoiceId) => {
     const employeeName = selectedDeliveryBoys[invoiceId];
     const secretCode = secretCodes[invoiceId];
-    
+   
     if (!employeeName || !secretCode) {
       alert("Please select a delivery boy and enter a secret code");
       return;
     }
-
     // Verify secret code first
     const verifyResult = await verifySecretCode(employeeName, secretCode, invoiceId);
     if (verifyResult.status !== "success") {
       return;
     }
-
     setUpdatingInvoices(prev => ({ ...prev, [invoiceId]: true }));
     try {
       const selectedBoy = deliveryBoys.find(boy => boy.employee_name === employeeName);
       const employeeNumber = selectedBoy?.cell_number || "";
-      
+     
       if (!employeeNumber) {
         console.warn(`HomeDeliveryOrders.jsx: No cell_number found for employee ${employeeName}`);
         alert("Warning: No phone number found for the selected delivery boy. Proceeding with empty employee number.");
       }
-
       const response = await fetch(
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_homedelivery_order_delivery_boy",
         {
@@ -160,14 +143,11 @@ function HomeDeliveryOrders() {
           }),
         }
       );
-
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: update_homedelivery_order_delivery_boy Response:", JSON.stringify(result, null, 2));
-
       if (result.message.status !== "success") {
         throw new Error(result.message.message || "Failed to update delivery boy");
       }
-
       await fetchHomeDeliveryOrders();
       alert(`Delivery boy updated successfully for invoice ${invoiceId}.`);
     } catch (error) {
@@ -180,12 +160,10 @@ function HomeDeliveryOrders() {
       setVerifiedStates(prev => ({ ...prev, [invoiceId]: false }));
     }
   }, [selectedDeliveryBoys, secretCodes, deliveryBoys, fetchHomeDeliveryOrders]);
-
   const handleCancel = useCallback(async (invoiceId) => {
     if (!window.confirm(`Are you sure you want to cancel the home delivery order for invoice ${invoiceId}?`)) {
       return;
     }
-
     setCancelingInvoices((prev) => ({ ...prev, [invoiceId]: true }));
     try {
       const response = await fetch(
@@ -199,14 +177,11 @@ function HomeDeliveryOrders() {
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
       );
-
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: cancel_homedelivery_order Response:", JSON.stringify(result, null, 2));
-
       if (result.message.status !== "success") {
         throw new Error(result.message.message || "Failed to cancel home delivery order");
       }
-
       await fetchHomeDeliveryOrders();
       alert(`Home delivery order for invoice ${invoiceId} canceled successfully.`);
     } catch (error) {
@@ -216,16 +191,14 @@ function HomeDeliveryOrders() {
       setCancelingInvoices((prev) => ({ ...prev, [invoiceId]: false }));
     }
   }, [fetchHomeDeliveryOrders]);
-
-  const handleMarkPaid = useCallback(async (invoiceId) => {
-    if (!window.confirm(`Are you sure you want to mark POS Invoice ${invoiceId} as Paid?`)) {
+  const handleSubmitUnpaid = useCallback(async (invoiceId) => {
+    if (!window.confirm(`Are you sure you want to submit POS Invoice ${invoiceId} as Unpaid?`)) {
       return;
     }
-
     setPayingInvoices((prev) => ({ ...prev, [invoiceId]: true }));
     try {
       const response = await fetch(
-        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.mark_pos_invoice_paid",
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.submit_pos_invoice_as_unpaid",
         {
           method: "POST",
           headers: {
@@ -235,24 +208,51 @@ function HomeDeliveryOrders() {
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
       );
-
       const result = await response.json();
-      console.log("HomeDeliveryOrders.jsx: mark_pos_invoice_paid Response:", JSON.stringify(result, null, 2));
-
+      console.log("HomeDeliveryOrders.jsx: submit_pos_invoice_as_unpaid Response:", JSON.stringify(result, null, 2));
       if (result.message.status !== "success") {
-        throw new Error(result.message.message || "Failed to mark POS Invoice as Paid");
+        throw new Error(result.message.message || "Failed to submit POS Invoice as Unpaid");
       }
-
       await fetchHomeDeliveryOrders();
-      alert(`POS Invoice ${invoiceId} marked as Paid successfully.`);
+      alert(`POS Invoice ${invoiceId} submitted as Unpaid successfully.`);
     } catch (error) {
-      console.error("HomeDeliveryOrders.jsx: Error marking POS Invoice as Paid:", error.message, error);
-      alert(`Failed to mark POS Invoice as Paid: ${error.message || "Please try again."}`);
+      console.error("HomeDeliveryOrders.jsx: Error submitting POS Invoice as Unpaid:", error.message, error);
+      alert(`Failed to submit POS Invoice as Unpaid: ${error.message || "Please try again."}`);
     } finally {
       setPayingInvoices((prev) => ({ ...prev, [invoiceId]: false }));
     }
   }, [fetchHomeDeliveryOrders]);
-
+  const handleMarkDelivered = useCallback(async (invoiceId) => {
+    if (!window.confirm(`Are you sure you want to mark the home delivery order for invoice ${invoiceId} as Delivered?`)) {
+      return;
+    }
+    setDeliveringInvoices((prev) => ({ ...prev, [invoiceId]: true }));
+    try {
+      const response = await fetch(
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.mark_homedelivery_order_delivered",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ invoice_id: invoiceId }),
+        }
+      );
+      const result = await response.json();
+      console.log("HomeDeliveryOrders.jsx: mark_homedelivery_order_delivered Response:", JSON.stringify(result, null, 2));
+      if (result.message.status !== "success") {
+        throw new Error(result.message.message || "Failed to mark home delivery order as Delivered");
+      }
+      await fetchHomeDeliveryOrders();
+      alert(`Home delivery order for invoice ${invoiceId} marked as Delivered successfully.`);
+    } catch (error) {
+      console.error("HomeDeliveryOrders.jsx: Error marking home delivery order as Delivered:", error.message, error);
+      alert(`Failed to mark home delivery order as Delivered: ${error.message || "Please try again."}`);
+    } finally {
+      setDeliveringInvoices((prev) => ({ ...prev, [invoiceId]: false }));
+    }
+  }, [fetchHomeDeliveryOrders]);
   const handlePrintInvoice = useCallback(async (invoiceId) => {
     setPrintingInvoices((prev) => ({ ...prev, [invoiceId]: true }));
     try {
@@ -266,20 +266,15 @@ function HomeDeliveryOrders() {
           },
         }
       );
-
       if (!response.ok) {
         throw new Error(`Failed to fetch invoice details: ${response.status} - ${response.statusText}`);
       }
-
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: get_pos_invoices Response:", JSON.stringify(result, null, 2));
-
       if (result.message.status !== "success" || !result.message.data) {
         throw new Error(result.message.message || "Invalid invoice data");
       }
-
       const invoice = result.message.data;
-
       const printWindow = window.open("", "_blank");
       printWindow.document.write(`
         <html>
@@ -361,7 +356,6 @@ function HomeDeliveryOrders() {
       setPrintingInvoices((prev) => ({ ...prev, [invoiceId]: false }));
     }
   }, []);
-
   const handleDeliveryBoyChange = useCallback((invoiceId, employeeName) => {
     setSelectedDeliveryBoys(prev => ({
       ...prev,
@@ -376,7 +370,6 @@ function HomeDeliveryOrders() {
       [invoiceId]: false,
     }));
   }, []);
-
   const handleSecretCodeChange = useCallback((invoiceId, code) => {
     setSecretCodes(prev => ({
       ...prev,
@@ -387,20 +380,16 @@ function HomeDeliveryOrders() {
       [invoiceId]: false,
     }));
   }, []);
-
   const handleBack = useCallback(() => {
     navigate(-1);
   }, [navigate]);
-
   useEffect(() => {
     fetchHomeDeliveryOrders();
     fetchDeliveryBoys();
     const intervalId = setInterval(fetchHomeDeliveryOrders, 30000);
     return () => clearInterval(intervalId);
   }, [fetchHomeDeliveryOrders, fetchDeliveryBoys]);
-
   const totalAmount = orders.reduce((sum, order) => sum + (order.invoice_amount || 0), 0);
-
   return (
     <div className="container mt-5">
       <div className="card shadow-lg">
@@ -467,12 +456,13 @@ function HomeDeliveryOrders() {
                         <td>{order.delivery_status || "Pending"}</td>
                         <td>
                           <div className="d-flex gap-2">
+                           
                             {order.invoice_status !== "Paid" ? (
                               <button
                                 className="btn btn-success btn-sm position-relative"
-                                onClick={() => handleMarkPaid(order.invoice_id)}
+                                onClick={() => handleSubmitUnpaid(order.invoice_id)}
                                 disabled={payingInvoices[order.invoice_id]}
-                                aria-label={`Mark ${order.invoice_id} as Paid`}
+                                aria-label={`Submit ${order.invoice_id} as Unpaid`}
                               >
                                 Paid
                                 {payingInvoices[order.invoice_id] && (
@@ -501,6 +491,23 @@ function HomeDeliveryOrders() {
                                 ></span>
                               )}
                             </button>
+                            {order.delivery_status === "Pending" && order.invoice_status !== "Paid" && (
+                              <button
+                                className="btn btn-info btn-sm position-relative"
+                                onClick={() => handleMarkDelivered(order.invoice_id)}
+                                disabled={deliveringInvoices[order.invoice_id]}
+                                aria-label={`Mark ${order.invoice_id} as Delivered`}
+                              >
+                                Delivered
+                                {deliveringInvoices[order.invoice_id] && (
+                                  <span
+                                    className="spinner-border spinner-border-sm ms-2"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
+                                )}
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td>
@@ -595,5 +602,4 @@ function HomeDeliveryOrders() {
     </div>
   );
 }
-
 export default HomeDeliveryOrders;

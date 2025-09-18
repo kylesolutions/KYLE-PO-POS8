@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Utensils, Truck, Calendar } from 'lucide-react';
-import './firsttab.css';
+import './firstTab.css';
 
 function FirstTab() {
   const navigate = useNavigate();
