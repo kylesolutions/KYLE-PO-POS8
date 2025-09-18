@@ -80,6 +80,15 @@ function NavIcons() {
         </li>
         <li className="nav-item">
           <a
+            className={`nav-link ${location.pathname === '/deliveryorders' ? 'active text-primary' : 'text-black'} cursor-pointer`}
+            onClick={() => navigate('/deliveryorders')}
+            title="Delivered Orders"
+          >
+            <img src="/menuIcons/deliveredorderledger.svg" alt="Delivered Orders" className="menuicon" />
+          </a>
+        </li>
+        <li className="nav-item">
+          <a
             className={`nav-link ${location.pathname === '/salesinvoice' ? 'active text-primary' : 'text-black'} cursor-pointer`}
             onClick={() => navigate('/salesinvoice')}
             title="Sales Invoice"
@@ -96,6 +105,7 @@ function NavIcons() {
             <img src="/menuIcons/closingentry.svg" alt="Closing Entry" className="menuicon" />
           </a>
         </li>
+        
       </ul>
     </div>
   );
