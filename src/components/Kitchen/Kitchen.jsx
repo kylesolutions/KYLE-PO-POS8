@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import "./Kitchen.css";
 
 function Kitchen() {
     const navigate = useNavigate();
     const location = useLocation();
     const [kitchenNotes, setKitchenNotes] = useState([]);
     const [preparedItems, setPreparedItems] = useState([]);
-    const [selectedKitchen, setSelectedKitchen] = useState(null);
+    const [selectedKitchen, setSelectedKitchen] = useState("All");
     const [allKitchens, setAllKitchens] = useState([]);
     const [showStatusPopup, setShowStatusPopup] = useState(false);
     const [preparedOrders, setPreparedOrders] = useState({});
     const [searchInvoiceId, setSearchInvoiceId] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedItems, setSelectedItems] = useState([]); // Track selected item IDs
-    const [bulkUpdating, setBulkUpdating] = useState(false); // Track bulk update state
+    const [selectedItems, setSelectedItems] = useState([]);
+    const [bulkUpdating, setBulkUpdating] = useState(false);
 
     const fetchKitchenNotes = async () => {
         try {
@@ -37,14 +38,12 @@ function Kitchen() {
             }
 
             const data = await response.json();
-            console.log("Kitchen.jsx: Raw response from get_kitchen_notes:", JSON.stringify(data, null, 2));
 
             if (data.message?.status !== "success") {
                 throw new Error(data.message?.message || data.exception || "Invalid response from server");
             }
 
             if (!data.message?.data || !Array.isArray(data.message.data) || data.message.data.length === 0) {
-                console.warn("Kitchen.jsx: No kitchen notes found in response:", data);
                 setKitchenNotes([]);
                 setAllKitchens([]);
                 setLoading(false);
@@ -55,11 +54,7 @@ function Kitchen() {
 
             const formattedNotes = data.message.data.map((note) => {
                 const chairCount = parseInt(note.number_of_chair) || 0;
-                console.log(`Kitchen.jsx: Processing note ${note.pos_invoice_id} - number_of_chair: ${note.number_of_chair}, parsed: ${chairCount}`);
-                if (note.delivery_type === "DINE IN" && chairCount === 0) {
-                    console.warn(`Kitchen.jsx: Warning: chairCount is 0 for DINE IN order ${note.pos_invoice_id}`);
-                }
-
+                
                 return {
                     name: note.name,
                     pos_invoice_id: note.pos_invoice_id,
@@ -69,13 +64,10 @@ function Kitchen() {
                     custom_chair_count: chairCount,
                     posting_date: note.order_time,
                     cartItems: note.items
-                        .filter(item => item.status !== "Prepared" && item.status !== "Dispatched") // Exclude Prepared and Dispatched items
+                        .filter(item => item.status !== "Prepared" && item.status !== "Dispatched")
                         .map((item) => {
-                            const itemId = item.name; // Use backend item.name as unique ID
-                            const isPrepared = Object.values(storedPreparedOrders).some(o =>
-                                o.items.some(i => i.id === itemId && i.status === "Prepared")
-                            );
-                            console.log(`Kitchen.jsx: Item ${item.item_name} (ID: ${itemId}) - isPrepared: ${isPrepared}, backend status: ${item.status}`);
+                            const itemId = `${item.kitchen || 'Unknown'}-${item.name}`;
+                            
                             return {
                                 id: itemId,
                                 backendId: item.name,
@@ -88,7 +80,7 @@ function Kitchen() {
                                 selectedSize: "",
                                 selectedCustomVariant: "",
                                 kitchen: item.kitchen || "Unknown",
-                                status: item.status || "Prepare", // Trust backend status
+                                status: item.status || "Prepare",
                                 addonCounts: {},
                                 selectedCombos: [],
                                 type: "main",
@@ -102,7 +94,6 @@ function Kitchen() {
                 };
             });
 
-            // Extract all kitchens from the data
             const kitchensFromData = [
                 ...new Set(
                     formattedNotes.flatMap((order) =>
@@ -117,44 +108,43 @@ function Kitchen() {
                     ...location.state.order,
                     custom_chair_count: parseInt(location.state.order.custom_chair_count) || 0,
                     cartItems: location.state.order.cartItems
-                        .filter(item => item.status !== "Prepared" && item.status !== "Dispatched") // Exclude Prepared and Dispatched items
-                        .map(item => ({
-                            id: item.name, // Use item.name for consistency
-                            backendId: item.name,
-                            item_code: item.item_code || item.name,
-                            name: item.name,
-                            custom_customer_description: item.custom_customer_description || "",
-                            custom_variants: item.custom_variants || "",
-                            basePrice: parseFloat(item.basePrice) || 0,
-                            quantity: parseInt(item.quantity, 10) || 1,
-                            selectedSize: item.selectedSize || "",
-                            selectedCustomVariant: item.selectedCustomVariant || "",
-                            kitchen: item.kitchen || "Unknown",
-                            status: item.status || "Prepare",
-                            addonCounts: item.addonCounts || {},
-                            selectedCombos: item.selectedCombos || [],
-                            type: "main",
-                            ingredients: item.ingredients?.map((ing) => ({
-                                name: ing.name || ing.ingredients_name || "Unknown Ingredient",
-                                quantity: parseFloat(ing.quantity) || 100,
-                                unit: ing.unit || "g",
-                            })) || [],
-                        })),
+                        .filter(item => item.status !== "Prepared" && item.status !== "Dispatched")
+                        .map(item => {
+                            const itemId = `${item.kitchen || 'Unknown'}-${item.name}`;
+                            return {
+                                id: itemId,
+                                backendId: item.name,
+                                item_code: item.item_code || item.name,
+                                name: item.name,
+                                custom_customer_description: item.custom_customer_description || "",
+                                custom_variants: item.custom_variants || "",
+                                basePrice: parseFloat(item.basePrice) || 0,
+                                quantity: parseInt(item.quantity, 10) || 1,
+                                selectedSize: item.selectedSize || "",
+                                selectedCustomVariant: item.selectedCustomVariant || "",
+                                kitchen: item.kitchen || "Unknown",
+                                status: item.status || "Prepare",
+                                addonCounts: item.addonCounts || {},
+                                selectedCombos: item.selectedCombos || [],
+                                type: "main",
+                                ingredients: item.ingredients?.map((ing) => ({
+                                    name: ing.name || ing.ingredients_name || "Unknown Ingredient",
+                                    quantity: parseFloat(ing.quantity) || 100,
+                                    unit: ing.unit || "g",
+                                })) || [],
+                            };
+                        }),
                 };
-                console.log(`Kitchen.jsx: Passed order - custom_chair_count: ${passedOrder.custom_chair_count}`);
-                if (passedOrder.custom_delivery_type === "DINE IN" && passedOrder.custom_chair_count === 0) {
-                    console.warn(`Kitchen.jsx: Warning: chairCount is 0 for passed DINE IN order ${passedOrder.pos_invoice_id}`);
-                }
                 setKitchenNotes([passedOrder]);
-                setSelectedKitchen(passedOrder.cartItems[0]?.kitchen || kitchensFromData[0] || "Unknown");
+                setSelectedKitchen("All");
             } else {
                 setKitchenNotes(formattedNotes);
+                setSelectedKitchen("All");
             }
 
             const storedPreparedItems = JSON.parse(localStorage.getItem("preparedItems")) || [];
             setPreparedItems(storedPreparedItems);
             setPreparedOrders(storedPreparedOrders);
-            console.log("Kitchen.jsx: Updated kitchenNotes:", JSON.stringify(formattedNotes, null, 2));
         } catch (error) {
             const errorMessage = error.message || "An unexpected error occurred";
             console.error("Kitchen.jsx: Error fetching Kitchen Notes:", error);
@@ -172,42 +162,29 @@ function Kitchen() {
         return () => clearInterval(intervalId);
     }, [location]);
 
-    useEffect(() => {
-        if (allKitchens.length > 0 && !selectedKitchen && !location.state?.order) {
-            const kitchenWithItems = allKitchens.find((kitchen) =>
-                kitchenNotes.some((order) =>
-                    order.cartItems.some((item) => item.kitchen === kitchen && item.status !== "Prepared" && item.status !== "Dispatched")
-                )
-            );
-            setSelectedKitchen(kitchenWithItems || allKitchens[0]);
-        }
-    }, [allKitchens, kitchenNotes, selectedKitchen, location.state]);
-
-    const filteredItemsMap = new Map();
-    kitchenNotes.forEach((order) => {
-        order.cartItems.forEach((item) => {
-            if (item.kitchen === selectedKitchen && item.status !== "Prepared" && item.status !== "Dispatched") {
-                filteredItemsMap.set(item.id, {
-                    ...item,
-                    pos_invoice_id: order.pos_invoice_id,
-                    tableNumber: order.custom_table_number,
-                    deliveryType: order.custom_delivery_type,
-                    chairCount: order.custom_chair_count,
-                });
-            }
+    const getFilteredItems = (kitchen) => {
+        const filteredItemsMap = new Map();
+        kitchenNotes.forEach((order) => {
+            order.cartItems.forEach((item) => {
+                if ((kitchen === "All" || item.kitchen === kitchen) && item.status !== "Prepared" && item.status !== "Dispatched") {
+                    filteredItemsMap.set(item.id, {
+                        ...item,
+                        pos_invoice_id: order.pos_invoice_id,
+                        tableNumber: order.custom_table_number,
+                        deliveryType: order.custom_delivery_type,
+                        chairCount: order.custom_chair_count,
+                    });
+                }
+            });
         });
-    });
-    const filteredItems = Array.from(filteredItemsMap.values());
-    console.log("Kitchen.jsx: Filtered items for", selectedKitchen, ":", JSON.stringify(filteredItems, null, 2));
+        return Array.from(filteredItemsMap.values());
+    };
 
     const handleStatusChange = async (id, newStatus) => {
         try {
-            const item = filteredItems.find((i) => i.id === id);
+            const item = getFilteredItems("All").find((i) => i.id === id);
             if (!item) throw new Error("Item not found");
 
-            console.log("Kitchen.jsx: Changing status for item", item.name, "to", newStatus);
-
-            // Update backend status
             const statusResponse = await fetch(
                 "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
                 {
@@ -224,12 +201,10 @@ function Kitchen() {
             );
 
             const statusResult = await statusResponse.json();
-            console.log("Kitchen.jsx: Status update response:", JSON.stringify(statusResult, null, 2));
             if (statusResult.message?.status !== "success") {
                 throw new Error(statusResult.message?.message || statusResult.exception || "Failed to update status");
             }
 
-            // Update local state for all statuses
             setKitchenNotes((prev) =>
                 prev.map((order) => ({
                     ...order,
@@ -242,7 +217,6 @@ function Kitchen() {
                 }))
             );
 
-            // If status is "Prepared", add to preparedOrders and remove from frontend display
             if (newStatus === "Prepared") {
                 const preparedTime = new Date().toLocaleString();
                 const orderName = item.pos_invoice_id || item.id.split("-")[0];
@@ -266,11 +240,9 @@ function Kitchen() {
                     }
                     const newPreparedOrders = { ...prev, [orderName]: existingOrder };
                     localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
-                    console.log("Kitchen.jsx: Updated preparedOrders:", JSON.stringify(newPreparedOrders, null, 2));
                     return newPreparedOrders;
                 });
 
-                // Remove prepared item from kitchenNotes
                 setKitchenNotes((prev) =>
                     prev.map((order) => ({
                         ...order,
@@ -296,15 +268,12 @@ function Kitchen() {
         setBulkUpdating(true);
         try {
             for (const id of selectedItems) {
-                const item = filteredItems.find((i) => i.id === id);
+                const item = getFilteredItems("All").find((i) => i.id === id);
                 if (!item) {
                     console.warn(`Kitchen.jsx: Item with ID ${id} not found during bulk update`);
                     continue;
                 }
 
-                console.log("Kitchen.jsx: Bulk updating item", item.name, "to Prepared");
-
-                // Update backend status
                 const statusResponse = await fetch(
                     "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_kitchen_note_status",
                     {
@@ -321,12 +290,10 @@ function Kitchen() {
                 );
 
                 const statusResult = await statusResponse.json();
-                console.log("Kitchen.jsx: Bulk status update response for", item.name, ":", JSON.stringify(statusResult, null, 2));
                 if (statusResult.message?.status !== "success") {
                     throw new Error(statusResult.message?.message || statusResult.exception || `Failed to update status for ${item.name}`);
                 }
 
-                // Update local state
                 const preparedTime = new Date().toLocaleString();
                 const orderName = item.pos_invoice_id || item.id.split("-")[0];
                 const preparedItem = {
@@ -349,7 +316,6 @@ function Kitchen() {
                     }
                     const newPreparedOrders = { ...prev, [orderName]: existingOrder };
                     localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
-                    console.log("Kitchen.jsx: Updated preparedOrders (bulk):", JSON.stringify(newPreparedOrders, null, 2));
                     return newPreparedOrders;
                 });
 
@@ -371,7 +337,7 @@ function Kitchen() {
             }
 
             localStorage.setItem("preparedItems", JSON.stringify(preparedItems));
-            setSelectedItems([]); // Clear selection
+            setSelectedItems([]);
             alert(`${selectedItems.length} item(s) marked as Prepared successfully!`);
         } catch (error) {
             console.error("Kitchen.jsx: Error during bulk status update:", error);
@@ -387,16 +353,19 @@ function Kitchen() {
         );
     };
 
-    const handleSelectAll = () => {
-        if (selectedItems.length === filteredItems.length) {
-            setSelectedItems([]); // Deselect all
+    const handleSelectAll = (kitchen) => {
+        const tableItems = getFilteredItems(kitchen);
+        const tableItemsIds = tableItems.map((item) => item.id);
+        const numSelectedInTable = tableItems.filter((item) => selectedItems.includes(item.id)).length;
+
+        if (numSelectedInTable === tableItems.length) {
+            setSelectedItems((prev) => prev.filter((id) => !tableItemsIds.includes(id)));
         } else {
-            setSelectedItems(filteredItems.map((item) => item.id)); // Select all
+            setSelectedItems((prev) => [...new Set([...prev, ...tableItemsIds.filter((id) => !prev.includes(id))])]);
         }
     };
 
     const handleRefresh = () => {
-        console.log("Kitchen.jsx: Manual refresh triggered");
         fetchKitchenNotes();
     };
 
@@ -407,16 +376,29 @@ function Kitchen() {
             .join(", ");
     };
 
-    const getRowStyle = (status) => {
+    const getStatusClass = (status) => {
         switch (status || "Prepare") {
             case "Prepare":
-                return { backgroundColor: "#f8d7da" };
+                return "status-prepare";
             case "Preparing":
-                return { backgroundColor: "#fff3cd" };
+                return "status-preparing";
             case "Prepared":
-                return { backgroundColor: "#d4edda" };
+                return "status-prepared";
             default:
-                return {};
+                return "status-default";
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status || "Prepare") {
+            case "Prepare":
+                return "⏸️";
+            case "Preparing":
+                return "⏱️";
+            case "Prepared":
+                return "✅";
+            default:
+                return "❓";
         }
     };
 
@@ -433,7 +415,6 @@ function Kitchen() {
                 delete newPreparedOrders[orderName];
             }
             localStorage.setItem("preparedOrders", JSON.stringify(newPreparedOrders));
-            console.log("Kitchen.jsx: Updated preparedOrders after delete:", JSON.stringify(newPreparedOrders, null, 2));
             return newPreparedOrders;
         });
     };
@@ -447,293 +428,270 @@ function Kitchen() {
             ...order,
         }));
 
-    return (
-        <div className="container mt-5">
-            <div className="card shadow-lg">
-                <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <button className="btn btn-light btn-sm" onClick={handleBack}>
-                        <i className="bi bi-arrow-left"></i> Back
-                    </button>
-                    <h3 className="mb-0">Kitchen Dashboard</h3>
-                    <div>
-                        <button className="btn btn-info btn-sm me-2" onClick={() => setShowStatusPopup(true)}>
-                            <i className="bi bi-info-circle"></i> Status
-                        </button>
-                        <button className="btn btn-light btn-sm" onClick={handleRefresh}>
-                            <i className="bi bi-arrow-clockwise"></i> Refresh
-                        </button>
+    const renderKitchenSection = (kitchen) => {
+        const items = getFilteredItems(kitchen);
+        const numSelectedInTable = items.filter((item) => selectedItems.includes(item.id)).length;
+        
+        return (
+            <div className="kitchen-section" key={kitchen}>
+                <div className="kitchen-header">
+                    <div className="kitchen-title">
+                        <h3>🍳 {kitchen}</h3>
+                        <span className="item-count">{items.length} items</span>
                     </div>
+                    {items.length > 0 && (
+                        <div className="select-all-container">
+                            <label className="select-all-label">
+                                <input
+                                    type="checkbox"
+                                    checked={numSelectedInTable === items.length && items.length > 0}
+                                    onChange={() => handleSelectAll(kitchen)}
+                                    className="select-all-checkbox"
+                                />
+                                <span className="checkmark"></span>
+                                Select All ({numSelectedInTable}/{items.length})
+                            </label>
+                        </div>
+                    )}
                 </div>
-                <div className="card-body">
-                    {loading ? (
-                        <div className="text-center py-5">
-                            <div className="spinner-border text-primary" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                            <p className="mt-2 text-muted">Loading kitchen orders...</p>
-                        </div>
-                    ) : error ? (
-                        <div className="alert alert-danger text-center" role="alert">
-                            {error}
-                        </div>
-                    ) : allKitchens.length === 0 && filteredItems.length === 0 ? (
-                        <div className="alert alert-info text-center" role="alert">
-                            No active kitchen orders found for any kitchen.
+                
+                <div className="items-container">
+                    {items.length === 0 ? (
+                        <div className="no-items">
+                            <div className="no-items-icon">🎉</div>
+                            <h4>All Done!</h4>
+                            <p>No pending orders for {kitchen}</p>
                         </div>
                     ) : (
-                        <>
-                            <div className="mb-4">
-                                <h5 className="fw-bold">Select Kitchen:</h5>
-                                <div className="btn-group flex-wrap gap-2">
-                                    {allKitchens.map((kitchen) => (
-                                        <button
-                                            key={kitchen}
-                                            className={`btn btn-outline-primary ${selectedKitchen === kitchen ? "active" : ""}`}
-                                            onClick={() => setSelectedKitchen(kitchen)}
-                                        >
-                                            {kitchen}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                                <h5 className="mb-0">Current Orders - {selectedKitchen || "Select a Kitchen"}</h5>
-                                <button
-                                    className="btn btn-success btn-sm"
-                                    onClick={handleBulkStatusChange}
-                                    disabled={selectedItems.length === 0 || bulkUpdating}
+                        <div className="items-grid">
+                            {items.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className={`item-card ${getStatusClass(item.status)} ${
+                                        selectedItems.includes(item.id) ? 'selected' : ''
+                                    }`}
                                 >
-                                    {bulkUpdating ? (
-                                        <>
-                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                            Updating...
-                                        </>
-                                    ) : (
-                                        `Mark Selected as Prepared (${selectedItems.length})`
-                                    )}
-                                </button>
-                            </div>
+                                    <div className="item-header">
+                                        <label className="item-checkbox-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedItems.includes(item.id)}
+                                                onChange={() => handleSelectItem(item.id)}
+                                                className="item-checkbox"
+                                            />
+                                            <span className="checkmark"></span>
+                                        </label>
+                                        <div className="status-badge">
+                                            <span className="status-icon">{getStatusIcon(item.status)}</span>
+                                            <span className="status-text">{item.status}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="item-content">
+                                        <h4 className="item-name">{item.name}</h4>
+                                        
+                                        <div className="item-details">
+                                            <div className="detail-row">
+                                                <span className="detail-label">Quantity:</span>
+                                                <span className="detail-value">{item.quantity}</span>
+                                            </div>
+                                            {item.custom_variants && (
+                                                <div className="detail-row">
+                                                    <span className="detail-label">Variants:</span>
+                                                    <span className="detail-value">{item.custom_variants}</span>
+                                                </div>
+                                            )}
+                                        </div>
 
-                            {filteredItems.length === 0 ? (
-                                <div className="alert alert-info text-center" role="alert">
-                                    No active orders for {selectedKitchen || "selected kitchen"}.
+                                        {item.custom_customer_description && (
+                                            <div className="customer-note">
+                                                <span className="note-icon">📝</span>
+                                                <strong>Note:</strong> {item.custom_customer_description}
+                                            </div>
+                                        )}
+
+                                        {item.ingredients?.length > 0 && (
+                                            <div className="ingredients-note">
+                                                <span className="ingredients-icon">🧄</span>
+                                                <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="item-actions">
+                                        <select
+                                            value={item.status || "Prepare"}
+                                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                                            className="status-select"
+                                        >
+                                            <option value="Prepare">Prepare</option>
+                                            <option value="Preparing">Preparing</option>
+                                            <option value="Prepared">Prepared</option>
+                                        </select>
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="table-responsive text-center">
-                                    <table className="table table-bordered table-hover">
-                                        <thead className="table-dark">
-                                            <tr>
-                                                <th>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedItems.length === filteredItems.length && filteredItems.length > 0}
-                                                        onChange={handleSelectAll}
-                                                    />
-                                                </th>
-                                                <th>Invoice</th>
-                                                <th>Table</th>
-                                                <th>Chairs</th>
-                                                <th>Delivery Type</th>
-                                                <th>Item</th>
-                                                <th>Variants</th>
-                                                <th>Quantity</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredItems.map((item) => (
-                                                <tr key={item.id} style={getRowStyle(item.status)}>
-                                                    <td>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedItems.includes(item.id)}
-                                                            onChange={() => handleSelectItem(item.id)}
-                                                        />
-                                                    </td>
-                                                    <td>{item.pos_invoice_id || "Unknown"}</td>
-                                                    <td>{item.tableNumber || "N/A"}</td>
-                                                    <td>{item.deliveryType === "DINE IN" ? item.chairCount : "N/A"}</td>
-                                                    <td>{item.deliveryType}</td>
-                                                    <td>
-                                                        {item.name}
-                                                        {item.custom_customer_description && (
-                                                            <p
-                                                                style={{
-                                                                    fontSize: "12px",
-                                                                    color: "#666",
-                                                                    marginTop: "5px",
-                                                                    marginBottom: "0",
-                                                                }}
-                                                            >
-                                                                <strong>Note:</strong> {item.custom_customer_description}
-                                                            </p>
-                                                        )}
-                                                        {item.ingredients?.length > 0 && (
-                                                            <p
-                                                                style={{
-                                                                    fontSize: "12px",
-                                                                    color: "#666",
-                                                                    marginTop: "5px",
-                                                                    marginBottom: "0",
-                                                                }}
-                                                            >
-                                                                <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
-                                                            </p>
-                                                        )}
-                                                    </td>
-                                                    <td>{item.custom_variants || "None"}</td>
-                                                    <td>{item.quantity}</td>
-                                                    <td>
-                                                        <select
-                                                            value={item.status || "Prepare"}
-                                                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                                                            className="form-select form-select-sm"
-                                                        >
-                                                            <option value="Prepare">Prepare</option>
-                                                            <option value="Preparing">Preparing</option>
-                                                            <option value="Prepared">Prepared</option>
-                                                        </select>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </>
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>
+        );
+    };
+
+    return (
+        <div className="kitchen-dashboard">
+            <div className="dashboard-header">
+                <div className="header-left">
+                    <button className="back-btn" onClick={handleBack}>
+                        ← Back
+                    </button>
+                    <h1 className="dashboard-title">🍳 Kitchen Dashboard</h1>
+                </div>
+                <div className="header-right">
+                    <button className="action-btn info-btn" onClick={() => setShowStatusPopup(true)}>
+                        📊 Prepared Items
+                    </button>
+                    <button className="action-btn refresh-btn" onClick={handleRefresh}>
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+
+            {loading ? (
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>Loading kitchen orders...</p>
+                </div>
+            ) : error ? (
+                <div className="error-container">
+                    <div className="error-icon">⚠️</div>
+                    <h3>Something went wrong</h3>
+                    <p>{error}</p>
+                    <button className="retry-btn" onClick={handleRefresh}>Try Again</button>
+                </div>
+            ) : allKitchens.length === 0 && getFilteredItems("All").length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-icon">🎉</div>
+                    <h2>All Caught Up!</h2>
+                    <p>No active kitchen orders found. Great work!</p>
+                </div>
+            ) : (
+                <>
+                    <div className="controls-section">
+                        <div className="filter-container">
+                            <label className="filter-label">Filter by Kitchen:</label>
+                            <select
+                                value={selectedKitchen}
+                                onChange={(e) => setSelectedKitchen(e.target.value)}
+                                className="kitchen-filter"
+                            >
+                                <option value="All">🏪 All Kitchens</option>
+                                {allKitchens.map((kitchen) => (
+                                    <option key={kitchen} value={kitchen}>
+                                        🍳 {kitchen}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        <button
+                            className={`bulk-action-btn ${selectedItems.length === 0 ? 'disabled' : ''}`}
+                            onClick={handleBulkStatusChange}
+                            disabled={selectedItems.length === 0 || bulkUpdating}
+                        >
+                            {bulkUpdating ? (
+                                <>
+                                    <span className="spinner"></span>
+                                    Updating...
+                                </>
+                            ) : (
+                                <>
+                                    ✅ Mark Selected as Prepared ({selectedItems.length})
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    <div className="kitchens-container">
+                        {selectedKitchen === "All" 
+                            ? allKitchens.map(kitchen => renderKitchenSection(kitchen))
+                            : renderKitchenSection(selectedKitchen)
+                        }
+                    </div>
+                </>
+            )}
 
             {showStatusPopup && (
-                <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
-                    <div className="modal-dialog modal-xl">
-                        <div className="modal-content">
-                            <div className="modal-header bg-info text-white">
-                                <h5 className="modal-title">Prepared Items Status</h5>
-                                <button
-                                    type="button"
-                                    className="btn-close bg-white"
-                                    onClick={() => setShowStatusPopup(false)}
-                                ></button>
+                <div className="modal-overlay" onClick={() => setShowStatusPopup(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>📊 Prepared Items Status</h2>
+                            <button 
+                                className="close-btn" 
+                                onClick={() => setShowStatusPopup(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <div className="modal-body">
+                            <div className="search-container">
+                                <input
+                                    type="text"
+                                    placeholder="🔍 Search by POS Invoice ID..."
+                                    value={searchInvoiceId}
+                                    onChange={(e) => setSearchInvoiceId(e.target.value)}
+                                    className="search-input"
+                                />
                             </div>
-                            <div className="modal-body">
-                                <div className="mb-3">
-                                    <label htmlFor="searchInvoiceId" className="form-label fw-bold">
-                                        Filter by POS Invoice ID
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="searchInvoiceId"
-                                        className="form-control"
-                                        placeholder="Enter POS Invoice ID (e.g., POS-12345)"
-                                        value={searchInvoiceId}
-                                        onChange={(e) => setSearchInvoiceId(e.target.value)}
-                                    />
+                            
+                            {filteredPreparedOrders.length === 0 ? (
+                                <div className="no-results">
+                                    <div className="no-results-icon">📋</div>
+                                    <p>No prepared orders match your search.</p>
                                 </div>
-                                {filteredPreparedOrders.length === 0 ? (
-                                    <p className="text-muted">No prepared orders match the entered POS Invoice ID.</p>
-                                ) : (
-                                    <div className="accordion" id="preparedOrdersAccordion">
-                                        {filteredPreparedOrders.map((order, index) => (
-                                            <div key={order.orderName} className="accordion-item mb-3">
-                                                <h2 className="accordion-header" id={`heading-${order.orderName}`}>
-                                                    <button
-                                                        className="accordion-button"
-                                                        type="button"
-                                                        data-bs-toggle="collapse"
-                                                        data-bs-target={`#collapse-${order.orderName}`}
-                                                        aria-expanded={index === 0 ? "true" : "false"}
-                                                        aria-controls={`collapse-${order.orderName}`}
-                                                    >
-                                                        Order: {order.orderName} (Table: {order.tableNumber || "N/A"}, Chairs: {order.chairCount || 0}, Delivery: {order.deliveryType})
-                                                    </button>
-                                                </h2>
-                                                <div
-                                                    id={`collapse-${order.orderName}`}
-                                                    className={`accordion-collapse collapse ${index === 0 ? "show" : ""}`}
-                                                    aria-labelledby={`heading-${order.orderName}`}
-                                                    data-bs-parent="#preparedOrdersAccordion"
-                                                >
-                                                    <div className="accordion-body p-0">
-                                                        <div className="table-responsive">
-                                                            <table className="table table-bordered table-striped mb-0">
-                                                                <thead className="table-dark">
-                                                                    <tr>
-                                                                        <th>Item</th>
-                                                                        <th>Variants</th>
-                                                                        <th>Kitchen</th>
-                                                                        <th>Quantity</th>
-                                                                        <th>Type</th>
-                                                                        <th>Prepared Time</th>
-                                                                        <th>Action</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {order.items.map((item) => (
-                                                                        <tr key={item.id}>
-                                                                            <td>
-                                                                                {item.name}
-                                                                                {item.custom_customer_description && (
-                                                                                    <p
-                                                                                        style={{
-                                                                                            fontSize: "12px",
-                                                                                            color: "#666",
-                                                                                            marginTop: "5px",
-                                                                                            marginBottom: "0",
-                                                                                        }}
-                                                                                    >
-                                                                                        <strong>Note:</strong> {item.custom_customer_description}
-                                                                                    </p>
-                                                                                )}
-                                                                                {item.ingredients?.length > 0 && (
-                                                                                    <p
-                                                                                        style={{
-                                                                                            fontSize: "12px",
-                                                                                            color: "#666",
-                                                                                            marginTop: "5px",
-                                                                                            marginBottom: "0",
-                                                                                        }}
-                                                                                    >
-                                                                                        <strong>Ingredients:</strong> {formatIngredients(item.ingredients)}
-                                                                                    </p>
-                                                                                )}
-                                                                            </td>
-                                                                            <td>{item.custom_variants || "None"}</td>
-                                                                            <td>{item.kitchen}</td>
-                                                                            <td>{item.quantity}</td>
-                                                                            <td>{item.type}</td>
-                                                                            <td>{item.preparedTime}</td>
-                                                                            <td>
-                                                                                <button
-                                                                                    className="btn btn-danger btn-sm"
-                                                                                    onClick={() => handleDeleteItem(order.orderName, item.id)}
-                                                                                >
-                                                                                    Delete
-                                                                                </button>
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
+                            ) : (
+                                <div className="prepared-orders">
+                                    {filteredPreparedOrders.map((order) => (
+                                        <div key={order.orderName} className="prepared-order">
+                                            <div className="order-header">
+                                                <h3>Order: {order.orderName}</h3>
+                                                <div className="order-info">
+                                                    <span>🪑 Table: {order.tableNumber}</span>
+                                                    <span>👥 Chairs: {order.chairCount}</span>
+                                                    <span>🚚 {order.deliveryType}</span>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="modal-footer">
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={() => setShowStatusPopup(false)}
-                                >
-                                    Close
-                                </button>
-                            </div>
+                                            
+                                            <div className="order-items">
+                                                {order.items.map((item) => (
+                                                    <div key={item.id} className="prepared-item">
+                                                        <div className="prepared-item-info">
+                                                            <h4>{item.name}</h4>
+                                                            <div className="item-meta">
+                                                                <span>Qty: {item.quantity}</span>
+                                                                <span>Kitchen: {item.kitchen}</span>
+                                                                <span>Prepared: {item.preparedTime}</span>
+                                                            </div>
+                                                            {item.custom_customer_description && (
+                                                                <div className="item-note">
+                                                                    📝 {item.custom_customer_description}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            className="delete-btn"
+                                                            onClick={() => handleDeleteItem(order.orderName, item.id)}
+                                                        >
+                                                            🗑️ Delete
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

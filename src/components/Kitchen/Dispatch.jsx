@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import './Dispatch.css';
 
 function Dispatch() {
   const navigate = useNavigate();
@@ -11,8 +12,8 @@ function Dispatch() {
   const [dispatchingItems, setDispatchingItems] = useState({});
   const [deliveryBoys, setDeliveryBoys] = useState([]);
   const [selectedDeliveryBoys, setSelectedDeliveryBoys] = useState({});
-  const [secretCodes, setSecretCodes] = useState({}); // New state for secret codes
-  const [verifiedStates, setVerifiedStates] = useState({}); // New state for verification status
+  const [secretCodes, setSecretCodes] = useState({});
+  const [verifiedStates, setVerifiedStates] = useState({});
 
   const fetchPreparedOrders = useCallback(async () => {
     try {
@@ -146,7 +147,7 @@ function Dispatch() {
       );
 
       const result = await response.json();
-      return result.message || result; // Adjust based on API response structure
+      return result.message || result;
     } catch (error) {
       console.error("Error verifying secret code:", error);
       return { status: "error", message: "Failed to verify code" };
@@ -580,62 +581,71 @@ function Dispatch() {
   }, [preparedOrders, searchInvoiceId]);
 
   return (
-    <div className="container mt-5">
-      <div className="card shadow-lg">
-        <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <button className="btn btn-light btn-sm" onClick={handleBack}>
-            <i className="bi bi-arrow-left"></i> Back
-          </button>
-          <h3 className="mb-0">Dispatch Dashboard</h3>
-          <button className="btn btn-light btn-sm" onClick={fetchPreparedOrders}>
-            <i className="bi bi-arrow-clockwise"></i> Refresh
+    <div className="dispatch-container">
+      <div className="dispatch-header">
+        <button className="back-button" onClick={handleBack}>
+          ← Back
+        </button>
+        <h1 className="header-title">Dispatch Dashboard</h1>
+        <div className="header-actions">
+          <button className="refresh-button" onClick={fetchPreparedOrders}>
+            🔄 Refresh
           </button>
         </div>
-        <div className="card-body">
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
+      </div>
+
+      <div className="dispatch-content">
+        {loading ? (
+          <div className="loading-state">
+            <div className="loading-spinner"></div>
+            <p className="loading-text">Loading prepared orders...</p>
+          </div>
+        ) : error ? (
+          <div className="error-state">
+            <div className="error-icon">⚠️</div>
+            <p className="error-message">{error}</p>
+            <button className="retry-button" onClick={fetchPreparedOrders}>
+              Try Again
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="dispatch-controls">
+              <div className="search-section">
+                <div className="search-input-container">
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Filter by POS Invoice ID (e.g., ACC-PSINV-2025-00753)"
+                    value={searchInvoiceId}
+                    onChange={(e) => setSearchInvoiceId(e.target.value)}
+                  />
+                  <div className="search-icon">🔍</div>
+                </div>
               </div>
-              <p className="mt-2 text-muted">Loading prepared orders...</p>
-            </div>
-          ) : error ? (
-            <div className="alert alert-danger text-center" role="alert">
-              {error}
-              <button className="btn btn-sm btn-outline-primary ms-2" onClick={fetchPreparedOrders}>
-                Retry
-              </button>
-            </div>
-          ) : filteredPreparedOrders.length === 0 ? (
-            <div className="alert alert-info text-center" role="alert">
-              No prepared orders match the entered POS Invoice ID.
-            </div>
-          ) : (
-            <>
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="mb-0">Prepared Orders ({selectedItems.length} item(s) selected)</h5>
+              
+              <div className="bulk-actions">
+                <div className="selected-count">
+                  {selectedItems.length} item(s) selected
+                </div>
                 <button
-                  className="btn btn-success btn-sm"
+                  className={`dispatch-selected-button ${selectedItems.length === 0 ? 'disabled' : ''}`}
                   onClick={handleDispatchSelected}
                   disabled={selectedItems.length === 0}
                 >
                   Dispatch Selected
                 </button>
               </div>
-              <div className="mb-3">
-                <label htmlFor="searchInvoiceId" className="form-label fw-bold">
-                  Filter by POS Invoice ID
-                </label>
-                <input
-                  type="text"
-                  id="searchInvoiceId"
-                  className="form-control"
-                  placeholder="Enter POS Invoice ID (e.g., ACC-PSINV-2025-00753)"
-                  value={searchInvoiceId}
-                  onChange={(e) => setSearchInvoiceId(e.target.value)}
-                />
+            </div>
+
+            {filteredPreparedOrders.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📋</div>
+                <h3>No Prepared Orders</h3>
+                <p>No prepared orders match the entered POS Invoice ID.</p>
               </div>
-              <div className="prepared-orders-list">
+            ) : (
+              <div className="orders-list">
                 {filteredPreparedOrders.map((order) => {
                   const allItemsSelected = order.items?.every((item) =>
                     selectedItems.some(
@@ -643,152 +653,155 @@ function Dispatch() {
                     )
                   ) || false;
                   const isVerified = verifiedStates[order.orderName] || false;
+                  
                   return (
-                    <div
-                      key={order.orderName}
-                      className="order-section mb-3"
-                      style={{ border: "1px solid #dee2e6", borderRadius: "8px" }}
-                    >
-                      <div
-                        className="order-header p-3"
-                        style={{ backgroundColor: "#f8f9fa", fontWeight: "600" }}
-                      >
-                        Order: {order.orderName} (Table: {order.tableNumber || "N/A"}, Chairs: {order.chairCount || 0}, Delivery: {order.deliveryType})
+                    <div key={order.orderName} className="order-card">
+                      <div className="order-header">
+                        <div className="order-info">
+                          <h3 className="order-id">Order: {order.orderName}</h3>
+                          <div className="order-details">
+                            <span className="detail-item">
+                              <span className="detail-label">Table:</span> {order.tableNumber || "N/A"}
+                            </span>
+                            <span className="detail-item">
+                              <span className="detail-label">Chairs:</span> {order.chairCount || 0}
+                            </span>
+                            <span className={`delivery-type ${order.deliveryType.toLowerCase()}`}>
+                              {order.deliveryType}
+                            </span>
+                          </div>
+                        </div>
+
                         {order.deliveryType === "DELIVERY" && (
-                          <div className="mt-2">
-                            <label
-                              htmlFor={`deliveryBoy-${order.orderName}`}
-                              className="form-label fw-bold"
-                            >
-                              Select Delivery Boy
-                            </label>
-                            <select
-                              id={`deliveryBoy-${order.orderName}`}
-                              className="form-select mb-2"
-                              value={selectedDeliveryBoys[order.orderName] || ""}
-                              onChange={(e) => handleDeliveryBoyChange(order.orderName, e.target.value)}
-                            >
-                              <option value="">Select a delivery boy</option>
-                              {deliveryBoys.map((boy) => (
-                                <option key={boy.employee_name} value={boy.employee_name}>
-                                  {boy.employee_name}
-                                </option>
-                              ))}
-                            </select>
+                          <div className="delivery-section">
+                            <div className="delivery-boy-select">
+                              <label className="form-label">Select Delivery Boy</label>
+                              <select
+                                className="select-input"
+                                value={selectedDeliveryBoys[order.orderName] || ""}
+                                onChange={(e) => handleDeliveryBoyChange(order.orderName, e.target.value)}
+                              >
+                                <option value="">Choose delivery boy</option>
+                                {deliveryBoys.map((boy) => (
+                                  <option key={boy.employee_name} value={boy.employee_name}>
+                                    {boy.employee_name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
                             {selectedDeliveryBoys[order.orderName] && (
-                              <div className="d-flex align-items-center">
-                                <div className="flex-grow-1">
-                                  <label
-                                    htmlFor={`secretCode-${order.orderName}`}
-                                    className="form-label fw-bold"
-                                  >
-                                    Enter Secret Code
-                                  </label>
+                              <div className="secret-code-section">
+                                <label className="form-label">Enter Secret Code</label>
+                                <div className="code-input-container">
                                   <input
                                     type="password"
-                                    id={`secretCode-${order.orderName}`}
-                                    className="form-control"
+                                    className="code-input"
                                     placeholder="Enter delivery boy secret code"
                                     value={secretCodes[order.orderName] || ""}
                                     onChange={(e) => handleSecretCodeChange(order.orderName, e.target.value)}
                                   />
+                                  {isVerified && (
+                                    <div className="verification-indicator">
+                                      <span className="check-icon">✓</span>
+                                      <span className="verified-text">Verified</span>
+                                    </div>
+                                  )}
                                 </div>
-                                {/* <button
-                                  className="btn btn-secondary ms-2"
-                                  onClick={() => handleVerify(order.orderName)}
-                                  disabled={!secretCodes[order.orderName]}
-                                >
-                                  Verify
-                                </button> */}
-                                {isVerified && <i className="bi bi-check-circle text-success ms-2" style={{fontSize: '1.5rem'}}></i>}
                               </div>
                             )}
                           </div>
                         )}
                       </div>
-                      <div className="order-body p-0">
-                        <div className="table-responsive">
-                          <table className="table table-bordered table-striped mb-0">
-                            <thead className="table-dark">
-                              <tr>
-                                <th scope="col">
+
+                      <div className="items-table">
+                        <div className="table-header">
+                          <div className="header-cell checkbox-cell">
+                            <input
+                              type="checkbox"
+                              className="checkbox-input"
+                              checked={allItemsSelected}
+                              onChange={(e) => handleSelectAll(order, e.target.checked)}
+                              disabled={!order.items?.length}
+                            />
+                          </div>
+                          <div className="header-cell item-cell">Item</div>
+                          <div className="header-cell variants-cell">Variants</div>
+                          <div className="header-cell quantity-cell">Qty</div>
+                          <div className="header-cell time-cell">Prepared Time</div>
+                          <div className="header-cell action-cell">Action</div>
+                        </div>
+
+                        <div className="table-body">
+                          {order.items?.length ? (
+                            order.items.map((item) => (
+                              <div key={item.id} className="table-row">
+                                <div className="body-cell checkbox-cell">
                                   <input
                                     type="checkbox"
-                                    checked={allItemsSelected}
-                                    onChange={(e) => handleSelectAll(order, e.target.checked)}
-                                    aria-label={`Select all items for order ${order.orderName}`}
-                                    disabled={!order.items?.length}
+                                    className="checkbox-input"
+                                    checked={selectedItems.some(
+                                      (selected) =>
+                                        selected.orderName === order.orderName &&
+                                        selected.itemId === item.id
+                                    )}
+                                    onChange={() => handleSelectItem(order.orderName, item.id)}
                                   />
-                                </th>
-                                <th scope="col">Item</th>
-                                <th scope="col">Variants</th>
-                                <th scope="col">Quantity</th>
-                                <th scope="col">Prepared Time</th>
-                                <th scope="col">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {order.items?.length ? (
-                                order.items.map((item) => (
-                                  <tr key={item.id}>
-                                    <td>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedItems.some(
-                                          (selected) =>
-                                            selected.orderName === order.orderName &&
-                                            selected.itemId === item.id
-                                        )}
-                                        onChange={() => handleSelectItem(order.orderName, item.id)}
-                                        aria-label={`Select item ${item.name}`}
-                                      />
-                                    </td>
-                                    <td>{item.name}</td>
-                                    <td>{item.custom_variants || "None"}</td>
-                                    <td>{item.quantity}</td>
-                                    <td>{item.preparedTime}</td>
-                                    <td>
-                                      <button
-                                        className="btn btn-primary btn-sm position-relative"
-                                        onClick={() => handleDispatchItem(order.orderName, item.id)}
-                                        disabled={
-                                          dispatchingItems[`${order.orderName}-${item.id}`] ||
-                                          (order.deliveryType === "DELIVERY" &&
-                                            (!selectedDeliveryBoys[order.orderName] ||
-                                             !secretCodes[order.orderName]))
-                                        }
-                                        aria-label={`Dispatch item ${item.name}`}
-                                      >
-                                        Dispatch
-                                        {dispatchingItems[`${order.orderName}-${item.id}`] && (
-                                          <span
-                                            className="spinner-border spinner-border-sm ms-2"
-                                            role="status"
-                                            aria-hidden="true"
-                                          ></span>
-                                        )}
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ))
-                              ) : (
-                                <tr>
-                                  <td colSpan="6" className="text-center">
-                                    No prepared items available
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
+                                </div>
+                                <div className="body-cell item-cell">
+                                  <span className="item-name">{item.name}</span>
+                                </div>
+                                <div className="body-cell variants-cell">
+                                  <span className="variants">{item.custom_variants || "None"}</span>
+                                </div>
+                                <div className="body-cell quantity-cell">
+                                  <span className="quantity-badge">{item.quantity}</span>
+                                </div>
+                                <div className="body-cell time-cell">
+                                  <span className="time-text">{item.preparedTime}</span>
+                                </div>
+                                <div className="body-cell action-cell">
+                                  <button
+                                    className={`dispatch-button ${
+                                      dispatchingItems[`${order.orderName}-${item.id}`] ? 'dispatching' :
+                                      (order.deliveryType === "DELIVERY" &&
+                                       (!selectedDeliveryBoys[order.orderName] || !secretCodes[order.orderName])) 
+                                       ? 'disabled' : ''
+                                    }`}
+                                    onClick={() => handleDispatchItem(order.orderName, item.id)}
+                                    disabled={
+                                      dispatchingItems[`${order.orderName}-${item.id}`] ||
+                                      (order.deliveryType === "DELIVERY" &&
+                                        (!selectedDeliveryBoys[order.orderName] ||
+                                         !secretCodes[order.orderName]))
+                                    }
+                                  >
+                                    {dispatchingItems[`${order.orderName}-${item.id}`] ? (
+                                      <>
+                                        <span className="button-spinner"></span>
+                                        Dispatching...
+                                      </>
+                                    ) : (
+                                      'Dispatch'
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="empty-row">
+                              <div className="empty-message">No prepared items available</div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

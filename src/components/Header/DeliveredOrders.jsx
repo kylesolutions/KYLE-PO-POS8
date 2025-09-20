@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, RefreshCw, Search, Filter, Eye, DollarSign, Printer, Calendar, User, MapPin, Phone, Package, X, ChevronDown } from "lucide-react";
+import "./DeliveredOrders.css";
 
 function DeliveredOrders() {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ function DeliveredOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [invoiceDetails, setInvoiceDetails] = useState(null);
   const [fetchingDetails, setFetchingDetails] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchHomeDeliveryOrders = useCallback(async () => {
     try {
@@ -107,7 +110,10 @@ function DeliveredOrders() {
     let filtered = orders;
 
     if (searchQuery) {
-      filtered = filtered.filter(order => order.invoice_id.toLowerCase().includes(searchQuery.toLowerCase()));
+      filtered = filtered.filter(order => 
+        order.invoice_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
     if (deliveryPersonFilter) {
@@ -197,37 +203,46 @@ function DeliveredOrders() {
           <head>
             <title>Invoice ${invoiceId}</title>
             <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .invoice { max-width: 800px; margin: auto; padding: 20px; border: 1px solid #ccc; }
-              .header { text-align: center; margin-bottom: 20px; }
-              .header h1 { margin: 0; }
-              .details { margin-bottom: 20px; }
-              .details p { margin: 5px 0; }
-              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-              .total { font-weight: bold; }
-              .footer { text-align: center; margin-top: 20px; }
+              body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; background: #f8fafc; }
+              .invoice { max-width: 800px; margin: auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+              .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+              .header h1 { margin: 0; color: #1f2937; font-size: 32px; font-weight: 700; }
+              .header p { color: #6b7280; font-size: 16px; margin: 8px 0 0 0; }
+              .details { margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+              .details p { margin: 8px 0; color: #374151; }
+              .details strong { color: #1f2937; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+              th, td { border: 1px solid #e5e7eb; padding: 12px; text-align: left; }
+              th { background: #f9fafb; color: #1f2937; font-weight: 600; }
+              td { color: #374151; }
+              .total-section { background: #f9fafb; padding: 20px; border-radius: 8px; margin-top: 20px; }
+              .total { font-weight: 700; font-size: 18px; color: #1f2937; }
+              .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; }
             </style>
           </head>
           <body>
             <div class="invoice">
               <div class="header">
                 <h1>Invoice ${invoiceId}</h1>
-                <p>Delivered Order</p>
+                <p>Delivered Order Receipt</p>
               </div>
               <div class="details">
-                <p><strong>Customer:</strong> ${invoice.customer_name || "N/A"}</p>
-                <p><strong>Address:</strong> ${invoice.customer_address || "N/A"}</p>
-                <p><strong>Phone:</strong> ${invoice.contact_mobile || "N/A"}</p>
-                <p><strong>Date:</strong> ${invoice.posting_date || "N/A"} ${invoice.posting_time || ""}</p>
-                <p><strong>Status:</strong> ${invoice.status || "N/A"}</p>
+                <div>
+                  <p><strong>Customer:</strong> ${invoice.customer_name || "N/A"}</p>
+                  <p><strong>Address:</strong> ${invoice.customer_address || "N/A"}</p>
+                  <p><strong>Phone:</strong> ${invoice.contact_mobile || "N/A"}</p>
+                </div>
+                <div>
+                  <p><strong>Date:</strong> ${invoice.posting_date || "N/A"} ${invoice.posting_time || ""}</p>
+                  <p><strong>Status:</strong> ${invoice.status || "N/A"}</p>
+                  <p><strong>Invoice ID:</strong> ${invoiceId}</p>
+                </div>
               </div>
               <table>
                 <thead>
                   <tr>
-                    <th>Item</th>
-                    <th>Quantity</th>
+                    <th>Item Description</th>
+                    <th>Qty</th>
                     <th>Rate</th>
                     <th>Amount</th>
                   </tr>
@@ -247,12 +262,12 @@ function DeliveredOrders() {
                     .join("")}
                 </tbody>
               </table>
-              <div class="details">
+              <div class="total-section">
                 <p><strong>Discount:</strong> $${parseFloat(invoice.discount_amount || 0).toFixed(2)}</p>
-                <p class="total"><strong>Total:</strong> $${parseFloat(invoice.grand_total || invoice.total || 0).toFixed(2)}</p>
+                <p class="total"><strong>Total Amount:</strong> $${parseFloat(invoice.grand_total || invoice.total || 0).toFixed(2)}</p>
               </div>
               <div class="footer">
-                <p>Thank you for your order!</p>
+                <p>Thank you for choosing our service!</p>
               </div>
             </div>
             <script>
@@ -277,6 +292,13 @@ function DeliveredOrders() {
     navigate(-1);
   }, [navigate]);
 
+  const clearFilters = () => {
+    setSearchQuery("");
+    setDeliveryPersonFilter("");
+    setInvoiceStatusFilter("");
+    setDeliveryDateFilter("");
+  };
+
   useEffect(() => {
     fetchHomeDeliveryOrders();
     const intervalId = setInterval(fetchHomeDeliveryOrders, 30000);
@@ -292,270 +314,350 @@ function DeliveredOrders() {
   const invoiceStatuses = [...new Set(orders.map(order => order.invoice_status))];
 
   const totalAmount = filteredOrders.reduce((sum, order) => sum + (order.invoice_amount || 0), 0);
+  const activeFiltersCount = [searchQuery, deliveryPersonFilter, invoiceStatusFilter, deliveryDateFilter].filter(f => f).length;
 
   return (
-    <div className="container mt-5">
-      <div className="card shadow-lg">
-        <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <button className="btn btn-light btn-sm" onClick={handleBack}>
-            <i className="bi bi-arrow-left"></i> Back
-          </button>
-          <h3 className="mb-0">Delivered Orders</h3>
-          <button className="btn btn-light btn-sm" onClick={fetchHomeDeliveryOrders}>
-            <i className="bi bi-arrow-clockwise"></i> Refresh
+    <div className="delivered-orders-container">
+      {/* Header */}
+      <div className="page-header">
+        <div className="header-content">
+          <div className="header-left">
+            <button className="back-btn" onClick={handleBack}>
+              <ArrowLeft size={20} />
+              <span>Back</span>
+            </button>
+            <div className="title-section">
+              <h1>Delivered Orders</h1>
+              <p>Manage and track all completed deliveries</p>
+            </div>
+          </div>
+          <button className="refresh-btn" onClick={fetchHomeDeliveryOrders}>
+            <RefreshCw size={18} />
+            <span>Refresh</span>
           </button>
         </div>
-        <div className="card-body">
-          <div className="row mb-3">
-            <div className="col-md-3">
+      </div>
+
+      {/* Main Content */}
+      <div className="main-content">
+        {/* Search and Filters */}
+        <div className="search-filter-section">
+          <div className="search-bar">
+            <div className="search-input-wrapper">
+              <Search size={20} className="search-icon" />
               <input
                 type="text"
-                className="form-control"
-                placeholder="Search by Invoice ID"
+                placeholder="Search by Invoice ID or Customer Name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="col-md-3">
-              <select
-                className="form-select"
-                value={deliveryPersonFilter}
-                onChange={(e) => setDeliveryPersonFilter(e.target.value)}
-              >
-                <option value="">All Delivery Persons</option>
-                {deliveryPersons.map((person) => (
-                  <option key={person} value={person}>{person}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-3">
-              <select
-                className="form-select"
-                value={invoiceStatusFilter}
-                onChange={(e) => setInvoiceStatusFilter(e.target.value)}
-              >
-                <option value="">All Invoice Statuses</option>
-                {invoiceStatuses.map((status) => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-3">
-              <input
-                type="date"
-                className="form-control"
-                value={deliveryDateFilter}
-                onChange={(e) => setDeliveryDateFilter(e.target.value)}
+                className="search-input"
               />
             </div>
           </div>
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
+
+          <div className="filter-controls">
+            <button 
+              className={`filter-toggle ${showFilters ? 'active' : ''}`}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter size={18} />
+              <span>Filters</span>
+              {activeFiltersCount > 0 && (
+                <span className="filter-badge">{activeFiltersCount}</span>
+              )}
+              <ChevronDown size={16} className={`chevron ${showFilters ? 'rotated' : ''}`} />
+            </button>
+
+            {activeFiltersCount > 0 && (
+              <button className="clear-filters-btn" onClick={clearFilters}>
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="filter-panel">
+            <div className="filter-row">
+              <div className="filter-group">
+                <label>Delivery Person</label>
+                <select
+                  value={deliveryPersonFilter}
+                  onChange={(e) => setDeliveryPersonFilter(e.target.value)}
+                >
+                  <option value="">All Delivery Persons</option>
+                  {deliveryPersons.map((person) => (
+                    <option key={person} value={person}>{person}</option>
+                  ))}
+                </select>
               </div>
-              <p className="mt-2 text-muted">Loading Delivered Orders...</p>
+
+              <div className="filter-group">
+                <label>Invoice Status</label>
+                <select
+                  value={invoiceStatusFilter}
+                  onChange={(e) => setInvoiceStatusFilter(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  {invoiceStatuses.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label>Delivery Date</label>
+                <input
+                  type="date"
+                  value={deliveryDateFilter}
+                  onChange={(e) => setDeliveryDateFilter(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Summary Stats */}
+        {!loading && !error && filteredOrders.length > 0 && (
+          <div className="summary-stats">
+            <div className="stat-card">
+              <div className="stat-icon">
+                <Package size={24} />
+              </div>
+              <div className="stat-info">
+                <span className="stat-value">{filteredOrders.length}</span>
+                <span className="stat-label">Total Orders</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">
+                <DollarSign size={24} />
+              </div>
+              <div className="stat-info">
+                <span className="stat-value">${totalAmount.toFixed(2)}</span>
+                <span className="stat-label">Total Amount</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Area */}
+        <div className="content-area">
+          {loading ? (
+            <div className="loading-state">
+              <div className="loading-spinner"></div>
+              <p>Loading delivered orders...</p>
             </div>
           ) : error ? (
-            <div className="alert alert-danger text-center" role="alert">
-              {error}
-              <button className="btn btn-sm btn-outline-primary ms-2" onClick={fetchHomeDeliveryOrders}>
-                Retry
+            <div className="error-state">
+              <div className="error-icon">⚠️</div>
+              <h3>Unable to Load Orders</h3>
+              <p>{error}</p>
+              <button className="retry-btn" onClick={fetchHomeDeliveryOrders}>
+                Try Again
               </button>
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="alert alert-info text-center" role="alert">
-              No Delivered Orders found.
+            <div className="empty-state">
+              <div className="empty-icon">📦</div>
+              <h3>No Delivered Orders Found</h3>
+              <p>No orders match your current search criteria.</p>
             </div>
           ) : (
-            <>
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="mb-0">Total Amount: ${totalAmount.toFixed(2)}</h5>
-              </div>
-              <div className="table-responsive">
-                <table className="table table-bordered table-striped">
-                  <thead className="table-dark">
-                    <tr>
-                      <th>Invoice ID</th>
-                      <th>Delivery Person</th>
-                      <th>Customer Name</th>
-                      <th>Address</th>
-                      <th>Phone</th>
-                      <th>Amount</th>
-                      <th>Invoice Status</th>
-                      <th>Delivery Status</th>
-                      <th>Delivery Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOrders.map((order) => (
-                      <tr key={order.name}>
-                        <td>{order.invoice_id}</td>
-                        <td>{order.employee_name}</td>
-                        <td>{order.customer_name}</td>
-                        <td>{order.customer_address}</td>
-                        <td>{order.customer_phone}</td>
-                        <td>${(order.invoice_amount || 0).toFixed(2)}</td>
-                        <td>{order.invoice_status}</td>
-                        <td>{order.delivery_status}</td>
-                        <td>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : "N/A"}</td>
-                        <td>
-                          <div className="d-flex gap-2">
-                            <button
-                              className="btn btn-info btn-sm"
-                              onClick={() => handleViewDetails(order)}
-                              aria-label={`View details for ${order.invoice_id}`}
-                            >
-                              View
-                            </button>
-                            {order.invoice_status !== "Paid" && (
-                              <button
-                                className="btn btn-success btn-sm position-relative"
-                                onClick={() => handleMarkPaid(order.invoice_id)}
-                                disabled={payingInvoices[order.invoice_id]}
-                                aria-label={`Mark ${order.invoice_id} as Paid`}
-                              >
-                                Paid
-                                {payingInvoices[order.invoice_id] && (
-                                  <span
-                                    className="spinner-border spinner-border-sm ms-2"
-                                    role="status"
-                                    aria-hidden="true"
-                                  ></span>
-                                )}
-                              </button>
-                            )}
-                            <button
-                              className="btn btn-primary btn-sm position-relative"
-                              onClick={() => handlePrintInvoice(order.invoice_id)}
-                              disabled={printingInvoices[order.invoice_id]}
-                              aria-label={`Print ${order.invoice_id}`}
-                            >
-                              Print
-                              {printingInvoices[order.invoice_id] && (
-                                <span
-                                  className="spinner-border spinner-border-sm ms-2"
-                                  role="status"
-                                  aria-hidden="true"
-                                ></span>
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <div className="orders-grid">
+              {filteredOrders.map((order) => (
+                <div key={order.name} className="order-card">
+                  <div className="order-header">
+                    <div className="invoice-id">#{order.invoice_id}</div>
+                    <div className={`status-badge ${order.invoice_status.toLowerCase().replace(' ', '-')}`}>
+                      {order.invoice_status}
+                    </div>
+                  </div>
+
+                  <div className="order-info">
+                    <div className="info-row">
+                      <User size={16} />
+                      <span>{order.customer_name}</span>
+                    </div>
+                    <div className="info-row">
+                      <MapPin size={16} />
+                      <span>{order.customer_address}</span>
+                    </div>
+                    <div className="info-row">
+                      <Phone size={16} />
+                      <span>{order.customer_phone}</span>
+                    </div>
+                    <div className="info-row">
+                      <Calendar size={16} />
+                      <span>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : "N/A"}</span>
+                    </div>
+                  </div>
+
+                  <div className="order-footer">
+                    <div className="amount">
+                      <span className="amount-label">Total</span>
+                      <span className="amount-value">${(order.invoice_amount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="delivery-person">
+                      Delivered by: <strong>{order.employee_name}</strong>
+                    </div>
+                  </div>
+
+                  <div className="order-actions">
+                    <button
+                      className="action-btn view-btn"
+                      onClick={() => handleViewDetails(order)}
+                    >
+                      <Eye size={16} />
+                      <span>View Details</span>
+                    </button>
+
+                    {order.invoice_status !== "Paid" && (
+                      <button
+                        className="action-btn paid-btn"
+                        onClick={() => handleMarkPaid(order.invoice_id)}
+                        disabled={payingInvoices[order.invoice_id]}
+                      >
+                        <DollarSign size={16} />
+                        <span>Mark Paid</span>
+                        {payingInvoices[order.invoice_id] && (
+                          <div className="btn-spinner"></div>
+                        )}
+                      </button>
+                    )}
+
+                    <button
+                      className="action-btn print-btn"
+                      onClick={() => handlePrintInvoice(order.invoice_id)}
+                      disabled={printingInvoices[order.invoice_id]}
+                    >
+                      <Printer size={16} />
+                      <span>Print</span>
+                      {printingInvoices[order.invoice_id] && (
+                        <div className="btn-spinner"></div>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Modal for details */}
+      {/* Modal for Order Details */}
       {selectedOrder && (
-        <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-labelledby="orderDetailsModal" aria-hidden="true">
-          <div className="modal-dialog modal-lg" role="document">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Order Details for Invoice {selectedOrder.invoice_id}</h5>
-                <button type="button" className="btn-close" onClick={handleCloseModal} aria-label="Close"></button>
-              </div>
-              <div className="modal-body">
-                {fetchingDetails ? (
-                  <div className="text-center py-3">
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Order Details - Invoice #{selectedOrder.invoice_id}</h2>
+              <button className="modal-close-btn" onClick={handleCloseModal}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {fetchingDetails ? (
+                <div className="modal-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading order details...</p>
+                </div>
+              ) : invoiceDetails ? (
+                <div className="order-details">
+                  <div className="details-grid">
+                    <div className="details-section">
+                      <h3>Customer Information</h3>
+                      <div className="details-content">
+                        <p><strong>Name:</strong> {selectedOrder.customer_name}</p>
+                        <p><strong>Address:</strong> {selectedOrder.customer_address}</p>
+                        <p><strong>Phone:</strong> {selectedOrder.customer_phone}</p>
+                        <p><strong>Delivery Person:</strong> {selectedOrder.employee_name}</p>
+                      </div>
                     </div>
-                    <p>Loading details...</p>
+
+                    <div className="details-section">
+                      <h3>Order Information</h3>
+                      <div className="details-content">
+                        <p><strong>Creation Date:</strong> {new Date(selectedOrder.creation).toLocaleDateString()}</p>
+                        <p><strong>Delivery Date:</strong> {selectedOrder.delivery_date ? new Date(selectedOrder.delivery_date).toLocaleDateString() : "N/A"}</p>
+                        <p><strong>Invoice Status:</strong> {selectedOrder.invoice_status}</p>
+                        <p><strong>Delivery Status:</strong> {selectedOrder.delivery_status}</p>
+                        <p><strong>Total Amount:</strong> ${(selectedOrder.invoice_amount || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
                   </div>
-                ) : invoiceDetails ? (
-                  <>
-                    <h6>Customer Information</h6>
-                    <p><strong>Name:</strong> {selectedOrder.customer_name}</p>
-                    <p><strong>Address:</strong> {selectedOrder.customer_address}</p>
-                    <p><strong>Phone:</strong> {selectedOrder.customer_phone}</p>
-                    <p><strong>Delivery Person:</strong> {selectedOrder.employee_name}</p>
-                    <p><strong>Creation Date:</strong> {selectedOrder.creation}</p>
-                    <p><strong>Delivery Date:</strong> {selectedOrder.delivery_date ? new Date(selectedOrder.delivery_date).toLocaleDateString() : "N/A"}</p>
-                    <p><strong>Invoice Status:</strong> {selectedOrder.invoice_status}</p>
-                    <p><strong>Delivery Status:</strong> {selectedOrder.delivery_status}</p>
-                    <p><strong>Total Amount:</strong> ${(selectedOrder.invoice_amount || 0).toFixed(2)}</p>
 
-                    <h6 className="mt-4">Items</h6>
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>Item Name</th>
-                          <th>Variants</th>
-                          <th>Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedOrder.items.map((item, index) => (
-                          <tr key={index}>
-                            <td>{item.item_name}</td>
-                            <td>{item.variants || "N/A"}</td>
-                            <td>${parseFloat(item.price || 0).toFixed(2)}</td>
-                          </tr>
+                  <div className="details-section">
+                    <h3>Order Items</h3>
+                    <div className="items-table">
+                      <div className="table-header">
+                        <div>Item Name</div>
+                        <div>Variants</div>
+                        <div>Price</div>
+                      </div>
+                      {selectedOrder.items.map((item, index) => (
+                        <div key={index} className="table-row">
+                          <div>{item.item_name}</div>
+                          <div>{item.variants || "N/A"}</div>
+                          <div>${parseFloat(item.price || 0).toFixed(2)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="details-section">
+                    <h3>Invoice Items (Detailed)</h3>
+                    <div className="items-table">
+                      <div className="table-header">
+                        <div>Item</div>
+                        <div>Quantity</div>
+                        <div>Rate</div>
+                        <div>Amount</div>
+                      </div>
+                      {invoiceDetails.items.map((item, index) => (
+                        <div key={index} className="table-row">
+                          <div>
+                            {item.item_name}
+                            {item.custom_size_variants && ` (${item.custom_size_variants})`}
+                          </div>
+                          <div>{item.qty}</div>
+                          <div>${parseFloat(item.rate).toFixed(2)}</div>
+                          <div>${parseFloat(item.amount).toFixed(2)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {invoiceDetails.payments && invoiceDetails.payments.length > 0 && (
+                    <div className="details-section">
+                      <h3>Payment Information</h3>
+                      <div className="items-table">
+                        <div className="table-header">
+                          <div>Payment Mode</div>
+                          <div>Amount</div>
+                        </div>
+                        {invoiceDetails.payments.map((payment, index) => (
+                          <div key={index} className="table-row">
+                            <div>{payment.mode_of_payment}</div>
+                            <div>${parseFloat(payment.amount).toFixed(2)}</div>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="no-details">
+                  <p>No details available for this order.</p>
+                </div>
+              )}
+            </div>
 
-                    <h6 className="mt-4">POS Invoice Items (Detailed)</h6>
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>Item</th>
-                          <th>Quantity</th>
-                          <th>Rate</th>
-                          <th>Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {invoiceDetails.items.map((item, index) => (
-                          <tr key={index}>
-                            <td>{item.item_name}{item.custom_size_variants ? ` (${item.custom_size_variants})` : ""}</td>
-                            <td>{item.qty}</td>
-                            <td>${parseFloat(item.rate).toFixed(2)}</td>
-                            <td>${parseFloat(item.amount).toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    <h6 className="mt-4">Payments</h6>
-                    {invoiceDetails.payments && invoiceDetails.payments.length > 0 ? (
-                      <table className="table table-bordered">
-                        <thead>
-                          <tr>
-                            <th>Mode</th>
-                            <th>Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invoiceDetails.payments.map((payment, index) => (
-                            <tr key={index}>
-                              <td>{payment.mode_of_payment}</td>
-                              <td>${parseFloat(payment.amount).toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <p>No payments recorded or invoice not paid yet.</p>
-                    )}
-                  </>
-                ) : (
-                  <p>No details available.</p>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
-                  Close
-                </button>
-              </div>
+            <div className="modal-footer">
+              <button className="modal-close-btn-secondary" onClick={handleCloseModal}>
+                Close
+              </button>
             </div>
           </div>
         </div>

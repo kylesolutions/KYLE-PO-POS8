@@ -1,6 +1,18 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import './navicons.css'; // Create this CSS file for styling
+import { 
+  Home, 
+  Truck, 
+  Table, 
+  ChefHat, 
+  Send, 
+  FileText, 
+  MapPin, 
+  CheckCircle, 
+  Receipt, 
+  DoorClosed 
+} from 'lucide-react';
+import './navicons.css';
 
 function NavIcons() {
   const navigate = useNavigate();
@@ -12,101 +24,110 @@ function NavIcons() {
     navigate('/closingentry', { state: { posOpeningEntry } });
   };
 
+  const navItems = [
+    {
+      path: '/frontpage',
+      icon: Home,
+      title: 'Home',
+      label: 'Home'
+    },
+    {
+      path: '/firsttab',
+      icon: Truck,
+      title: 'Type Of Delivery',
+      label: 'Delivery'
+    },
+    {
+      path: '/table',
+      icon: Table,
+      title: 'Table',
+      label: 'Table'
+    },
+    {
+      path: '/kitchen',
+      icon: ChefHat,
+      title: 'Kitchen',
+      label: 'Kitchen'
+    },
+    {
+      path: '/dispatch',
+      icon: Send,
+      title: 'Dispatch',
+      label: 'Dispatch'
+    },
+    {
+      path: '/dispatchorder',
+      icon: FileText,
+      title: 'To Bill',
+      label: 'To Bill'
+    },
+    {
+      path: '/homedelivery',
+      icon: MapPin,
+      title: 'Home Delivery Orders',
+      label: 'Delivery'
+    },
+    {
+      path: '/deliveryorders',
+      icon: CheckCircle,
+      title: 'Delivered Orders',
+      label: 'Delivered'
+    },
+    {
+      path: '/salesinvoice',
+      icon: Receipt,
+      title: 'Sales Invoice',
+      label: 'Invoice'
+    },
+    {
+      path: '/closingentry',
+      icon: DoorClosed,
+      title: 'Closing Entry',
+      label: 'Closing',
+      onClick: handleClosingEntryNavigation
+    }
+  ];
+
   return (
     <div className="nav-icons-container">
-      <ul className="nav flex-column">
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/frontpage' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/frontpage')}
-            title="Home"
-          >
-            <img src="/menuIcons/home.svg" alt="Home" className="menuicon" />
-          </a>
-        </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/firsttab' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/firsttab')}
-            title="Type Of Delivery"
-          >
-            <img src="/menuIcons/delivery.svg" alt="Delivery" style={{ width: "45px" }} />
-          </a>
-        </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/table' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/table')}
-            title="Table"
-          >
-            <img src="/menuIcons/table1.svg" alt="Table" style={{ width: "45px" }} />
-          </a>
-        </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/kitchen' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/kitchen')}
-            title="Kitchen"
-          >
-            <img src="/menuIcons/kitchen.svg" alt="Kitchen" className="menuicon" />
-          </a>
-        </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/dispatch' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/dispatch')}
-            title="Dispatch"
-          >
-            <img src="/menuIcons/dispatch.svg" alt="Dispatch" className="menuicon" />
-          </a>
-        </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/dispatchorder' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/dispatchorder')}
-            title="To Bill"
-          >
-            <img src="/menuIcons/dispatchorder.svg" alt="To Bill" className="menuicon" />
-          </a>
-        </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/homedelivery' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/homedelivery')}
-            title="Home Delivery Orders"
-          >
-            <img src="/menuIcons/homedelivery.svg" alt="Home Delivery Orders" className="menuicon" />
-          </a>
-        </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/deliveryorders' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/deliveryorders')}
-            title="Delivered Orders"
-          >
-            <img src="/menuIcons/deliveredorderledger.svg" alt="Delivered Orders" className="menuicon" />
-          </a>
-        </li>
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/salesinvoice' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={() => navigate('/salesinvoice')}
-            title="Sales Invoice"
-          >
-            <img src="/menuIcons/save.svg" alt="Sales Invoice" className="menuicon" />
-          </a>
-        </li> 
-        <li className="nav-item">
-          <a
-            className={`nav-link ${location.pathname === '/closingentry' ? 'active text-primary' : 'text-black'} cursor-pointer`}
-            onClick={handleClosingEntryNavigation}
-            title="Closing Entry"
-          >
-            <img src="/menuIcons/closingentry.svg" alt="Closing Entry" className="menuicon" />
-          </a>
-        </li>
-        
-      </ul>
+      <div className="nav-brand">
+        <div className="brand-icon">
+          <Home size={24} />
+        </div>
+      </div>
+      
+      <nav className="nav-menu">
+        <ul className="nav-list">
+          {navItems.map((item) => {
+            const IconComponent = item.icon;
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <li key={item.path} className="nav-item">
+                <button
+                  className={`nav-link ${isActive ? 'active' : ''}`}
+                  onClick={item.onClick || (() => navigate(item.path))}
+                  title={item.title}
+                  aria-label={item.title}
+                >
+                  <div className="nav-icon">
+                    <IconComponent size={20} />
+                  </div>
+                  <span className="nav-label">{item.label}</span>
+                  {isActive && <div className="active-indicator"></div>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="nav-footer">
+        <div className="status-indicator">
+          <div className="status-dot"></div>
+          <span className="status-text">Online</span>
+        </div>
+      </div>
     </div>
   );
 }

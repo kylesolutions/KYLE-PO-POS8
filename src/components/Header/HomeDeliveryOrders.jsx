@@ -1,5 +1,23 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { 
+  ArrowLeft, 
+  RefreshCw, 
+  Printer, 
+  CheckCircle, 
+  XCircle, 
+  Truck, 
+  DollarSign,
+  Phone,
+  MapPin,
+  User,
+  Clock,
+  AlertCircle,
+  Package,
+  Shield
+} from "lucide-react";
+import './HomeDeliveryOrders.css';
+
 function HomeDeliveryOrders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
@@ -14,6 +32,7 @@ function HomeDeliveryOrders() {
   const [updatingInvoices, setUpdatingInvoices] = useState({});
   const [cancelingInvoices, setCancelingInvoices] = useState({});
   const [deliveringInvoices, setDeliveringInvoices] = useState({});
+
   const fetchHomeDeliveryOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -45,6 +64,7 @@ function HomeDeliveryOrders() {
       setLoading(false);
     }
   }, []);
+
   const fetchDeliveryBoys = useCallback(async () => {
     try {
       const response = await fetch(
@@ -71,6 +91,7 @@ function HomeDeliveryOrders() {
       setError(`Failed to load delivery boys: ${error.message}. Please try again.`);
     }
   }, []);
+
   const verifySecretCode = useCallback(async (employeeName, secretCode, invoiceId) => {
     try {
       const response = await fetch(
@@ -105,6 +126,7 @@ function HomeDeliveryOrders() {
       return { status: "error", message: "Failed to verify code" };
     }
   }, []);
+
   const handleUpdateDeliveryBoy = useCallback(async (invoiceId) => {
     const employeeName = selectedDeliveryBoys[invoiceId];
     const secretCode = secretCodes[invoiceId];
@@ -113,11 +135,12 @@ function HomeDeliveryOrders() {
       alert("Please select a delivery boy and enter a secret code");
       return;
     }
-    // Verify secret code first
+
     const verifyResult = await verifySecretCode(employeeName, secretCode, invoiceId);
     if (verifyResult.status !== "success") {
       return;
     }
+
     setUpdatingInvoices(prev => ({ ...prev, [invoiceId]: true }));
     try {
       const selectedBoy = deliveryBoys.find(boy => boy.employee_name === employeeName);
@@ -127,6 +150,7 @@ function HomeDeliveryOrders() {
         console.warn(`HomeDeliveryOrders.jsx: No cell_number found for employee ${employeeName}`);
         alert("Warning: No phone number found for the selected delivery boy. Proceeding with empty employee number.");
       }
+
       const response = await fetch(
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_homedelivery_order_delivery_boy",
         {
@@ -143,11 +167,13 @@ function HomeDeliveryOrders() {
           }),
         }
       );
+
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: update_homedelivery_order_delivery_boy Response:", JSON.stringify(result, null, 2));
       if (result.message.status !== "success") {
         throw new Error(result.message.message || "Failed to update delivery boy");
       }
+
       await fetchHomeDeliveryOrders();
       alert(`Delivery boy updated successfully for invoice ${invoiceId}.`);
     } catch (error) {
@@ -159,7 +185,8 @@ function HomeDeliveryOrders() {
       setSecretCodes(prev => ({ ...prev, [invoiceId]: "" }));
       setVerifiedStates(prev => ({ ...prev, [invoiceId]: false }));
     }
-  }, [selectedDeliveryBoys, secretCodes, deliveryBoys, fetchHomeDeliveryOrders]);
+  }, [selectedDeliveryBoys, secretCodes, deliveryBoys, fetchHomeDeliveryOrders, verifySecretCode]);
+
   const handleCancel = useCallback(async (invoiceId) => {
     if (!window.confirm(`Are you sure you want to cancel the home delivery order for invoice ${invoiceId}?`)) {
       return;
@@ -191,6 +218,7 @@ function HomeDeliveryOrders() {
       setCancelingInvoices((prev) => ({ ...prev, [invoiceId]: false }));
     }
   }, [fetchHomeDeliveryOrders]);
+
   const handleSubmitUnpaid = useCallback(async (invoiceId) => {
     if (!window.confirm(`Are you sure you want to submit POS Invoice ${invoiceId} as Unpaid?`)) {
       return;
@@ -222,6 +250,7 @@ function HomeDeliveryOrders() {
       setPayingInvoices((prev) => ({ ...prev, [invoiceId]: false }));
     }
   }, [fetchHomeDeliveryOrders]);
+
   const handleMarkDelivered = useCallback(async (invoiceId) => {
     if (!window.confirm(`Are you sure you want to mark the home delivery order for invoice ${invoiceId} as Delivered?`)) {
       return;
@@ -253,6 +282,7 @@ function HomeDeliveryOrders() {
       setDeliveringInvoices((prev) => ({ ...prev, [invoiceId]: false }));
     }
   }, [fetchHomeDeliveryOrders]);
+
   const handlePrintInvoice = useCallback(async (invoiceId) => {
     setPrintingInvoices((prev) => ({ ...prev, [invoiceId]: true }));
     try {
@@ -281,17 +311,20 @@ function HomeDeliveryOrders() {
           <head>
             <title>Invoice ${invoiceId}</title>
             <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .invoice { max-width: 800px; margin: auto; padding: 20px; border: 1px solid #ccc; }
-              .header { text-align: center; margin-bottom: 20px; }
-              .header h1 { margin: 0; }
-              .details { margin-bottom: 20px; }
-              .details p { margin: 5px 0; }
-              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-              .total { font-weight: bold; }
-              .footer { text-align: center; margin-top: 20px; }
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; }
+              .invoice { max-width: 800px; margin: auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+              .header h1 { margin: 0; color: #1e40af; font-size: 2rem; font-weight: 700; }
+              .header p { margin: 5px 0 0 0; color: #64748b; font-size: 1.1rem; }
+              .details { margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+              .details p { margin: 8px 0; line-height: 1.6; }
+              .details strong { color: #374151; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 30px; border-radius: 8px; overflow: hidden; }
+              th { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 16px; text-align: left; font-weight: 600; }
+              td { border-bottom: 1px solid #e5e7eb; padding: 16px; }
+              tr:hover { background-color: #f8fafc; }
+              .total { font-weight: bold; font-size: 1.2rem; color: #1e40af; background-color: #eff6ff; padding: 15px; border-radius: 8px; }
+              .footer { text-align: center; margin-top: 40px; color: #64748b; font-style: italic; }
             </style>
           </head>
           <body>
@@ -301,11 +334,15 @@ function HomeDeliveryOrders() {
                 <p>Home Delivery Order</p>
               </div>
               <div class="details">
-                <p><strong>Customer:</strong> ${invoice.customer_name || "N/A"}</p>
-                <p><strong>Address:</strong> ${invoice.customer_address || "N/A"}</p>
-                <p><strong>Phone:</strong> ${invoice.contact_mobile || "N/A"}</p>
-                <p><strong>Date:</strong> ${invoice.posting_date || "N/A"} ${invoice.posting_time || ""}</p>
-                <p><strong>Status:</strong> ${invoice.status || "N/A"}</p>
+                <div>
+                  <p><strong>Customer:</strong> ${invoice.customer_name || "N/A"}</p>
+                  <p><strong>Address:</strong> ${invoice.customer_address || "N/A"}</p>
+                  <p><strong>Phone:</strong> ${invoice.contact_mobile || "N/A"}</p>
+                </div>
+                <div>
+                  <p><strong>Date:</strong> ${invoice.posting_date || "N/A"} ${invoice.posting_time || ""}</p>
+                  <p><strong>Status:</strong> ${invoice.status || "N/A"}</p>
+                </div>
               </div>
               <table>
                 <thead>
@@ -356,6 +393,7 @@ function HomeDeliveryOrders() {
       setPrintingInvoices((prev) => ({ ...prev, [invoiceId]: false }));
     }
   }, []);
+
   const handleDeliveryBoyChange = useCallback((invoiceId, employeeName) => {
     setSelectedDeliveryBoys(prev => ({
       ...prev,
@@ -370,6 +408,7 @@ function HomeDeliveryOrders() {
       [invoiceId]: false,
     }));
   }, []);
+
   const handleSecretCodeChange = useCallback((invoiceId, code) => {
     setSecretCodes(prev => ({
       ...prev,
@@ -380,226 +419,372 @@ function HomeDeliveryOrders() {
       [invoiceId]: false,
     }));
   }, []);
+
   const handleBack = useCallback(() => {
     navigate(-1);
   }, [navigate]);
+
   useEffect(() => {
     fetchHomeDeliveryOrders();
     fetchDeliveryBoys();
     const intervalId = setInterval(fetchHomeDeliveryOrders, 30000);
     return () => clearInterval(intervalId);
   }, [fetchHomeDeliveryOrders, fetchDeliveryBoys]);
+
   const totalAmount = orders.reduce((sum, order) => sum + (order.invoice_amount || 0), 0);
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      'Paid': { color: 'status-badge status-paid', icon: CheckCircle },
+      'Unpaid': { color: 'status-badge status-unpaid', icon: Clock },
+      'Pending': { color: 'status-badge status-pending', icon: Clock },
+      'Delivered': { color: 'status-badge status-delivered', icon: CheckCircle },
+      'Cancel': { color: 'status-badge status-cancelled', icon: XCircle },
+    };
+    
+    const config = statusMap[status] || { color: 'status-badge status-unknown', icon: AlertCircle };
+    const IconComponent = config.icon;
+    
+    return (
+      <span className={config.color}>
+        <IconComponent className="status-icon" />
+        {status || 'Unknown'}
+      </span>
+    );
+  };
+
   return (
-    <div className="container mt-5">
-      <div className="card shadow-lg">
-        <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <button className="btn btn-light btn-sm" onClick={handleBack}>
-            <i className="bi bi-arrow-left"></i> Back
-          </button>
-          <h3 className="mb-0">Home Delivery Orders</h3>
-          <button className="btn btn-light btn-sm" onClick={fetchHomeDeliveryOrders}>
-            <i className="bi bi-arrow-clockwise"></i> Refresh
-          </button>
-        </div>
-        <div className="card-body">
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
+    <div className="delivery-orders-container">
+      <div className="delivery-orders-wrapper">
+        {/* Header */}
+        <div className="header-card">
+          <div className="header-content">
+            <div className="header-left">
+              <button onClick={handleBack} className="btn btn-secondary btn-back">
+                <ArrowLeft className="btn-icon" />
+                Back
+              </button>
+              <div className="header-title">
+                <h1 className="page-title">
+                  <Package className="title-icon" />
+                  Home Delivery Orders
+                </h1>
+                <p className="page-subtitle">Manage and track your delivery orders</p>
               </div>
-              <p className="mt-2 text-muted">Loading Home Delivery Orders...</p>
+            </div>
+            <button
+              onClick={fetchHomeDeliveryOrders}
+              disabled={loading}
+              className="btn btn-primary btn-refresh"
+            >
+              <RefreshCw className={`btn-icon ${loading ? 'spinning' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="stats-container">
+            <div className="stats-grid">
+              <div className="stat-card stat-orders">
+                <div className="stat-icon">
+                  <Package />
+                </div>
+                <div className="stat-content">
+                  <p className="stat-label">Total Orders</p>
+                  <p className="stat-value">{orders.length}</p>
+                </div>
+              </div>
+              
+              <div className="stat-card stat-amount">
+                <div className="stat-icon">
+                  <DollarSign />
+                </div>
+                <div className="stat-content">
+                  <p className="stat-label">Total Amount</p>
+                  <p className="stat-value">${totalAmount.toFixed(2)}</p>
+                </div>
+              </div>
+              
+              <div className="stat-card stat-pending">
+                <div className="stat-icon">
+                  <Clock />
+                </div>
+                <div className="stat-content">
+                  <p className="stat-label">Pending Orders</p>
+                  <p className="stat-value">
+                    {orders.filter(order => order.delivery_status === "Pending" || !order.delivery_status).length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="main-content">
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p className="loading-title">Loading Home Delivery Orders</p>
+              <p className="loading-subtitle">Please wait while we fetch your orders...</p>
             </div>
           ) : error ? (
-            <div className="alert alert-danger text-center" role="alert">
-              {error}
-              <button className="btn btn-sm btn-outline-primary ms-2" onClick={fetchHomeDeliveryOrders}>
-                Retry
-              </button>
+            <div className="error-container">
+              <div className="error-card">
+                <AlertCircle className="error-icon" />
+                <h3 className="error-title">Error Loading Orders</h3>
+                <p className="error-message">{error}</p>
+                <button onClick={fetchHomeDeliveryOrders} className="btn btn-danger">
+                  Try Again
+                </button>
+              </div>
             </div>
           ) : orders.length === 0 ? (
-            <div className="alert alert-info text-center" role="alert">
-              No Home Delivery Orders assigned by you.
+            <div className="empty-container">
+              <div className="empty-card">
+                <Package className="empty-icon" />
+                <h3 className="empty-title">No Orders Found</h3>
+                <p className="empty-message">No home delivery orders assigned by you at the moment.</p>
+              </div>
             </div>
           ) : (
-            <>
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="mb-0">Total Amount: ${totalAmount.toFixed(2)}</h5>
-              </div>
-              <div className="table-responsive">
-                <table className="table table-bordered table-striped">
-                  <thead className="table-dark">
-                    <tr>
-                      <th>Invoice ID</th>
-                      <th>Delivery Person</th>
-                      <th>Customer Name</th>
-                      <th>Address</th>
-                      <th>Phone</th>
-                      <th>Amount</th>
-                      <th>Invoice Status</th>
-                      <th>Delivery Status</th>
-                      <th>Action</th>
-                      <th>Update Delivery Boy</th>
-                      <th>Cancel</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.name}>
-                        <td>{order.invoice_id}</td>
-                        <td>{order.employee_name}</td>
-                        <td>{order.customer_name}</td>
-                        <td>{order.customer_address}</td>
-                        <td>{order.customer_phone}</td>
-                        <td>${(order.invoice_amount || 0).toFixed(2)}</td>
-                        <td>{order.invoice_status}</td>
-                        <td>{order.delivery_status || "Pending"}</td>
-                        <td>
-                          <div className="d-flex gap-2">
-                           
-                            {order.invoice_status !== "Paid" ? (
-                              <button
-                                className="btn btn-success btn-sm position-relative"
-                                onClick={() => handleSubmitUnpaid(order.invoice_id)}
-                                disabled={payingInvoices[order.invoice_id]}
-                                aria-label={`Submit ${order.invoice_id} as Unpaid`}
-                              >
-                                Paid
-                                {payingInvoices[order.invoice_id] && (
-                                  <span
-                                    className="spinner-border spinner-border-sm ms-2"
-                                    role="status"
-                                    aria-hidden="true"
-                                  ></span>
-                                )}
-                              </button>
-                            ) : (
-                              <span className="text-muted">Already Paid</span>
-                            )}
-                            <button
-                              className="btn btn-primary btn-sm position-relative"
-                              onClick={() => handlePrintInvoice(order.invoice_id)}
-                              disabled={printingInvoices[order.invoice_id]}
-                              aria-label={`Print ${order.invoice_id}`}
-                            >
-                              Print
-                              {printingInvoices[order.invoice_id] && (
-                                <span
-                                  className="spinner-border spinner-border-sm ms-2"
-                                  role="status"
-                                  aria-hidden="true"
-                                ></span>
-                              )}
-                            </button>
-                            {order.delivery_status === "Pending" && order.invoice_status !== "Paid" && (
-                              <button
-                                className="btn btn-info btn-sm position-relative"
-                                onClick={() => handleMarkDelivered(order.invoice_id)}
-                                disabled={deliveringInvoices[order.invoice_id]}
-                                aria-label={`Mark ${order.invoice_id} as Delivered`}
-                              >
-                                Delivered
-                                {deliveringInvoices[order.invoice_id] && (
-                                  <span
-                                    className="spinner-border spinner-border-sm ms-2"
-                                    role="status"
-                                    aria-hidden="true"
-                                  ></span>
-                                )}
-                              </button>
-                            )}
+            <div className="orders-grid">
+              {orders.map((order) => (
+                <div key={order.name} className="order-card">
+                  <div className="order-content">
+                    {/* Order Header */}
+                    <div className="order-header">
+                      <div className="order-info">
+                        <div className="order-icon">
+                          <Package />
+                        </div>
+                        <div className="order-details">
+                          <h3 className="order-title">Invoice #{order.invoice_id}</h3>
+                          <p className="order-id">Order ID: {order.name}</p>
+                        </div>
+                      </div>
+                      <div className="order-status">
+                        {getStatusBadge(order.invoice_status)}
+                        {getStatusBadge(order.delivery_status || 'Pending')}
+                      </div>
+                    </div>
+
+                    {/* Order Details */}
+                    <div className="order-details-grid">
+                      <div className="detail-item">
+                        <User className="detail-icon" />
+                        <div className="detail-content">
+                          <p className="detail-label">Customer</p>
+                          <p className="detail-value">{order.customer_name || 'N/A'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="detail-item">
+                        <MapPin className="detail-icon" />
+                        <div className="detail-content">
+                          <p className="detail-label">Address</p>
+                          <p className="detail-value" title={order.customer_address}>
+                            {order.customer_address || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="detail-item">
+                        <Phone className="detail-icon" />
+                        <div className="detail-content">
+                          <p className="detail-label">Phone</p>
+                          <p className="detail-value">{order.customer_phone || 'N/A'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="detail-item">
+                        <DollarSign className="detail-icon" />
+                        <div className="detail-content">
+                          <p className="detail-label">Amount</p>
+                          <p className="detail-value">${(order.invoice_amount || 0).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Delivery Person */}
+                    {order.employee_name && (
+                      <div className="delivery-person">
+                        <div className="delivery-info">
+                          <Truck className="delivery-icon" />
+                          <div className="delivery-content">
+                            <p className="delivery-label">Delivery Person</p>
+                            <p className="delivery-name">{order.employee_name}</p>
                           </div>
-                        </td>
-                        <td>
-                          <div className="d-flex flex-column gap-2">
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="order-actions">
+                      {order.invoice_status !== "Paid" ? (
+                        <button
+                          onClick={() => handleSubmitUnpaid(order.invoice_id)}
+                          disabled={payingInvoices[order.invoice_id]}
+                          className="btn btn-success"
+                        >
+                          <DollarSign className="btn-icon" />
+                          {payingInvoices[order.invoice_id] ? (
+                            <>
+                              <div className="btn-spinner"></div>
+                              Processing...
+                            </>
+                          ) : (
+                            'Mark as Paid'
+                          )}
+                        </button>
+                      ) : (
+                        <span className="paid-indicator">
+                          <CheckCircle className="paid-icon" />
+                          Already Paid
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => handlePrintInvoice(order.invoice_id)}
+                        disabled={printingInvoices[order.invoice_id]}
+                        className="btn btn-secondary"
+                      >
+                        <Printer className="btn-icon" />
+                        {printingInvoices[order.invoice_id] ? (
+                          <>
+                            <div className="btn-spinner"></div>
+                            Printing...
+                          </>
+                        ) : (
+                          'Print Invoice'
+                        )}
+                      </button>
+
+                      {order.delivery_status === "Pending" && order.invoice_status !== "Paid" && (
+                        <button
+                          onClick={() => handleMarkDelivered(order.invoice_id)}
+                          disabled={deliveringInvoices[order.invoice_id]}
+                          className="btn btn-primary"
+                        >
+                          <CheckCircle className="btn-icon" />
+                          {deliveringInvoices[order.invoice_id] ? (
+                            <>
+                              <div className="btn-spinner"></div>
+                              Marking...
+                            </>
+                          ) : (
+                            'Mark Delivered'
+                          )}
+                        </button>
+                      )}
+
+                      {order.invoice_status !== "Paid" && order.delivery_status !== "Cancel" && (
+                        <button
+                          onClick={() => handleCancel(order.invoice_id)}
+                          disabled={cancelingInvoices[order.invoice_id]}
+                          className="btn btn-danger"
+                        >
+                          <XCircle className="btn-icon" />
+                          {cancelingInvoices[order.invoice_id] ? (
+                            <>
+                              <div className="btn-spinner"></div>
+                              Canceling...
+                            </>
+                          ) : (
+                            'Cancel Order'
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Delivery Boy Assignment */}
+                    {order.invoice_status !== "Paid" && order.delivery_status !== "Cancel" && (
+                      <div className="delivery-assignment">
+                        <h4 className="assignment-title">
+                          <Truck className="assignment-icon" />
+                          Update Delivery Person
+                        </h4>
+                        
+                        <div className="assignment-form">
+                          <div className="form-group">
+                            <label className="form-label">Select Delivery Person</label>
                             <select
-                              className="form-select"
                               value={selectedDeliveryBoys[order.invoice_id] || ""}
                               onChange={(e) => handleDeliveryBoyChange(order.invoice_id, e.target.value)}
-                              disabled={order.invoice_status === "Paid" || updatingInvoices[order.invoice_id] || order.delivery_status === "Cancel"}
+                              disabled={updatingInvoices[order.invoice_id]}
+                              className="form-select"
                             >
-                              <option value="">Select a delivery boy</option>
+                              <option value="">Choose a delivery person</option>
                               {deliveryBoys.map((boy) => (
                                 <option key={boy.employee_name} value={boy.employee_name}>
                                   {boy.employee_name}
                                 </option>
                               ))}
                             </select>
-                            {selectedDeliveryBoys[order.invoice_id] && (
-                              <div className="d-flex align-items-center gap-2">
+                          </div>
+
+                          {selectedDeliveryBoys[order.invoice_id] && (
+                            <div className="verification-section">
+                              <div className="verification-input">
                                 <input
                                   type="password"
-                                  className="form-control"
                                   placeholder="Enter secret code"
                                   value={secretCodes[order.invoice_id] || ""}
                                   onChange={(e) => handleSecretCodeChange(order.invoice_id, e.target.value)}
-                                  disabled={order.invoice_status === "Paid" || updatingInvoices[order.invoice_id] || order.delivery_status === "Cancel"}
+                                  disabled={updatingInvoices[order.invoice_id]}
+                                  className="form-input"
                                 />
                                 <button
-                                  className="btn btn-secondary btn-sm"
                                   onClick={() => verifySecretCode(selectedDeliveryBoys[order.invoice_id], secretCodes[order.invoice_id], order.invoice_id)}
-                                  disabled={!secretCodes[order.invoice_id] || order.invoice_status === "Paid" || updatingInvoices[order.invoice_id] || order.delivery_status === "Cancel"}
+                                  disabled={!secretCodes[order.invoice_id] || updatingInvoices[order.invoice_id]}
+                                  className="btn btn-secondary btn-verify"
                                 >
+                                  <Shield className="btn-icon" />
                                   Verify
                                 </button>
-                                {verifiedStates[order.invoice_id] && (
-                                  <i className="bi bi-check-circle text-success" style={{ fontSize: '1.5rem' }}></i>
-                                )}
                               </div>
-                            )}
-                            <button
-                              className="btn btn-warning btn-sm position-relative"
-                              onClick={() => handleUpdateDeliveryBoy(order.invoice_id)}
-                              disabled={
-                                !selectedDeliveryBoys[order.invoice_id] ||
-                                !secretCodes[order.invoice_id] ||
-                                !verifiedStates[order.invoice_id] ||
-                                order.invoice_status === "Paid" ||
-                                updatingInvoices[order.invoice_id] ||
-                                order.delivery_status === "Cancel"
-                              }
-                              aria-label={`Update delivery boy for ${order.invoice_id}`}
-                            >
-                              Update
-                              {updatingInvoices[order.invoice_id] && (
-                                <span
-                                  className="spinner-border spinner-border-sm ms-2"
-                                  role="status"
-                                  aria-hidden="true"
-                                ></span>
+
+                              {verifiedStates[order.invoice_id] && (
+                                <div className="verification-success">
+                                  <CheckCircle className="success-icon" />
+                                  <span className="success-text">Code verified successfully</span>
+                                </div>
                               )}
-                            </button>
-                          </div>
-                        </td>
-                        <td>
-                          {order.invoice_status !== "Paid" && order.delivery_status !== "Cancel" && (
-                            <button
-                              className="btn btn-danger btn-sm position-relative"
-                              onClick={() => handleCancel(order.invoice_id)}
-                              disabled={cancelingInvoices[order.invoice_id]}
-                              aria-label={`Cancel ${order.invoice_id}`}
-                            >
-                              Cancel
-                              {cancelingInvoices[order.invoice_id] && (
-                                <span
-                                  className="spinner-border spinner-border-sm ms-2"
-                                  role="status"
-                                  aria-hidden="true"
-                                ></span>
-                              )}
-                            </button>
+                            </div>
                           )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+
+                          <button
+                            onClick={() => handleUpdateDeliveryBoy(order.invoice_id)}
+                            disabled={
+                              !selectedDeliveryBoys[order.invoice_id] ||
+                              !secretCodes[order.invoice_id] ||
+                              !verifiedStates[order.invoice_id] ||
+                              updatingInvoices[order.invoice_id]
+                            }
+                            className="btn btn-warning btn-update"
+                          >
+                            <Truck className="btn-icon" />
+                            {updatingInvoices[order.invoice_id] ? (
+                              <>
+                                <div className="btn-spinner"></div>
+                                Updating...
+                              </>
+                            ) : (
+                              'Update Delivery Person'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 }
+
 export default HomeDeliveryOrders;

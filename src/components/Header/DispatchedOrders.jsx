@@ -1,17 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  Clock, 
+  User, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Package, 
+  CreditCard, 
+  RefreshCw, 
+  ArrowLeft,
+  Users,
+  Home,
+  Truck,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
 import './DispatchedOrders.css';
 
 function DispatchedOrders() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState('ALL');
+    const [refreshing, setRefreshing] = useState(false);
     const navigate = useNavigate();
 
-    const fetchDispatchedOrders = async () => {
+    const fetchDispatchedOrders = async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (isRefresh) {
+                setRefreshing(true);
+            } else {
+                setLoading(true);
+            }
             setError(null);
 
             // Step 1: Fetch all kitchen notes
@@ -177,6 +200,7 @@ function DispatchedOrders() {
             setOrders([]);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -237,7 +261,7 @@ function DispatchedOrders() {
 
     useEffect(() => {
         fetchDispatchedOrders();
-        const intervalId = setInterval(fetchDispatchedOrders, 30000);
+        const intervalId = setInterval(() => fetchDispatchedOrders(true), 30000);
         return () => clearInterval(intervalId);
     }, []);
 
@@ -260,14 +284,6 @@ function DispatchedOrders() {
         }));
 
         console.log("DispatchedOrders.jsx: Formatted cart items for Front:", JSON.stringify(formattedCartItems, null, 2));
-
-        alert(
-            `You selected ${
-                order.custom_delivery_type === "DINE IN"
-                    ? `Table ${order.custom_table_number}${order.custom_chair_count > 0 ? ` (Chairs: ${order.custom_chair_count})` : ""}`
-                    : `Order (${order.custom_delivery_type})`
-            } for billing`
-        );
 
         navigate('/frontpage', {
             state: {
@@ -306,124 +322,255 @@ function DispatchedOrders() {
         });
     };
 
+    const handleBack = () => {
+        navigate(-1);
+    };
+
+    const handleRefresh = () => {
+        fetchDispatchedOrders(true);
+    };
+
+    const filteredOrders = orders.filter(order => {
+        const matchesSearch = order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            order.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            order.custom_table_number.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesFilter = filterType === 'ALL' || order.custom_delivery_type === filterType;
+        
+        return matchesSearch && matchesFilter;
+    });
+
+    const getDeliveryIcon = (type) => {
+        switch (type) {
+            case 'DINE IN':
+                return <Home className="delivery-icon dine-in" />;
+            case 'DELIVERY':
+                return <Truck className="delivery-icon delivery" />;
+            default:
+                return <Package className="delivery-icon" />;
+        }
+    };
+
+    const calculateOrderTotal = (items) => {
+        return items.reduce((total, item) => total + (item.basePrice * item.quantity), 0);
+    };
+
     return (
-        <div className="container mt-4">
-            <h2 className="text-center mb-4">Dispatched Orders</h2>
-            {loading ? (
-                <p className="text-center text-muted">Loading dispatched orders...</p>
-            ) : error ? (
-                <p className="text-center text-danger">{error}</p>
-            ) : orders.length === 0 ? (
-                <p className="text-center text-muted">No dispatched orders found.</p>
-            ) : (
-                <div className="table-responsive">
-                    <table className="table table-bordered table-hover">
-                        <thead className="table-dark">
-                            <tr>
-                                <th>#</th>
-                                <th>Customer Name</th>
-                                <th>Table Number</th>
-                                <th>Chair Count</th>
-                                <th>Phone Number</th>
-                                <th>Delivery Type</th>
-                                <th>Address</th>
-                                <th>Email</th>
-                                <th>Items</th>
-                                <th>Timestamp</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {orders.map((order, index) => (
-                                <tr key={order.name}>
-                                    <td>{index + 1}</td>
-                                    <td>{order.customer}</td>
-                                    <td>{order.custom_table_number || "N/A"}</td>
-                                    <td>{order.custom_delivery_type === "DINE IN" ? order.custom_chair_count : "N/A"}</td>
-                                    <td>{order.contact_mobile || "N/A"}</td>
-                                    <td>{order.custom_delivery_type}</td>
-                                    <td>{order.customer_address || "N/A"}</td>
-                                    <td>{order.contact_email || "N/A"}</td>
-                                    <td>
-                                        {order.dispatchedItems.map((item, i) => (
-                                            <div key={i} className="mb-2">
-                                                <div>
-                                                    <strong>{item.name}</strong>
-                                                    {item.selectedSize && ` (${item.selectedSize})`}
-                                                    {item.selectedCustomVariant &&
-                                                        ` (${item.selectedCustomVariant})`}
-                                                    - Qty: {item.quantity} - ₹
-                                                    {(item.basePrice * item.quantity).toFixed(2)}
-                                                </div>
-                                                {item.description && (
-                                                    <p
-                                                        style={{
-                                                            fontSize: "12px",
-                                                            color: "#666",
-                                                            marginTop: "5px",
-                                                            marginBottom: "0",
-                                                        }}
-                                                    >
-                                                        <strong>Note:</strong> {item.description}
-                                                    </p>
-                                                )}
-                                                {item.ingredients?.length > 0 && (
-                                                    <p
-                                                        style={{
-                                                            fontSize: "12px",
-                                                            color: "#666",
-                                                            marginTop: "5px",
-                                                            marginBottom: "0",
-                                                        }}
-                                                    >
-                                                        <strong>Ingredients:</strong>{" "}
-                                                        {item.ingredients
-                                                            .map(
-                                                                (ing) =>
-                                                                    `${ing.name} - ${ing.quantity} ${ing.unit}`
-                                                            )
-                                                            .join(", ")}
-                                                    </p>
-                                                )}
-                                                {item.addonCounts &&
-                                                    Object.keys(item.addonCounts).length > 0 && (
-                                                        <ul
-                                                            style={{
-                                                                listStyleType: "none",
-                                                                padding: 0,
-                                                                marginTop: "5px",
-                                                                fontSize: "12px",
-                                                                color: "#888",
-                                                            }}
-                                                        >
-                                                            {Object.entries(item.addonCounts).map(
-                                                                ([addonName, { price, quantity }]) => (
-                                                                    <li key={addonName}>
-                                                                        + {addonName} x{quantity} (₹
-                                                                        {(price * quantity).toFixed(2)})
-                                                                    </li>
-                                                                )
-                                                            )}
-                                                        </ul>
-                                                    )}
-                                            </div>
-                                        ))}
-                                    </td>
-                                    <td>{order.posting_date} {order.posting_time}</td>
-                                    <td>
-                                        <button
-                                            className="btn btn-primary btn-sm me-2"
-                                            onClick={() => handleSelectOrder(order)}
-                                        >
-                                            Select for Billing
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+        <div className="dispatched-orders-container">
+            <div className="dispatched-header">
+                <button className="back-button" onClick={handleBack}>
+                    <ArrowLeft size={20} />
+                    Back
+                </button>
+                <h1 className="header-title">Dispatched Orders</h1>
+                <div className="header-actions">
+                    <button 
+                        className={`refresh-button ${refreshing ? 'refreshing' : ''}`} 
+                        onClick={handleRefresh}
+                        disabled={refreshing}
+                    >
+                        <RefreshCw size={18} className={refreshing ? 'spinning' : ''} />
+                        {refreshing ? 'Refreshing...' : 'Refresh'}
+                    </button>
                 </div>
-            )}
+            </div>
+
+            <div className="dispatched-content">
+                {loading && !refreshing ? (
+                    <div className="loading-state">
+                        <div className="loading-spinner"></div>
+                        <p className="loading-text">Loading dispatched orders...</p>
+                    </div>
+                ) : error ? (
+                    <div className="error-state">
+                        <AlertCircle className="error-icon" size={48} />
+                        <p className="error-message">{error}</p>
+                        <button className="retry-button" onClick={() => fetchDispatchedOrders()}>
+                            Try Again
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="controls-section">
+                            <div className="search-section">
+                                <div className="search-input-container">
+                                    <input
+                                        type="text"
+                                        className="search-input"
+                                        placeholder="Search by customer, invoice ID, or table..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="filter-section">
+                                <select
+                                    className="filter-select"
+                                    value={filterType}
+                                    onChange={(e) => setFilterType(e.target.value)}
+                                >
+                                    <option value="ALL">All Orders</option>
+                                    <option value="DINE IN">Dine In</option>
+                                    <option value="TAKEAWAY">Takeaway</option>
+                                </select>
+                            </div>
+
+                            <div className="stats-section">
+                                <div className="stat-item">
+                                    <span className="stat-number">{filteredOrders.length}</span>
+                                    <span className="stat-label">Orders</span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="stat-number">
+                                        {filteredOrders.reduce((sum, order) => sum + order.dispatchedItems.length, 0)}
+                                    </span>
+                                    <span className="stat-label">Items</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {filteredOrders.length === 0 ? (
+                            <div className="empty-state">
+                                <Package className="empty-icon" size={64} />
+                                <h3>No Dispatched Orders</h3>
+                                <p>No orders match your current search and filter criteria.</p>
+                            </div>
+                        ) : (
+                            <div className="orders-grid">
+                                {filteredOrders.map((order, index) => (
+                                    <div key={order.name} className="order-card">
+                                        <div className="order-card-header">
+                                            <div className="order-info">
+                                                <div className="order-number">#{index + 1}</div>
+                                                <div className="invoice-id">{order.name}</div>
+                                                <div className="delivery-type">
+                                                    {getDeliveryIcon(order.custom_delivery_type)}
+                                                    <span>{order.custom_delivery_type}</span>
+                                                </div>
+                                            </div>
+                                            <div className="order-status">
+                                                <CheckCircle className="status-icon dispatched" size={20} />
+                                                <span>Dispatched</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="customer-info">
+                                            <div className="info-row">
+                                                <User size={16} />
+                                                <span>{order.customer}</span>
+                                            </div>
+                                            {order.custom_table_number && (
+                                                <div className="info-row">
+                                                    <MapPin size={16} />
+                                                    <span>Table {order.custom_table_number}</span>
+                                                    {order.custom_delivery_type === "DINE IN" && order.custom_chair_count > 0 && (
+                                                        <span className="chair-count">
+                                                            <Users size={14} />
+                                                            {order.custom_chair_count} chairs
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {order.contact_mobile && (
+                                                <div className="info-row">
+                                                    <Phone size={16} />
+                                                    <span>{order.contact_mobile}</span>
+                                                </div>
+                                            )}
+                                            {order.contact_email && (
+                                                <div className="info-row">
+                                                    <Mail size={16} />
+                                                    <span>{order.contact_email}</span>
+                                                </div>
+                                            )}
+                                            {order.customer_address && (
+                                                <div className="info-row">
+                                                    <MapPin size={16} />
+                                                    <span>{order.customer_address}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="items-section">
+                                            <h4 className="items-title">
+                                                <Package size={16} />
+                                                Items ({order.dispatchedItems.length})
+                                            </h4>
+                                            <div className="items-list">
+                                                {order.dispatchedItems.map((item, i) => (
+                                                    <div key={i} className="item-card">
+                                                        <div className="item-header">
+                                                            <span className="item-name">{item.name}</span>
+                                                            <span className="item-price">
+                                                                ₹{(item.basePrice * item.quantity).toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="item-details">
+                                                            {item.selectedSize && (
+                                                                <span className="item-variant">Size: {item.selectedSize}</span>
+                                                            )}
+                                                            {item.selectedCustomVariant && (
+                                                                <span className="item-variant">Variant: {item.selectedCustomVariant}</span>
+                                                            )}
+                                                            <span className="item-quantity">Qty: {item.quantity}</span>
+                                                        </div>
+                                                        {item.description && (
+                                                            <div className="item-note">
+                                                                <strong>Note:</strong> {item.description}
+                                                            </div>
+                                                        )}
+                                                        {item.ingredients?.length > 0 && (
+                                                            <div className="item-ingredients">
+                                                                <strong>Ingredients:</strong>{" "}
+                                                                {item.ingredients
+                                                                    .map(ing => `${ing.name} - ${ing.quantity} ${ing.unit}`)
+                                                                    .join(", ")}
+                                                            </div>
+                                                        )}
+                                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                            <div className="item-addons">
+                                                                {Object.entries(item.addonCounts).map(
+                                                                    ([addonName, { price, quantity }]) => (
+                                                                        <div key={addonName} className="addon-item">
+                                                                            + {addonName} x{quantity} (₹{(price * quantity).toFixed(2)})
+                                                                        </div>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="order-footer">
+                                            <div className="order-meta">
+                                                <div className="timestamp">
+                                                    <Clock size={16} />
+                                                    <span>{order.posting_date} {order.posting_time}</span>
+                                                </div>
+                                                <div className="total-amount">
+                                                    <strong>Total: ₹{calculateOrderTotal(order.dispatchedItems).toFixed(2)}</strong>
+                                                </div>
+                                            </div>
+                                            <div className="order-actions">
+                                                <button
+                                                    className="select-button"
+                                                    onClick={() => handleSelectOrder(order)}
+                                                >
+                                                    <CreditCard size={16} />
+                                                    Select for Billing
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
         </div>
     );
 }
