@@ -116,6 +116,26 @@
   white-space: nowrap;
 }
 
+.items-container {
+    max-height: 80vh; /* Set maximum height to 80% of viewport height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    padding-right: 0.5rem; /* Space for scrollbar */
+}
+
+/* Scrollbar styling for consistency */
+.items-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.items-container::-webkit-scrollbar-thumb {
+    background: #989899; /* Match existing scrollbar thumb color */
+    border-radius: 3px;
+}
+
+.items-container::-webkit-scrollbar-track {
+    background: #f1f5f9; /* Match existing scrollbar track color */
+}
+
 /* Responsive Adjustments */
 @media (min-width: 1200px) and (max-width: 1700px) {
   .image-box {

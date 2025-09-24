@@ -215,7 +215,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                                     {item.selectedSize && ` (${item.selectedSize})`}
                                                     {item.selectedCustomVariant &&
                                                         ` (${item.selectedCustomVariant})`}
-                                                    - Qty: {item.quantity} - ₹
+                                                    - Qty: {item.quantity} - د.إ
                                                     {(item.basePrice * item.quantity).toFixed(2)}
                                                 </div>
                                                 {item.description && (
@@ -244,7 +244,7 @@ function SavedOrder({ orders, setSavedOrders, menuItems }) {
                                                             {Object.entries(item.addonCounts).map(
                                                                 ([addonName, { price, quantity }]) => (
                                                                     <li key={addonName}>
-                                                                        + {addonName} x{quantity} (₹
+                                                                        + {addonName} x{quantity} (د.إ
                                                                         {(price * quantity).toFixed(2)})
                                                                     </li>
                                                                 )

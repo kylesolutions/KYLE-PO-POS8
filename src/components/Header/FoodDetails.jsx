@@ -543,7 +543,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                 <strong>Category:</strong> {fetchedItem?.category || "N/A"}
                             </p>
                             <p className="text-center">
-                                <strong>Item Total:</strong> ₹{itemTotal.toFixed(2)}
+                                <strong>Item Total:</strong> د.إ{itemTotal.toFixed(2)}
                             </p>
                             <div className="quantity-container">
                                 <button className="quantity-btn minus" onClick={decreaseMainQuantity}>-</button>
@@ -563,12 +563,12 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                                     className={`btn ${selectedSize === size ? 'btn-primary' : 'btn-outline-primary'}`}
                                                     onClick={() => handleSizeChange(size)}
                                                 >
-                                                    {size} (₹{(getSizePrices()[size] || 0).toFixed(2)})
+                                                    {size} (د.إ{(getSizePrices()[size] || 0).toFixed(2)})
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
-                                )}
+                                )}  
                                 {fetchedItem?.variants?.length > 0 && (
                                     <div className="mt-3">
                                         <strong>Custom Variants (Optional):</strong>
@@ -580,7 +580,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                             <option value="">Select Variant</option>
                                             {fetchedItem.variants.map((variant, index) => (
                                                 <option key={index} value={variant.type_of_variants}>
-                                                    {variant.type_of_variants} {variant.variant_price ? `(₹${variant.variant_price.toFixed(2)})` : ''}
+                                                    {variant.type_of_variants} {variant.variant_price ? `(د.إ${variant.variant_price.toFixed(2)})` : ''}
                                                 </option>
                                             ))}
                                         </select>
@@ -602,7 +602,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                                             alt={addon.name1}
                                                         />
                                                         <span>{addon.name1}</span>
-                                                        <span>₹{addonData.price.toFixed(2)}</span>
+                                                        <span>د.إ{addonData.price.toFixed(2)}</span>
                                                         <div className="quantity-container mt-2">
                                                             <button className="quantity-btn minus" onClick={() => toggleAddonSelection(addon, -1)} disabled={addonData.quantity <= 0}>-</button>
                                                             <span className="quantity-value">{addonData.quantity}</span>
@@ -650,7 +650,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                                                         className="rounded mb-2"
                                                                     />
                                                                     <p>{combo.name1}</p>
-                                                                    <p>₹{getComboPriceDisplay(combo)}</p>
+                                                                    <p>د.إ{getComboPriceDisplay(combo)}</p>
                                                                     {isSelected && (
                                                                         <div>
                                                                             {hasVariants && (
@@ -694,7 +694,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                                             className={`btn ${comboVariants[selectedCombo.name1]?.size === size ? 'btn-primary' : 'btn-outline-primary'}`}
                                                             onClick={() => setComboVariants((prev) => ({ ...prev, [selectedCombo.name1]: { ...prev[selectedCombo.name1], size } }))}
                                                         >
-                                                            {size} (₹{getComboSizePrices(selectedCombo.name1)[size].toFixed(2)})
+                                                            {size} (د.إ{getComboSizePrices(selectedCombo.name1)[size].toFixed(2)})
                                                         </button>
                                                     ))}
                                                 </div>
@@ -710,7 +710,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                                         <option value="">Select Variant</option>
                                                         {localAllItems.find((i) => i.item_name === selectedCombo.name1).variants.map((variant, index) => (
                                                             <option key={index} value={variant.type_of_variants}>
-                                                                {variant.type_of_variants} {variant.variant_price ? `(₹${variant.variant_price.toFixed(2)})` : ''}
+                                                                {variant.type_of_variants} {variant.variant_price ? `(د.إ${variant.variant_price.toFixed(2)})` : ''}
                                                             </option>
                                                         ))}
                                                     </select>
@@ -732,7 +732,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                                                         alt={addon.name1}
                                                                     />
                                                                     <span>{addon.name1}</span>
-                                                                    <span>₹{addonData.price.toFixed(2)}</span>
+                                                                    <span>د.إ{addonData.price.toFixed(2)}</span>
                                                                     <div className="quantity-container mt-2">
                                                                         <button className="quantity-btn minus" onClick={() => toggleAddonSelection(addon, -1)} disabled={addonData.quantity <= 0}>-</button>
                                                                         <span className="quantity-value">{addonData.quantity}</span>

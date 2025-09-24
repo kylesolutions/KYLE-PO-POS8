@@ -163,85 +163,86 @@ function Front() {
         }
     }, [location.state, setCartItems]);
 
-    useEffect(() => {
-        const fetchCompanyDetails = async () => {
-            try {
-                const response = await fetch('/api/method/frappe.client.get_value', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                    },
-                    body: JSON.stringify({
-                        doctype: "Company",
-                        name: company,
-                        fieldname: ["default_income_account", "custom_tax_type", "default_currency"]
-                    }),
-                });
-                const data = await response.json();
-                if (data.message) {
-                    setDefaultIncomeAccount(data.message.default_income_account || "Sales - P");
-                    const taxTemplate = data.message.custom_tax_type;
-                    if (taxTemplate) {
-                        setTaxTemplateName(taxTemplate);
-                        fetchTaxRate(taxTemplate);
-                    } else {
-                        fetchTaxRate(null);
-                    }
-                } else {
-                    fetchTaxRate(null);
-                }
-            } catch (error) {
-                console.error("Error fetching company details:", error);
-                fetchTaxRate(null);
-            }
-        };
+    const [companyCurrency, setCompanyCurrency] = useState("AED");
 
-        const fetchTaxRate = async (templateName) => {
-            try {
-                const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                    },
-                });
-                const data = await response.json();
-                if (data.message && Array.isArray(data.message)) {
-                    if (templateName) {
-                        const tax = data.message.find(t => t.name === templateName);
-                        if (tax && tax.sales_tax && tax.sales_tax.length > 0) {
-                            const rate = parseFloat(tax.sales_tax[0].rate) || 0;
-                            setTaxRate(rate);
-                            setTaxTemplateName(taxTemplate);
-                        } else {
-                            console.warn(`No tax rate found for ${templateName}. Using first available template.`);
-                        }
-                    }
-                    if (!templateName || !data.message.some(t => t.name === templateName)) {
-                        const defaultTax = data.message[0];
-                        if (defaultTax && defaultTax.sales_tax && defaultTax.sales_tax.length > 0) {
-                            const rate = parseFloat(defaultTax.sales_tax[0].rate) || 0;
-                            setTaxRate(rate);
-                            setTaxTemplateName(defaultTax.name);
-                        } else {
-                            setTaxRate(0);
-                            setTaxTemplateName("");
-                        }
-                    }
-                } else {
-                    setTaxRate(0);
-                    setTaxTemplateName("");
-                }
-            } catch (error) {
-                console.error("Error fetching tax rate:", error);
+    useEffect(() => {
+    const fetchCompanyDetails = async () => {
+        try {
+            const response = await fetch('/api/method/frappe.client.get_value', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                },
+                body: JSON.stringify({
+                    doctype: "Company",
+                    name: company,
+                    fieldname: ["default_income_account", "custom_tax_type", "default_currency"]
+                }),
+            });
+            const data = await response.json();
+            if (data.message) {
+                setDefaultIncomeAccount(data.message.default_income_account || "Sales - P");
+                setCompanyCurrency(data.message.default_currency || "AED"); // Set company currency
+                const taxTemplate = data.message.custom_tax_type;
+                await fetchTaxRate(taxTemplate); // Fetch tax rate based on custom_tax_type
+            } else {
+                console.warn(`No company details found for ${company}. Using default currency AED and no tax.`);
+                setCompanyCurrency("AED");
                 setTaxRate(0);
                 setTaxTemplateName("");
             }
-        };
+        } catch (error) {
+            console.error("Error fetching company details:", error);
+            setCompanyCurrency("AED");
+            setTaxRate(0);
+            setTaxTemplateName("");
+        }
+    };
 
-        fetchCompanyDetails();
-    }, [company]);
+    const fetchTaxRate = async (templateName) => {
+        try {
+            const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                },
+            });
+            const data = await response.json();
+            console.log("Front.jsx: Tax templates fetched:", JSON.stringify(data.message, null, 2));
+            if (data.message && Array.isArray(data.message)) {
+                if (templateName) {
+                    const tax = data.message.find(t => t.name === templateName);
+                    if (tax && tax.sales_tax && tax.sales_tax.length > 0) {
+                        const rate = parseFloat(tax.sales_tax[0].rate) || 0;
+                        setTaxRate(rate);
+                        setTaxTemplateName(templateName);
+                        console.log(`Front.jsx: Tax rate set to ${rate}% for template ${templateName} for company ${company}`);
+                    } else {
+                        console.warn(`Front.jsx: No valid tax rate found for template ${templateName} in company ${company}. Setting tax rate to 0.`);
+                        setTaxRate(0);
+                        setTaxTemplateName("");
+                    }
+                } else {
+                    console.warn(`Front.jsx: No tax template specified for company ${company}. Setting tax rate to 0.`);
+                    setTaxRate(0);
+                    setTaxTemplateName("");
+                }
+            } else {
+                console.warn("Front.jsx: No tax templates available from API. Setting tax rate to 0.");
+                setTaxRate(0);
+                setTaxTemplateName("");
+            }
+        } catch (error) {
+            console.error("Front.jsx: Error fetching tax rate:", error);
+            setTaxRate(0);
+            setTaxTemplateName("");
+        }
+    };
+
+    fetchCompanyDetails();
+}, [company]);
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -908,10 +909,10 @@ function Front() {
             due_date: new Date().toISOString().split("T")[0],
             is_pos: 1,
             company: company,
-            currency: "INR",
+            currency: "companyCurrency",
             conversion_rate: 1,
             selling_price_list: "Standard Selling",
-            price_list_currency: "INR",
+            price_list_currency: "companyCurrency",
             plc_conversion_rate: 1,
             total: subTotal.toFixed(2),
             net_total: subTotal.toFixed(2),
@@ -1171,10 +1172,10 @@ function Front() {
             due_date: new Date().toISOString().split("T")[0],
             is_pos: 1,
             company: company,
-            currency: "INR",
+            currency: "companyCurrency",
             conversion_rate: 1,
             selling_price_list: "Standard Selling",
-            price_list_currency: "INR",
+            price_list_currency: "companyCurrency",
             plc_conversion_rate: 1,
             total: subTotal.toFixed(2),
             net_total: subTotal.toFixed(2),
@@ -1232,7 +1233,7 @@ function Front() {
                 if (!kitchenNoteSuccess) {
                     console.warn("Front.jsx: Kitchen Note creation/update failed for POS Invoice:", posInvoiceId);
                 }
-                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: ₹${result.message.data.grand_total}`);
+                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: د.إ${result.message.data.grand_total}`);
                 setCartItems([]);
                 if (tableNumber && !existingOrder) {
                     setBookedTables(prev => [...new Set([...prev, tableNumber])]);
@@ -1433,22 +1434,22 @@ function Front() {
                                 </div>
                             </div>
 
-                            <div className="col-lg-12 col-xl-12 row2">
-                                <div className="row g-3 mt-1">
-                                    {filteredItems.map((item, index) => (
-                                        <div className="col-xl-3 col-lg-6 col-md-4 col-6 my-2" key={item.id}>
-                                            <div className="card item-card" onClick={() => handleItemClick(item)}>
-                                                <div className="image-box">
-                                                    <img src={item.image} alt={item.name} className="card-img-top" />
-                                                </div>
-                                                <div className="card-body p-2 mb-0 category-name">
-                                                    <h4 className="card-title text-center mb-0">{item.name}</h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                            <div className="col-lg-12 col-xl-12 row2 items-container">
+                    <div className="row g-3 mt-1">
+                        {filteredItems.map((item, index) => (
+                            <div className="col-xl-3 col-lg-6 col-md-4 col-6 my-2" key={item.id}>
+                                <div className="card item-card" onClick={() => handleItemClick(item)}>
+                                    <div className="image-box">
+                                        <img src={item.image} alt={item.name} className="card-img-top" />
+                                    </div>
+                                    <div className="card-body p-2 mb-0 category-name">
+                                        <h4 className="card-title text-center mb-0">{item.name}</h4>
+                                    </div>
                                 </div>
                             </div>
+                        ))}
+                    </div>
+                </div>
                         </div>
                     </div>
                     <div className="col-lg-5 col-xl-4 row1 px-4">
@@ -1764,7 +1765,7 @@ function Front() {
                                                                         />
                                                                     )}
                                                                     <span className="item-price">
-                                                                        ₹{(row.price || 0).toFixed(2)}
+                                                                       د.إ{(row.price || 0).toFixed(2)}
                                                                     </span>
                                                                     {row.isMain && (
                                                                         <button
@@ -1845,7 +1846,7 @@ function Front() {
                                     </div>
 
                                     <div className="mb-3">
-                                        <label className="form-label">Discount Amount (₹)</label>
+                                        <label className="form-label">Discount Amount (د.إ)</label>
                                         <input
                                             type="number"
                                             className="form-control"
@@ -1860,7 +1861,7 @@ function Front() {
                                             placeholder="Enter amount"
                                         />
                                     </div>
-                                    <p><strong>Discount Applied:</strong> ₹{getDiscountAmount().toFixed(2)}</p>
+                                    <p><strong>Discount Applied:</strong> د.إ{getDiscountAmount().toFixed(2)}</p>
                                 </Modal.Body>
                                 <Modal.Footer>
                                     <Button variant="secondary" onClick={() => setShowDiscountModal(false)}>
@@ -1886,25 +1887,25 @@ function Front() {
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
                                                     <div className='grand-tot-div' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <span>₹</span><span>{getSubTotal().toFixed(2)}</span>
+                                                        <span>د.إ</span><span>{getSubTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
                                                     <div className='grand-tot-div justify-content-end' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <span>₹{getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
+                                                        <span>د.إ{getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Discount</h5>
                                                     <div className='grand-tot-div justify-content-end'  style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <span>-₹{getDiscountAmount().toFixed(2)}</span>
+                                                        <span>-د.إ{getDiscountAmount().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-12 mb-2 col-12 col-lg-12 col-xl-12">
                                                     <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
                                                     <div className='grand-tot-div justify-content-end'  style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <span>₹{getGrandTotal().toFixed(2)}</span>
+                                                        <span>د.إ{getGrandTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2012,7 +2013,7 @@ function Front() {
                                                                                             {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (₹{(parseFloat(price) || 0).toFixed(2)})</li>
+                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (د.إ{(parseFloat(price) || 0).toFixed(2)})</li>
                                                                                                     ))}
                                                                                                 </ul>
                                                                                             )}
@@ -2024,7 +2025,7 @@ function Front() {
                                                                                                             {(combo.selectedSize || combo.selectedCustomVariant) && (
                                                                                                                 ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
                                                                                                             )}
-                                                                                                            - ₹{(parseFloat(combo.rate) || 0).toFixed(2)}
+                                                                                                            - د.إ{(parseFloat(combo.rate) || 0).toFixed(2)}
                                                                                                             {combo.custom_customer_description && (
                                                                                                                 <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
                                                                                                                     <strong>Note:</strong> {combo.custom_customer_description}
@@ -2048,8 +2049,8 @@ function Front() {
                                                                                             )}
                                                                                         </td>
                                                                                         <td>{item.quantity || 1}</td>
-                                                                                        <td className='text-end'>₹{(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
-                                                                                        <td className='text-end'>₹{getItemTotal(item).toFixed(2)}</td>
+                                                                                        <td className='text-end'>د.إ{(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
+                                                                                        <td className='text-end'>د.إ{getItemTotal(item).toFixed(2)}</td>
                                                                                     </tr>
                                                                                 ))}
                                                                             </tbody>
@@ -2058,13 +2059,13 @@ function Front() {
                                                                             <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
                                                                             <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
                                                                             <div className="col-6 text-start"><strong>Subtotal:</strong></div>
-                                                                            <div className="col-6 text-end">₹{getSubTotal().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">د.إ{getSubTotal().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
-                                                                            <div className="col-6 text-end">₹{getTaxAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">د.إ{getTaxAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Discount:</strong></div>
-                                                                            <div className="col-6 text-end">-₹{getDiscountAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">-د.إ{getDiscountAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Grand Total:</strong></div>
-                                                                            <div className="col-6 text-end"><strong>₹{getGrandTotal().toFixed(2)}</strong></div>
+                                                                            <div className="col-6 text-end"><strong>د.إ{getGrandTotal().toFixed(2)}</strong></div>
                                                                         </div>
                                                                     </div>
                                                                 </div>

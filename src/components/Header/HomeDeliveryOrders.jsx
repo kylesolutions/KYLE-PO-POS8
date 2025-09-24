@@ -204,10 +204,16 @@ function HomeDeliveryOrders() {
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
       );
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: cancel_homedelivery_order Response:", JSON.stringify(result, null, 2));
-      if (result.message.status !== "success") {
-        throw new Error(result.message.message || "Failed to cancel home delivery order");
+      if (result.exception) {
+        throw new Error(result.exception.split('\n')[0] || "Server error occurred");
+      }
+      if (result.message?.status !== "success") {
+        throw new Error(result.message?.message || "Failed to cancel home delivery order");
       }
       await fetchHomeDeliveryOrders();
       alert(`Home delivery order for invoice ${invoiceId} canceled successfully.`);
@@ -236,10 +242,16 @@ function HomeDeliveryOrders() {
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
       );
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: submit_pos_invoice_as_unpaid Response:", JSON.stringify(result, null, 2));
-      if (result.message.status !== "success") {
-        throw new Error(result.message.message || "Failed to submit POS Invoice as Unpaid");
+      if (result.exception) {
+        throw new Error(result.exception.split('\n')[0] || "Server error occurred");
+      }
+      if (result.message?.status !== "success") {
+        throw new Error(result.message?.message || "Failed to submit POS Invoice as Unpaid");
       }
       await fetchHomeDeliveryOrders();
       alert(`POS Invoice ${invoiceId} submitted as Unpaid successfully.`);
@@ -268,10 +280,16 @@ function HomeDeliveryOrders() {
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
       );
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: mark_homedelivery_order_delivered Response:", JSON.stringify(result, null, 2));
-      if (result.message.status !== "success") {
-        throw new Error(result.message.message || "Failed to mark home delivery order as Delivered");
+      if (result.exception) {
+        throw new Error(result.exception.split('\n')[0] || "Server error occurred");
+      }
+      if (result.message?.status !== "success") {
+        throw new Error(result.message?.message || "Failed to mark home delivery order as Delivered");
       }
       await fetchHomeDeliveryOrders();
       alert(`Home delivery order for invoice ${invoiceId} marked as Delivered successfully.`);
@@ -301,6 +319,9 @@ function HomeDeliveryOrders() {
       }
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: get_pos_invoices Response:", JSON.stringify(result, null, 2));
+      if (result.exception) {
+        throw new Error(result.exception.split('\n')[0] || "Server error occurred");
+      }
       if (result.message.status !== "success" || !result.message.data) {
         throw new Error(result.message.message || "Invalid invoice data");
       }

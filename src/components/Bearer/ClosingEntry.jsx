@@ -267,7 +267,7 @@ function ClosingEntry() {
       setSuccessMessage(
         `POS Closing Entry ${saveAsDraft ? 'saved as draft' : 'created and submitted'} successfully! ` +
         `Name: ${data.message?.name || 'Unknown'}, ` +
-        `Grand Total: ₹${(data.message?.grand_total || 0).toFixed(2)}, ` +
+        `Grand Total: د.إ${(data.message?.grand_total || 0).toFixed(2)}, ` +
         `Status: ${data.message?.status || 'Unknown'}`
       );
       setCartItems([]);
@@ -434,13 +434,13 @@ function ClosingEntry() {
                     <td>{inv.name}</td>
                     <td>{inv.customer_name}</td>
                     <td>{new Date(inv.posting_date).toLocaleDateString()}</td>
-                    <td>₹{inv.net_total.toFixed(2)}</td>
-                    <td>₹{inv.total_taxes_and_charges.toFixed(2)}</td>
-                    <td>₹{inv.grand_total.toFixed(2)}</td>
+                    <td>د.إ{inv.net_total.toFixed(2)}</td>
+                    <td>د.إ{inv.total_taxes_and_charges.toFixed(2)}</td>
+                    <td>د.إ{inv.grand_total.toFixed(2)}</td>
                     <td>
                       {inv.items.map((item) => (
                         <div key={item.item_code}>
-                          {item.item_name} (Qty: {item.qty}, ₹{item.rate.toFixed(2)})
+                          {item.item_name} (Qty: {item.qty}, د.إ{item.rate.toFixed(2)})
                         </div>
                       ))}
                     </td>
@@ -464,8 +464,8 @@ function ClosingEntry() {
                 {paymentReconciliation.map((pr, index) => (
                   <tr key={pr.mode_of_payment}>
                     <td>{pr.mode_of_payment}</td>
-                    <td>₹{pr.opening_amount.toFixed(2)}</td>
-                    <td>₹{pr.expected_amount.toFixed(2)}</td>
+                    <td>د.إ{pr.opening_amount.toFixed(2)}</td>
+                    <td>د.إ{pr.expected_amount.toFixed(2)}</td>
                     <td>
                       <input
                         type="number"
@@ -478,7 +478,7 @@ function ClosingEntry() {
                         aria-label={`Closing Amount for ${pr.mode_of_payment}`}
                       />
                     </td>
-                    <td>₹{pr.difference.toFixed(2)}</td>
+                    <td>د.إ{pr.difference.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -498,15 +498,15 @@ function ClosingEntry() {
                   <tr key={`${tax.account_head}:${tax.rate}`}>
                     <td>{tax.account_head}</td>
                     <td>{tax.rate.toFixed(2)}%</td>
-                    <td>₹{tax.amount.toFixed(2)}</td>
+                    <td>د.إ{tax.amount.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
             <div className="summary-section">
-              <p><strong>Net Total:</strong> ₹{netTotal}</p>
-              <p><strong>Grand Total:</strong> ₹{grandTotal}</p>
+              <p><strong>Net Total:</strong> د.إ{netTotal}</p>
+              <p><strong>Grand Total:</strong> د.إ{grandTotal}</p>
               <p><strong>Total Quantity:</strong> {totalQuantity}</p>
             </div>
           </>
