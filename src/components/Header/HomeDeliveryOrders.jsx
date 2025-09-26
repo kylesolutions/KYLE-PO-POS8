@@ -475,22 +475,22 @@ function HomeDeliveryOrders() {
   };
 
   return (
-    <div className="delivery-orders-container">
+    <div className="homedelivery-orders-container">
       <div className="delivery-orders-wrapper">
         {/* Header */}
-        <div className="header-card">
-          <div className="header-content">
-            <div className="header-left">
+        <div className="homedelivery-header-card">
+          <div className="homedelivery-header-content">
+            <div className="homedelivery-header-left">
               <button onClick={handleBack} className="btn btn-secondary btn-back">
                 <ArrowLeft className="btn-icon" />
                 Back
               </button>
-              <div className="header-title">
-                <h1 className="page-title">
-                  <Package className="title-icon" />
+              <div className="homedelivery-header-title">
+                <h1 className="homedelivery-page-title">
+                  <Package className="homedelivery-title-icon" />
                   Home Delivery Orders
                 </h1>
-                <p className="page-subtitle">Manage and track your delivery orders</p>
+                <p className="homedelivery-page-subtitle">Manage and track your delivery orders</p>
               </div>
             </div>
             <button
@@ -504,35 +504,35 @@ function HomeDeliveryOrders() {
           </div>
 
           {/* Summary Stats */}
-          <div className="stats-container">
-            <div className="stats-grid">
-              <div className="stat-card stat-orders">
-                <div className="stat-icon">
+          <div className="homedelivery-stats-container">
+            <div className="homedelivery-stats-grid">
+              <div className="homedelivery-stat-card homedelivery-stat-orders">
+                <div className="homedelivery-stat-icon">
                   <Package />
                 </div>
-                <div className="stat-content">
-                  <p className="stat-label">Total Orders</p>
-                  <p className="stat-value">{orders.length}</p>
+                <div className="homedelivery-stat-content">
+                  <p className="homedelivery-stat-label">Total Orders</p>
+                  <p className="homedelivery-stat-value">{orders.length}</p>
                 </div>
               </div>
               
-              <div className="stat-card stat-amount">
-                <div className="stat-icon">
+              <div className="homedelivery-stat-card homedelivery-stat-amount">
+                <div className="homedelivery-stat-icon">
                   <DollarSign />
                 </div>
-                <div className="stat-content">
-                  <p className="stat-label">Total Amount</p>
-                  <p className="stat-value">${totalAmount.toFixed(2)}</p>
+                <div className="homedelivery-stat-content">
+                  <p className="homedelivery-stat-label">Total Amount</p>
+                  <p className="homedelivery-stat-value">${totalAmount.toFixed(2)}</p>
                 </div>
               </div>
               
-              <div className="stat-card stat-pending">
-                <div className="stat-icon">
+              <div className="homedelivery-stat-card homedelivery-stat-pending">
+                <div className="homedelivery-stat-icon">
                   <Clock />
                 </div>
-                <div className="stat-content">
-                  <p className="stat-label">Pending Orders</p>
-                  <p className="stat-value">
+                <div className="homedelivery-stat-content">
+                  <p className="homedelivery-stat-label">Pending Orders</p>
+                  <p className="homedelivery-stat-value">
                     {orders.filter(order => order.delivery_status === "Pending" || !order.delivery_status).length}
                   </p>
                 </div>
@@ -542,116 +542,116 @@ function HomeDeliveryOrders() {
         </div>
 
         {/* Main Content */}
-        <div className="main-content">
+        <div className="homedelivery-main-content">
           {loading ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p className="loading-title">Loading Home Delivery Orders</p>
-              <p className="loading-subtitle">Please wait while we fetch your orders...</p>
+            <div className="homedelivery-loading-container">
+              <div className="homedelivery-loading-spinner"></div>
+              <p className="homedelivery-loading-title">Loading Home Delivery Orders</p>
+              <p className="homedelivery-loading-subtitle">Please wait while we fetch your orders...</p>
             </div>
           ) : error ? (
-            <div className="error-container">
-              <div className="error-card">
-                <AlertCircle className="error-icon" />
-                <h3 className="error-title">Error Loading Orders</h3>
-                <p className="error-message">{error}</p>
+            <div className="homedelivery-error-container">
+              <div className="homedelivery-error-card">
+                <AlertCircle className="homedelivery-error-icon" />
+                <h3 className="homedelivery-error-title">Error Loading Orders</h3>
+                <p className="homedelivery-error-message">{error}</p>
                 <button onClick={fetchHomeDeliveryOrders} className="btn btn-danger">
                   Try Again
                 </button>
               </div>
             </div>
           ) : orders.length === 0 ? (
-            <div className="empty-container">
-              <div className="empty-card">
-                <Package className="empty-icon" />
-                <h3 className="empty-title">No Orders Found</h3>
-                <p className="empty-message">No home delivery orders assigned by you at the moment.</p>
+            <div className="homedelivery-empty-container">
+              <div className="homedelivery-empty-card">
+                <Package className="homedelivery-empty-icon" />
+                <h3 className="homedelivery-empty-title">No Orders Found</h3>
+                <p className="homedelivery-empty-message">No home delivery orders assigned by you at the moment.</p>
               </div>
             </div>
           ) : (
-            <div className="orders-grid">
+            <div className="homedelivery-orders-grid">
               {orders.map((order) => (
-                <div key={order.name} className="order-card">
-                  <div className="order-content">
+                <div key={order.name} className="homedelivery-order-card">
+                  <div className="homedelivery-order-content">
                     {/* Order Header */}
-                    <div className="order-header">
-                      <div className="order-info">
-                        <div className="order-icon">
+                    <div className="homedelivery-order-header">
+                      <div className="homedelivery-order-info">
+                        <div className="homedelivery-order-icon">
                           <Package />
                         </div>
-                        <div className="order-details">
-                          <h3 className="order-title">Invoice #{order.invoice_id}</h3>
-                          <p className="order-id">Order ID: {order.name}</p>
+                        <div className="homedelivery-order-details">
+                          <h3 className="homedelivery-order-title">Invoice #{order.invoice_id}</h3>
+                          <p className="homedelivery-order-id">Order ID: {order.name}</p>
                         </div>
                       </div>
-                      <div className="order-status">
+                      <div className="homedelivery-order-status">
                         {getStatusBadge(order.invoice_status)}
                         {getStatusBadge(order.delivery_status || 'Pending')}
                       </div>
                     </div>
 
                     {/* Order Details */}
-                    <div className="order-details-grid">
-                      <div className="detail-item">
-                        <User className="detail-icon" />
-                        <div className="detail-content">
-                          <p className="detail-label">Customer</p>
-                          <p className="detail-value">{order.customer_name || 'N/A'}</p>
+                    <div className="homedelivery-order-details-grid">
+                      <div className="homedelivery-detail-item">
+                        <User className="homedelivery-detail-icon" />
+                        <div className="homedelivery-detail-content">
+                          <p className="homedelivery-detail-label">Customer</p>
+                          <p className="homedelivery-detail-value">{order.customer_name || 'N/A'}</p>
                         </div>
                       </div>
                       
-                      <div className="detail-item">
-                        <MapPin className="detail-icon" />
-                        <div className="detail-content">
-                          <p className="detail-label">Address</p>
-                          <p className="detail-value" title={order.customer_address}>
+                      <div className="homedelivery-detail-item">
+                        <MapPin className="homedelivery-detail-icon" />
+                        <div className="homedelivery-detail-content">
+                          <p className="homedelivery-detail-label">Address</p>
+                          <p className="homedelivery-detail-value" title={order.customer_address}>
                             {order.customer_address || 'N/A'}
                           </p>
                         </div>
                       </div>
                       
-                      <div className="detail-item">
-                        <Phone className="detail-icon" />
-                        <div className="detail-content">
-                          <p className="detail-label">Phone</p>
-                          <p className="detail-value">{order.customer_phone || 'N/A'}</p>
+                      <div className="homedelivery-detail-item">
+                        <Phone className="homedelivery-detail-icon" />
+                        <div className="homedelivery-detail-content">
+                          <p className="homedelivery-detail-label">Phone</p>
+                          <p className="homedelivery-detail-value">{order.customer_phone || 'N/A'}</p>
                         </div>
                       </div>
                       
-                      <div className="detail-item">
-                        <DollarSign className="detail-icon" />
-                        <div className="detail-content">
-                          <p className="detail-label">Amount</p>
-                          <p className="detail-value">${(order.invoice_amount || 0).toFixed(2)}</p>
+                      <div className="homedelivery-detail-item">
+                        <DollarSign className="homedelivery-detail-icon" />
+                        <div className="homedelivery-detail-content">
+                          <p className="homedelivery-detail-label">Amount</p>
+                          <p className="homedelivery-detail-value">${(order.invoice_amount || 0).toFixed(2)}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Delivery Person */}
                     {order.employee_name && (
-                      <div className="delivery-person">
-                        <div className="delivery-info">
-                          <Truck className="delivery-icon" />
-                          <div className="delivery-content">
-                            <p className="delivery-label">Delivery Person</p>
-                            <p className="delivery-name">{order.employee_name}</p>
+                      <div className="homedelivery-delivery-person">
+                        <div className="homedelivery-delivery-info">
+                          <Truck className="homedelivery-delivery-icon" />
+                          <div className="homedelivery-delivery-content">
+                            <p className="homedelivery-delivery-label">Delivery Person</p>
+                            <p className="homedelivery-delivery-name">{order.employee_name}</p>
                           </div>
                         </div>
                       </div>
                     )}
 
                     {/* Actions */}
-                    <div className="order-actions">
+                    <div className="homedelivery-order-actions">
                       {order.invoice_status !== "Paid" ? (
                         <button
                           onClick={() => handleSubmitUnpaid(order.invoice_id)}
                           disabled={payingInvoices[order.invoice_id]}
-                          className="btn btn-success"
+                          className="homedelivery-btn btn-success"
                         >
-                          <DollarSign className="btn-icon" />
+                          <DollarSign className="homedelivery-btn-icon" />
                           {payingInvoices[order.invoice_id] ? (
                             <>
-                              <div className="btn-spinner"></div>
+                              <div className="homedelivery-btn-spinner"></div>
                               Processing...
                             </>
                           ) : (
@@ -659,8 +659,8 @@ function HomeDeliveryOrders() {
                           )}
                         </button>
                       ) : (
-                        <span className="paid-indicator">
-                          <CheckCircle className="paid-icon" />
+                        <span className="homedelivery-paid-indicator">
+                          <CheckCircle className="homedelivery-paid-icon" />
                           Already Paid
                         </span>
                       )}
@@ -668,12 +668,12 @@ function HomeDeliveryOrders() {
                       <button
                         onClick={() => handlePrintInvoice(order.invoice_id)}
                         disabled={printingInvoices[order.invoice_id]}
-                        className="btn btn-secondary"
+                        className="homedelivery-btn btn-secondary"
                       >
-                        <Printer className="btn-icon" />
+                        <Printer className="homedelivery-btn-icon" />
                         {printingInvoices[order.invoice_id] ? (
                           <>
-                            <div className="btn-spinner"></div>
+                            <div className="homedelivery-btn-spinner"></div>
                             Printing...
                           </>
                         ) : (
@@ -685,12 +685,12 @@ function HomeDeliveryOrders() {
                         <button
                           onClick={() => handleMarkDelivered(order.invoice_id)}
                           disabled={deliveringInvoices[order.invoice_id]}
-                          className="btn btn-primary"
+                          className="homedelivery-btn btn-primary"
                         >
-                          <CheckCircle className="btn-icon" />
+                          <CheckCircle className="homedelivery-btn-icon" />
                           {deliveringInvoices[order.invoice_id] ? (
                             <>
-                              <div className="btn-spinner"></div>
+                              <div className="homedelivery-btn-spinner"></div>
                               Marking...
                             </>
                           ) : (
@@ -703,12 +703,12 @@ function HomeDeliveryOrders() {
                         <button
                           onClick={() => handleCancel(order.invoice_id)}
                           disabled={cancelingInvoices[order.invoice_id]}
-                          className="btn btn-danger"
+                          className="homedelivery-btn btn-danger"
                         >
-                          <XCircle className="btn-icon" />
+                          <XCircle className="homedelivery-btn-icon" />
                           {cancelingInvoices[order.invoice_id] ? (
                             <>
-                              <div className="btn-spinner"></div>
+                              <div className="homedelivery-btn-spinner"></div>
                               Canceling...
                             </>
                           ) : (
@@ -720,20 +720,20 @@ function HomeDeliveryOrders() {
 
                     {/* Delivery Boy Assignment */}
                     {order.invoice_status !== "Paid" && order.delivery_status !== "Cancel" && (
-                      <div className="delivery-assignment">
-                        <h4 className="assignment-title">
-                          <Truck className="assignment-icon" />
+                      <div className="homedelivery-delivery-assignment">
+                        <h4 className="homedelivery-assignment-title">
+                          <Truck className="homedelivery-assignment-icon" />
                           Update Delivery Person
                         </h4>
                         
-                        <div className="assignment-form">
-                          <div className="form-group">
-                            <label className="form-label">Select Delivery Person</label>
+                        <div className="homedelivery-assignment-form">
+                          <div className="homedelivery-form-group">
+                            <label className="homedelivery-form-label">Select Delivery Person</label>
                             <select
                               value={selectedDeliveryBoys[order.invoice_id] || ""}
                               onChange={(e) => handleDeliveryBoyChange(order.invoice_id, e.target.value)}
                               disabled={updatingInvoices[order.invoice_id]}
-                              className="form-select"
+                              className="homedelivery-form-select"
                             >
                               <option value="">Choose a delivery person</option>
                               {deliveryBoys.map((boy) => (
@@ -745,30 +745,30 @@ function HomeDeliveryOrders() {
                           </div>
 
                           {selectedDeliveryBoys[order.invoice_id] && (
-                            <div className="verification-section">
-                              <div className="verification-input">
+                            <div className="homedelivery-verification-section">
+                              <div className="homedelivery-verification-input">
                                 <input
                                   type="password"
                                   placeholder="Enter secret code"
                                   value={secretCodes[order.invoice_id] || ""}
                                   onChange={(e) => handleSecretCodeChange(order.invoice_id, e.target.value)}
                                   disabled={updatingInvoices[order.invoice_id]}
-                                  className="form-input"
+                                  className="homedelivery-form-input"
                                 />
                                 <button
                                   onClick={() => verifySecretCode(selectedDeliveryBoys[order.invoice_id], secretCodes[order.invoice_id], order.invoice_id)}
                                   disabled={!secretCodes[order.invoice_id] || updatingInvoices[order.invoice_id]}
-                                  className="btn btn-secondary btn-verify"
+                                  className="homedelivery-btn btn-secondary btn-verify"
                                 >
-                                  <Shield className="btn-icon" />
+                                  <Shield className="homedelivery-btn-icon" />
                                   Verify
                                 </button>
                               </div>
 
                               {verifiedStates[order.invoice_id] && (
-                                <div className="verification-success">
-                                  <CheckCircle className="success-icon" />
-                                  <span className="success-text">Code verified successfully</span>
+                                <div className="homedelivery-verification-success">
+                                  <CheckCircle className="homedelivery-success-icon" />
+                                  <span className="homedelivery-success-text">Code verified successfully</span>
                                 </div>
                               )}
                             </div>
@@ -782,12 +782,12 @@ function HomeDeliveryOrders() {
                               !verifiedStates[order.invoice_id] ||
                               updatingInvoices[order.invoice_id]
                             }
-                            className="btn btn-warning btn-update"
+                            className="homedelivery-btn btn-warning btn-update"
                           >
-                            <Truck className="btn-icon" />
+                            <Truck className="homedelivery-btn-icon" />
                             {updatingInvoices[order.invoice_id] ? (
                               <>
-                                <div className="btn-spinner"></div>
+                                <div className="homedelivery-btn-spinner"></div>
                                 Updating...
                               </>
                             ) : (

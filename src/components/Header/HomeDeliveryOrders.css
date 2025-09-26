@@ -1,20 +1,20 @@
 /* Home Delivery Orders - Modern CSS Styles */
 
 /* Container and Layout */
-.delivery-orders-container {
+.homedelivery-orders-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 2rem 0;
 }
 
-.delivery-orders-wrapper {
+.homedelivery-orders-wrapper {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 1rem;
 }
 
 /* Header Card */
-.header-card {
+.homedelivery-header-card {
   background: white;
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -23,7 +23,7 @@
   overflow: hidden;
 }
 
-.header-content {
+.homedelivery-header-content {
   padding: 2rem;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
@@ -33,20 +33,20 @@
   gap: 1rem;
 }
 
-.header-left {
+.homedelivery-header-left {
   display: flex;
   align-items: center;
   gap: 1.5rem;
   flex-wrap: wrap;
 }
 
-.header-title {
+.homedelivery-header-title {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.page-title {
+.homedelivery-page-title {
   font-size: 2rem;
   font-weight: 700;
   color: #1e293b;
@@ -56,31 +56,31 @@
   gap: 0.75rem;
 }
 
-.title-icon {
+.homedelivery-title-icon {
   width: 2rem;
   height: 2rem;
   color: #3b82f6;
 }
 
-.page-subtitle {
+.homedelivery-page-subtitle {
   font-size: 0.875rem;
   color: #64748b;
   margin: 0;
 }
 
 /* Stats Container */
-.stats-container {
+.homedelivery-stats-container {
   padding: 2rem;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
 }
 
-.stats-grid {
+.homedelivery-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
-.stat-card {
+.homedelivery-stat-card {
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
@@ -91,24 +91,24 @@
   transition: all 0.2s ease;
 }
 
-.stat-card:hover {
+.homedelivery-stat-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.stat-orders {
+.homedelivery-stat-orders {
   border-left: 4px solid #3b82f6;
 }
 
-.stat-amount {
+.homedelivery-stat-amount {
   border-left: 4px solid #10b981;
 }
 
-.stat-pending {
+.homedelivery-stat-pending {
   border-left: 4px solid #f59e0b;
 }
 
-.stat-icon {
+.homedelivery-stat-icon {
   width: 3rem;
   height: 3rem;
   border-radius: 12px;
@@ -118,38 +118,38 @@
   flex-shrink: 0;
 }
 
-.stat-orders .stat-icon {
+.homedelivery-stat-orders .homedelivery-stat-icon {
   background: #dbeafe;
   color: #3b82f6;
 }
 
-.stat-amount .stat-icon {
+.homedelivery-stat-amount .homedelivery-stat-icon {
   background: #d1fae5;
   color: #10b981;
 }
 
-.stat-pending .stat-icon {
+.homedelivery-stat-pending .homedelivery-stat-icon {
   background: #fef3c7;
   color: #f59e0b;
 }
 
-.stat-icon svg {
+.homedelivery-stat-icon svg {
   width: 1.5rem;
   height: 1.5rem;
 }
 
-.stat-content {
+.homedelivery-stat-content {
   flex: 1;
 }
 
-.stat-label {
+.homedelivery-stat-label {
   font-size: 0.875rem;
   font-weight: 500;
   color: #64748b;
   margin: 0 0 0.25rem 0;
 }
 
-.stat-value {
+.homedelivery-stat-value {
   font-size: 1.875rem;
   font-weight: 700;
   color: #1e293b;
@@ -157,7 +157,7 @@
 }
 
 /* Main Content */
-.main-content {
+.homedelivery-main-content {
   background: white;
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -166,7 +166,7 @@
 }
 
 /* Loading States */
-.loading-container {
+.homedelivery-loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -174,7 +174,7 @@
   padding: 4rem 2rem;
 }
 
-.loading-spinner {
+.homedelivery-loading-spinner {
   width: 3rem;
   height: 3rem;
   border: 3px solid #e2e8f0;
@@ -198,7 +198,7 @@
 }
 
 /* Error States */
-.error-container {
+.homedelivery-error-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -206,7 +206,7 @@
   padding: 4rem 2rem;
 }
 
-.error-card {
+.homedelivery-error-card {
   background: #fef2f2;
   border: 1px solid #fecaca;
   border-radius: 12px;
@@ -216,21 +216,21 @@
   text-align: center;
 }
 
-.error-icon {
+.homedelivery-error-icon {
   width: 3rem;
   height: 3rem;
   color: #dc2626;
   margin: 0 auto 1rem auto;
 }
 
-.error-title {
+.homedelivery-error-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: #991b1b;
   margin: 0 0 0.75rem 0;
 }
 
-.error-message {
+.homedelivery-error-message {
   font-size: 0.875rem;
   color: #dc2626;
   margin: 0 0 1.5rem 0;
@@ -238,7 +238,7 @@
 }
 
 /* Empty States */
-.empty-container {
+.homedelivery-empty-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -246,7 +246,7 @@
   padding: 4rem 2rem;
 }
 
-.empty-card {
+.homedelivery-empty-card {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   border-radius: 12px;
@@ -256,34 +256,34 @@
   text-align: center;
 }
 
-.empty-icon {
+.homedelivery-empty-icon {
   width: 4rem;
   height: 4rem;
   color: #60a5fa;
   margin: 0 auto 1rem auto;
 }
 
-.empty-title {
+.homedelivery-empty-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: #1e40af;
   margin: 0 0 0.75rem 0;
 }
 
-.empty-message {
+.homedelivery-empty-message {
   font-size: 0.875rem;
   color: #3b82f6;
   margin: 0;
 }
 
 /* Orders Grid */
-.orders-grid {
+.homedelivery-orders-grid {
   display: grid;
   gap: 2rem;
 }
 
 /* Order Card */
-.order-card {
+.homedelivery-order-card {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
@@ -292,17 +292,17 @@
   overflow: hidden;
 }
 
-.order-card:hover {
+.homedelivery-order-card:hover {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   transform: translateY(-1px);
 }
 
-.order-content {
+.homedelivery-order-content {
   padding: 2rem;
 }
 
 /* Order Header */
-.order-header {
+.homedelivery-order-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -311,46 +311,46 @@
   gap: 1rem;
 }
 
-.order-info {
+.homedelivery-order-info {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
-.order-icon {
+.homedelivery-order-icon {
   background: #dbeafe;
   padding: 0.75rem;
   border-radius: 12px;
   flex-shrink: 0;
 }
 
-.order-icon svg {
+.homedelivery-order-icon svg {
   width: 1.5rem;
   height: 1.5rem;
   color: #3b82f6;
 }
 
-.order-details h3 {
+.homedelivery-order-details h3 {
   font-size: 1.25rem;
   font-weight: 700;
   color: #1e293b;
   margin: 0 0 0.25rem 0;
 }
 
-.order-details p {
+.homedelivery-order-details p {
   font-size: 0.875rem;
   color: #64748b;
   margin: 0;
 }
 
-.order-status {
+.homedelivery-order-status {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
 /* Status Badges */
-.status-badge {
+.homedelivery-status-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -361,80 +361,80 @@
   border: 1px solid;
 }
 
-.status-icon {
+.homedelivery-status-icon {
   width: 1rem;
   height: 1rem;
 }
 
-.status-paid {
+.homedelivery-status-paid {
   background: #dcfce7;
   color: #166534;
   border-color: #bbf7d0;
 }
 
-.status-unpaid {
+.homedelivery-status-unpaid {
   background: #fef3c7;
   color: #92400e;
   border-color: #fde68a;
 }
 
-.status-pending {
+.homedelivery-status-pending {
   background: #dbeafe;
   color: #1e40af;
   border-color: #bfdbfe;
 }
 
-.status-delivered {
+.homedelivery-status-delivered {
   background: #dcfce7;
   color: #166534;
   border-color: #bbf7d0;
 }
 
-.status-cancelled {
+.homedelivery-status-cancelled {
   background: #fef2f2;
   color: #991b1b;
   border-color: #fecaca;
 }
 
-.status-unknown {
+.homedelivery-status-unknown {
   background: #f1f5f9;
   color: #475569;
   border-color: #cbd5e1;
 }
 
 /* Order Details Grid */
-.order-details-grid {
+.homedelivery-order-details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
-.detail-item {
+.homedelivery-detail-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.detail-icon {
+.homedelivery-detail-icon {
   width: 1.25rem;
   height: 1.25rem;
   color: #64748b;
   flex-shrink: 0;
 }
 
-.detail-content {
+.homedelivery-detail-content {
   flex: 1;
   min-width: 0;
 }
 
-.detail-label {
+.homedelivery-detail-label {
   font-size: 0.875rem;
   color: #64748b;
   margin: 0 0 0.125rem 0;
 }
 
-.detail-value {
+.homedelivery-detail-value {
   font-weight: 600;
   color: #1e293b;
   margin: 0;
@@ -444,39 +444,39 @@
 }
 
 /* Delivery Person */
-.delivery-person {
+.homedelivery-delivery-person {
   margin-bottom: 2rem;
   padding: 1rem;
   background: #f8fafc;
   border-radius: 12px;
 }
 
-.delivery-info {
+.homedelivery-delivery-info {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.delivery-icon {
+.homedelivery-delivery-icon {
   width: 1.25rem;
   height: 1.25rem;
   color: #64748b;
 }
 
-.delivery-label {
+.homedelivery-delivery-label {
   font-size: 0.875rem;
   color: #64748b;
   margin: 0 0 0.125rem 0;
 }
 
-.delivery-name {
+.homedelivery-delivery-name {
   font-weight: 600;
   color: #1e293b;
   margin: 0;
 }
 
 /* Order Actions */
-.order-actions {
+.homedelivery-order-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -484,7 +484,7 @@
 }
 
 /* Buttons */
-.btn {
+.homedelivery-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -500,91 +500,91 @@
   overflow: hidden;
 }
 
-.btn:disabled {
+.homedelivery-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.btn-icon {
+.homedelivery-btn-icon {
   width: 1rem;
   height: 1rem;
 }
 
-.btn-primary {
+.homedelivery-btn-primary {
   background: #3b82f6;
   color: white;
   border-color: #3b82f6;
 }
 
-.btn-primary:hover:not(:disabled) {
+.homedelivery-btn-primary:hover:not(:disabled) {
   background: #2563eb;
   border-color: #2563eb;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
 }
 
-.btn-secondary {
+.homedelivery-btn-secondary {
   background: white;
   color: #374151;
   border-color: #d1d5db;
 }
 
-.btn-secondary:hover:not(:disabled) {
+.homedelivery-btn-secondary:hover:not(:disabled) {
   background: #f9fafb;
   border-color: #9ca3af;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
 }
 
-.btn-success {
+.homedelivery-btn-success {
   background: #10b981;
   color: white;
   border-color: #10b981;
 }
 
-.btn-success:hover:not(:disabled) {
+.homedelivery-btn-success:hover:not(:disabled) {
   background: #059669;
   border-color: #059669;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
 }
 
-.btn-warning {
+.homedelivery-btn-warning {
   background: #f59e0b;
   color: white;
   border-color: #f59e0b;
 }
 
-.btn-warning:hover:not(:disabled) {
+.homedelivery-btn-warning:hover:not(:disabled) {
   background: #d97706;
   border-color: #d97706;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.3);
 }
 
-.btn-danger {
+.homedelivery-btn-danger {
   background: #ef4444;
   color: white;
   border-color: #ef4444;
 }
 
-.btn-danger:hover:not(:disabled) {
+.homedelivery-btn-danger:hover:not(:disabled) {
   background: #dc2626;
   border-color: #dc2626;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
 }
 
-.btn-back {
+.homedelivery-btn-back {
   padding: 0.5rem 0.875rem;
 }
 
-.btn-refresh:disabled .btn-icon {
+.homedelivery-btn-refresh:disabled .btn-icon {
   animation: spin 1s linear infinite;
 }
 
 /* Button Spinner */
-.btn-spinner {
+.homedelivery-btn-spinner {
   width: 1rem;
   height: 1rem;
   border: 2px solid transparent;
@@ -594,7 +594,7 @@
 }
 
 /* Paid Indicator */
-.paid-indicator {
+.homedelivery-paid-indicator {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -606,18 +606,18 @@
   background: #dcfce7;
 }
 
-.paid-icon {
+.homedelivery-paid-icon {
   width: 1rem;
   height: 1rem;
 }
 
 /* Delivery Assignment */
-.delivery-assignment {
+.homedelivery-delivery-assignment {
   border-top: 1px solid #e2e8f0;
   padding-top: 2rem;
 }
 
-.assignment-title {
+.homedelivery-assignment-title {
   font-size: 1.125rem;
   font-weight: 600;
   color: #1e293b;
@@ -627,31 +627,31 @@
   gap: 0.5rem;
 }
 
-.assignment-icon {
+.homedelivery-assignment-icon {
   width: 1.25rem;
   height: 1.25rem;
   color: #3b82f6;
 }
 
-.assignment-form {
+.homedelivery-assignment-form {
   display: grid;
   gap: 1.5rem;
 }
 
-.form-group {
+.homedelivery-form-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.form-label {
+.homedelivery-form-label {
   font-size: 0.875rem;
   font-weight: 500;
   color: #374151;
 }
 
-.form-select,
-.form-input {
+.homedelivery-form-select,
+.homedelivery-form-input {
   padding: 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -660,28 +660,28 @@
   background: white;
 }
 
-.form-select:focus,
-.form-input:focus {
+.homedelivery-form-select:focus,
+.homedelivery-form-input:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.form-select:disabled,
-.form-input:disabled {
+.homedelivery-form-select:disabled,
+.homedelivery-form-input:disabled {
   background: #f9fafb;
   color: #6b7280;
   cursor: not-allowed;
 }
 
 /* Verification Section */
-.verification-section {
+.homedelivery-verification-section {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.verification-input {
+.homedelivery-verification-input {
   display: flex;
   gap: 0.5rem;
 }
@@ -690,29 +690,29 @@
   flex: 1;
 }
 
-.btn-verify {
+.homedelivery-btn-verify {
   padding: 0.75rem 1rem;
   white-space: nowrap;
 }
 
-.verification-success {
+.homedelivery-verification-success {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   color: #166534;
 }
 
-.success-icon {
+.homedelivery-success-icon {
   width: 1.25rem;
   height: 1.25rem;
 }
 
-.success-text {
+.homedelivery-success-text {
   font-size: 0.875rem;
   font-weight: 500;
 }
 
-.btn-update {
+.homedelivery-btn-update {
   width: 100%;
   justify-content: center;
 }
@@ -727,123 +727,123 @@
   }
 }
 
-.spinning {
+.homedelivery-spinning {
   animation: spin 1s linear infinite;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .delivery-orders-container {
+  .homedelivery-delivery-orders-container {
     padding: 1rem 0;
   }
 
-  .delivery-orders-wrapper {
+  .homedelivery-delivery-orders-wrapper {
     padding: 0 0.5rem;
   }
 
-  .header-content {
+  .homedelivery-header-content {
     padding: 1.5rem;
     flex-direction: column;
     align-items: stretch;
   }
 
-  .header-left {
+  .homedelivery-header-left {
     flex-direction: column;
     align-items: stretch;
     gap: 1rem;
   }
 
-  .page-title {
+  .homedelivery-page-title {
     font-size: 1.5rem;
   }
 
-  .stats-container {
+  .homedelivery-stats-container {
     padding: 1.5rem;
   }
 
-  .stats-grid {
+  .homedelivery-stats-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
 
-  .main-content {
+  .homedelivery-main-content {
     padding: 1.5rem;
   }
 
-  .order-content {
+  .homedelivery-order-content {
     padding: 1.5rem;
   }
 
-  .order-header {
+  .homedelivery-order-header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .order-details-grid {
+  .homedelivery-order-details-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
 
-  .order-actions {
+  .homedelivery-order-actions {
     flex-direction: column;
   }
 
-  .verification-input {
+  .homedelivery-verification-input {
     flex-direction: column;
   }
 
-  .btn-verify {
+  .homedelivery-btn-verify {
     align-self: flex-start;
   }
 }
 
 @media (max-width: 480px) {
-  .delivery-orders-wrapper {
+  .homedelivery-delivery-orders-wrapper {
     padding: 0 0.25rem;
   }
 
-  .header-content {
+  .homedelivery-header-content {
     padding: 1rem;
   }
 
-  .stats-container {
+  .homedelivery-stats-container {
     padding: 1rem;
   }
 
-  .main-content {
+  .homedelivery-main-content {
     padding: 1rem;
   }
 
-  .order-content {
+  .homedelivery-order-content {
     padding: 1rem;
   }
 
-  .page-title {
+  .homedelivery-page-title {
     font-size: 1.25rem;
   }
 
-  .stat-value {
+  .homedelivery-stat-value {
     font-size: 1.5rem;
   }
 }
 
 /* Print Styles */
 @media print {
-  .delivery-orders-container {
+  .homedelivery-delivery-orders-container {
     background: white;
   }
 
-  .order-card {
+  .homedelivery-order-card {
     break-inside: avoid;
     box-shadow: none;
     border: 1px solid #000;
   }
 
-  .btn {
+  .homedelivery-btn {
     display: none;
   }
 
-  .delivery-assignment {
+  .homedelivery-delivery-assignment {
     display: none;
   }
 }

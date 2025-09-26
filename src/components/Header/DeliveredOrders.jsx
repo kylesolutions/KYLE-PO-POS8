@@ -19,6 +19,9 @@ function DeliveredOrders() {
   const [invoiceDetails, setInvoiceDetails] = useState(null);
   const [fetchingDetails, setFetchingDetails] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
 
   const fetchHomeDeliveryOrders = useCallback(async () => {
     try {
@@ -134,12 +137,22 @@ function DeliveredOrders() {
     setFilteredOrders(filtered);
   }, [orders, searchQuery, deliveryPersonFilter, invoiceStatusFilter, deliveryDateFilter]);
 
-  const handleMarkPaid = useCallback(async (invoiceId) => {
-    if (!window.confirm(`Are you sure you want to mark POS Invoice ${invoiceId} as Paid?`)) {
-      return;
-    }
+  const openPaymentModal = useCallback((invoiceId) => {
+    setSelectedInvoiceId(invoiceId);
+    setPaymentMethod("Cash");
+    setShowPaymentModal(true);
+  }, []);
 
-    setPayingInvoices((prev) => ({ ...prev, [invoiceId]: true }));
+  const closePaymentModal = useCallback(() => {
+    setShowPaymentModal(false);
+    setSelectedInvoiceId(null);
+    setPaymentMethod("Cash");
+  }, []);
+
+  const handleMarkPaid = useCallback(async () => {
+    if (!selectedInvoiceId) return;
+
+    setPayingInvoices((prev) => ({ ...prev, [selectedInvoiceId]: true }));
     try {
       const response = await fetch(
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.mark_pos_invoice_paid",
@@ -149,7 +162,7 @@ function DeliveredOrders() {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ invoice_id: invoiceId }),
+          body: JSON.stringify({ invoice_id: selectedInvoiceId, mode_of_payment: paymentMethod }),
         }
       );
 
@@ -161,14 +174,15 @@ function DeliveredOrders() {
       }
 
       await fetchHomeDeliveryOrders();
-      alert(`POS Invoice ${invoiceId} marked as Paid successfully.`);
+      alert(`POS Invoice ${selectedInvoiceId} marked as Paid successfully via ${paymentMethod}.`);
+      closePaymentModal();
     } catch (error) {
       console.error("DeliveredOrders.jsx: Error marking POS Invoice as Paid:", error.message, error);
       alert(`Failed to mark POS Invoice as Paid: ${error.message || "Please try again."}`);
     } finally {
-      setPayingInvoices((prev) => ({ ...prev, [invoiceId]: false }));
+      setPayingInvoices((prev) => ({ ...prev, [selectedInvoiceId]: false }));
     }
-  }, [fetchHomeDeliveryOrders]);
+  }, [selectedInvoiceId, paymentMethod, fetchHomeDeliveryOrders, closePaymentModal]);
 
   const handlePrintInvoice = useCallback(async (invoiceId) => {
     setPrintingInvoices((prev) => ({ ...prev, [invoiceId]: true }));
@@ -309,7 +323,6 @@ function DeliveredOrders() {
     handleSearch();
   }, [searchQuery, deliveryPersonFilter, invoiceStatusFilter, deliveryDateFilter, handleSearch]);
 
-  // Get unique delivery persons and invoice statuses for filter options
   const deliveryPersons = [...new Set(orders.map(order => order.employee_name).filter(name => name))];
   const invoiceStatuses = [...new Set(orders.map(order => order.invoice_status))];
 
@@ -319,19 +332,19 @@ function DeliveredOrders() {
   return (
     <div className="delivered-orders-container">
       {/* Header */}
-      <div className="page-header">
-        <div className="header-content">
-          <div className="header-left">
-            <button className="back-btn" onClick={handleBack}>
+      <div className="delivered-page-header">
+        <div className="delivered-header-content">
+          <div className="delivered-header-left">
+            <button className="delivered-back-btn" onClick={handleBack}>
               <ArrowLeft size={20} />
               <span>Back</span>
             </button>
-            <div className="title-section">
+            <div className="delivered-title-section">
               <h1>Delivered Orders</h1>
               <p>Manage and track all completed deliveries</p>
             </div>
           </div>
-          <button className="refresh-btn" onClick={fetchHomeDeliveryOrders}>
+          <button className="delivered-refresh-btn" onClick={fetchHomeDeliveryOrders}>
             <RefreshCw size={18} />
             <span>Refresh</span>
           </button>
@@ -339,37 +352,37 @@ function DeliveredOrders() {
       </div>
 
       {/* Main Content */}
-      <div className="main-content">
+      <div className="delivered-main-content">
         {/* Search and Filters */}
-        <div className="search-filter-section">
-          <div className="search-bar">
-            <div className="search-input-wrapper">
-              <Search size={20} className="search-icon" />
+        <div className="delivered-search-filter-section">
+          <div className="delivered-search-bar">
+            <div className="delivered-search-input-wrapper">
+              <Search size={20} className="delivered-search-icon" />
               <input
                 type="text"
                 placeholder="Search by Invoice ID or Customer Name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
+                className="delivered-search-input"
               />
             </div>
           </div>
 
-          <div className="filter-controls">
+          <div className="delivered-filter-controls">
             <button 
-              className={`filter-toggle ${showFilters ? 'active' : ''}`}
+              className={`delivered-filter-toggle ${showFilters ? 'active' : ''}`}
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter size={18} />
               <span>Filters</span>
               {activeFiltersCount > 0 && (
-                <span className="filter-badge">{activeFiltersCount}</span>
+                <span className="delivered-filter-badge">{activeFiltersCount}</span>
               )}
-              <ChevronDown size={16} className={`chevron ${showFilters ? 'rotated' : ''}`} />
+              <ChevronDown size={16} className={`delivered-chevron ${showFilters ? 'rotated' : ''}`} />
             </button>
 
             {activeFiltersCount > 0 && (
-              <button className="clear-filters-btn" onClick={clearFilters}>
+              <button className="delivered-clear-filters-btn" onClick={clearFilters}>
                 Clear Filters
               </button>
             )}
@@ -378,9 +391,9 @@ function DeliveredOrders() {
 
         {/* Filter Panel */}
         {showFilters && (
-          <div className="filter-panel">
-            <div className="filter-row">
-              <div className="filter-group">
+          <div className="delivered-filter-panel">
+            <div className="delivered-filter-row">
+              <div className="delivered-filter-group">
                 <label>Delivery Person</label>
                 <select
                   value={deliveryPersonFilter}
@@ -393,7 +406,7 @@ function DeliveredOrders() {
                 </select>
               </div>
 
-              <div className="filter-group">
+              <div className="delivered-filter-group">
                 <label>Invoice Status</label>
                 <select
                   value={invoiceStatusFilter}
@@ -406,7 +419,7 @@ function DeliveredOrders() {
                 </select>
               </div>
 
-              <div className="filter-group">
+              <div className="delivered-filter-group">
                 <label>Delivery Date</label>
                 <input
                   type="date"
@@ -420,93 +433,93 @@ function DeliveredOrders() {
 
         {/* Summary Stats */}
         {!loading && !error && filteredOrders.length > 0 && (
-          <div className="summary-stats">
-            <div className="stat-card">
-              <div className="stat-icon">
+          <div className="delivered-summary-stats">
+            <div className="delivered-stat-card">
+              <div className="delivered-stat-icon">
                 <Package size={24} />
               </div>
-              <div className="stat-info">
-                <span className="stat-value">{filteredOrders.length}</span>
-                <span className="stat-label">Total Orders</span>
+              <div className="delivered-stat-info">
+                <span className="delivered-stat-value">{filteredOrders.length}</span>
+                <span className="delivered-stat-label">Total Orders</span>
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon">
+            <div className="delivered-stat-card">
+              <div className="delivered-stat-icon">
                 <DollarSign size={24} />
               </div>
-              <div className="stat-info">
-                <span className="stat-value">${totalAmount.toFixed(2)}</span>
-                <span className="stat-label">Total Amount</span>
+              <div className="delivered-stat-info">
+                <span className="delivered-stat-value">${totalAmount.toFixed(2)}</span>
+                <span className="delivered-stat-label">Total Amount</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Content Area */}
-        <div className="content-area">
+        <div className="delivered-content-area">
           {loading ? (
-            <div className="loading-state">
-              <div className="loading-spinner"></div>
+            <div className="delivered-loading-state">
+              <div className="delivered-loading-spinner"></div>
               <p>Loading delivered orders...</p>
             </div>
           ) : error ? (
-            <div className="error-state">
-              <div className="error-icon">⚠️</div>
+            <div className="delivered-error-state">
+              <div className="delivered-error-icon">⚠️</div>
               <h3>Unable to Load Orders</h3>
               <p>{error}</p>
-              <button className="retry-btn" onClick={fetchHomeDeliveryOrders}>
+              <button className="delivered-retry-btn" onClick={fetchHomeDeliveryOrders}>
                 Try Again
               </button>
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">📦</div>
+            <div className="delivered-empty-state">
+              <div className="delivered-empty-icon">📦</div>
               <h3>No Delivered Orders Found</h3>
               <p>No orders match your current search criteria.</p>
             </div>
           ) : (
-            <div className="orders-grid">
+            <div className="delivered-orders-grid">
               {filteredOrders.map((order) => (
-                <div key={order.name} className="order-card">
-                  <div className="order-header">
-                    <div className="invoice-id">#{order.invoice_id}</div>
-                    <div className={`status-badge ${order.invoice_status.toLowerCase().replace(' ', '-')}`}>
+                <div key={order.name} className="delivered-order-card">
+                  <div className="delivered-order-header">
+                    <div className="delivered-invoice-id">#{order.invoice_id}</div>
+                    <div className={`delivered-status-badge ${order.invoice_status.toLowerCase().replace(' ', '-')}`}>
                       {order.invoice_status}
                     </div>
                   </div>
 
-                  <div className="order-info">
-                    <div className="info-row">
+                  <div className="delivered-order-info">
+                    <div className="delivered-info-row">
                       <User size={16} />
                       <span>{order.customer_name}</span>
                     </div>
-                    <div className="info-row">
+                    <div className="delivered-info-row">
                       <MapPin size={16} />
                       <span>{order.customer_address}</span>
                     </div>
-                    <div className="info-row">
+                    <div className="delivered-info-row">
                       <Phone size={16} />
                       <span>{order.customer_phone}</span>
                     </div>
-                    <div className="info-row">
+                    <div className="delivered-info-row">
                       <Calendar size={16} />
                       <span>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : "N/A"}</span>
                     </div>
                   </div>
 
-                  <div className="order-footer">
-                    <div className="amount">
-                      <span className="amount-label">Total</span>
-                      <span className="amount-value">${(order.invoice_amount || 0).toFixed(2)}</span>
+                  <div className="delivered-order-footer">
+                    <div className="delivered-amount">
+                      <span className="delivered-amount-label">Total</span>
+                      <span className="delivered-amount-value">${(order.invoice_amount || 0).toFixed(2)}</span>
                     </div>
-                    <div className="delivery-person">
+                    <div className="delivered-delivery-person">
                       Delivered by: <strong>{order.employee_name}</strong>
                     </div>
                   </div>
 
-                  <div className="order-actions">
+                  <div className="delivered-order-actions">
                     <button
-                      className="action-btn view-btn"
+                      className="delivered-action-btn view-btn"
                       onClick={() => handleViewDetails(order)}
                     >
                       <Eye size={16} />
@@ -515,27 +528,27 @@ function DeliveredOrders() {
 
                     {order.invoice_status !== "Paid" && (
                       <button
-                        className="action-btn paid-btn"
-                        onClick={() => handleMarkPaid(order.invoice_id)}
+                        className="delivered-action-btn paid-btn"
+                        onClick={() => openPaymentModal(order.invoice_id)}
                         disabled={payingInvoices[order.invoice_id]}
                       >
                         <DollarSign size={16} />
                         <span>Mark Paid</span>
                         {payingInvoices[order.invoice_id] && (
-                          <div className="btn-spinner"></div>
+                          <div className="delivered-btn-spinner"></div>
                         )}
                       </button>
                     )}
 
                     <button
-                      className="action-btn print-btn"
+                      className="delivered-action-btn print-btn"
                       onClick={() => handlePrintInvoice(order.invoice_id)}
                       disabled={printingInvoices[order.invoice_id]}
                     >
                       <Printer size={16} />
                       <span>Print</span>
                       {printingInvoices[order.invoice_id] && (
-                        <div className="btn-spinner"></div>
+                        <div className="delivered-btn-spinner"></div>
                       )}
                     </button>
                   </div>
@@ -548,27 +561,27 @@ function DeliveredOrders() {
 
       {/* Modal for Order Details */}
       {selectedOrder && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
+        <div className="delivered-modal-overlay" onClick={handleCloseModal}>
+          <div className="delivered-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="delivered-modal-header">
               <h2>Order Details - Invoice #{selectedOrder.invoice_id}</h2>
-              <button className="modal-close-btn" onClick={handleCloseModal}>
+              <button className="delivered-modal-close-btn" onClick={handleCloseModal}>
                 <X size={24} />
               </button>
             </div>
 
-            <div className="modal-body">
+            <div className="delivered-modal-body">
               {fetchingDetails ? (
-                <div className="modal-loading">
-                  <div className="loading-spinner"></div>
+                <div className="delivered-modal-loading">
+                  <div className="delivered-loading-spinner"></div>
                   <p>Loading order details...</p>
                 </div>
               ) : invoiceDetails ? (
-                <div className="order-details">
-                  <div className="details-grid">
-                    <div className="details-section">
+                <div className="delivered-order-details">
+                  <div className="delivered-details-grid">
+                    <div className="delivered-details-section">
                       <h3>Customer Information</h3>
-                      <div className="details-content">
+                      <div className="delivered-details-content">
                         <p><strong>Name:</strong> {selectedOrder.customer_name}</p>
                         <p><strong>Address:</strong> {selectedOrder.customer_address}</p>
                         <p><strong>Phone:</strong> {selectedOrder.customer_phone}</p>
@@ -576,9 +589,9 @@ function DeliveredOrders() {
                       </div>
                     </div>
 
-                    <div className="details-section">
+                    <div className="delivered-details-section">
                       <h3>Order Information</h3>
-                      <div className="details-content">
+                      <div className="delivered-details-content">
                         <p><strong>Creation Date:</strong> {new Date(selectedOrder.creation).toLocaleDateString()}</p>
                         <p><strong>Delivery Date:</strong> {selectedOrder.delivery_date ? new Date(selectedOrder.delivery_date).toLocaleDateString() : "N/A"}</p>
                         <p><strong>Invoice Status:</strong> {selectedOrder.invoice_status}</p>
@@ -588,16 +601,16 @@ function DeliveredOrders() {
                     </div>
                   </div>
 
-                  <div className="details-section">
+                  <div className="delivered-details-section">
                     <h3>Order Items</h3>
-                    <div className="items-table">
-                      <div className="table-header">
+                    <div className="delivered-items-table">
+                      <div className="delivered-table-header">
                         <div>Item Name</div>
                         <div>Variants</div>
                         <div>Price</div>
                       </div>
                       {selectedOrder.items.map((item, index) => (
-                        <div key={index} className="table-row">
+                        <div key={index} className="delivered-table-row">
                           <div>{item.item_name}</div>
                           <div>{item.variants || "N/A"}</div>
                           <div>${parseFloat(item.price || 0).toFixed(2)}</div>
@@ -606,17 +619,17 @@ function DeliveredOrders() {
                     </div>
                   </div>
 
-                  <div className="details-section">
+                  <div className="delivered-details-section">
                     <h3>Invoice Items (Detailed)</h3>
-                    <div className="items-table">
-                      <div className="table-header">
+                    <div className="delivered-items-table">
+                      <div className="delivered-table-header">
                         <div>Item</div>
                         <div>Quantity</div>
                         <div>Rate</div>
                         <div>Amount</div>
                       </div>
                       {invoiceDetails.items.map((item, index) => (
-                        <div key={index} className="table-row">
+                        <div key={index} className="delivered-table-row">
                           <div>
                             {item.item_name}
                             {item.custom_size_variants && ` (${item.custom_size_variants})`}
@@ -630,15 +643,15 @@ function DeliveredOrders() {
                   </div>
 
                   {invoiceDetails.payments && invoiceDetails.payments.length > 0 && (
-                    <div className="details-section">
+                    <div className="delivered-details-section">
                       <h3>Payment Information</h3>
-                      <div className="items-table">
-                        <div className="table-header">
+                      <div className="delivered-items-table">
+                        <div className="delivered-table-header">
                           <div>Payment Mode</div>
                           <div>Amount</div>
                         </div>
                         {invoiceDetails.payments.map((payment, index) => (
-                          <div key={index} className="table-row">
+                          <div key={index} className="delivered-table-row">
                             <div>{payment.mode_of_payment}</div>
                             <div>${parseFloat(payment.amount).toFixed(2)}</div>
                           </div>
@@ -648,15 +661,61 @@ function DeliveredOrders() {
                   )}
                 </div>
               ) : (
-                <div className="no-details">
+                <div className="delivered-no-details">
                   <p>No details available for this order.</p>
                 </div>
               )}
             </div>
 
-            <div className="modal-footer">
-              <button className="modal-close-btn-secondary" onClick={handleCloseModal}>
+            <div className="delivered-modal-footer">
+              <button className="delivered-modal-close-btn-secondary" onClick={handleCloseModal}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Method Selection Modal */}
+      {showPaymentModal && (
+        <div className="delivered-modal-overlay" onClick={closePaymentModal}>
+          <div className="delivered-modal-content payment-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="delivered-modal-header">
+              <h2>Select Payment Method - Invoice #{selectedInvoiceId}</h2>
+              <button className="delivered-modal-close-btn" onClick={closePaymentModal}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="delivered-modal-body">
+              <div className="delivered-payment-method-group">
+                <label>Payment Method</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="delivered-payment-method-select"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Credit Card">Card</option>
+                  <option value="UPI">UPI</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="delivered-modal-footer">
+              <button className="delivered-modal-close-btn-secondary" onClick={closePaymentModal}>
+                Cancel
+              </button>
+              <button
+                className="delivered-action-btn paid-btn"
+                onClick={handleMarkPaid}
+                disabled={payingInvoices[selectedInvoiceId]}
+              >
+                <DollarSign size={16} />
+                <span>Confirm Payment</span>
+                {payingInvoices[selectedInvoiceId] && (
+                  <div className="delivered-btn-spinner"></div>
+                )}
               </button>
             </div>
           </div>

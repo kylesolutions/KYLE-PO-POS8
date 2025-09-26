@@ -583,12 +583,12 @@ function Dispatch() {
   return (
     <div className="dispatch-container">
       <div className="dispatch-header">
-        <button className="back-button" onClick={handleBack}>
+        <button className="dispatch-back-button" onClick={handleBack}>
           ← Back
         </button>
-        <h1 className="header-title">Dispatch Dashboard</h1>
-        <div className="header-actions">
-          <button className="refresh-button" onClick={fetchPreparedOrders}>
+        <h1 className="dispatch-header-title">Dispatch Dashboard</h1>
+        <div className="dispatch-header-actions">
+          <button className="dispatch-refresh-button" onClick={fetchPreparedOrders}>
             🔄 Refresh
           </button>
         </div>
@@ -596,36 +596,36 @@ function Dispatch() {
 
       <div className="dispatch-content">
         {loading ? (
-          <div className="loading-state">
-            <div className="loading-spinner"></div>
-            <p className="loading-text">Loading prepared orders...</p>
+          <div className="dispatch-loading-state">
+            <div className="dispatch-loading-spinner"></div>
+            <p className="dispatch-loading-text">Loading prepared orders...</p>
           </div>
         ) : error ? (
-          <div className="error-state">
-            <div className="error-icon">⚠️</div>
-            <p className="error-message">{error}</p>
-            <button className="retry-button" onClick={fetchPreparedOrders}>
+          <div className="dispatch-error-state">
+            <div className="dispatch-error-icon">⚠️</div>
+            <p className="dispatch-error-message">{error}</p>
+            <button className="dispatch-retry-button" onClick={fetchPreparedOrders}>
               Try Again
             </button>
           </div>
         ) : (
           <>
             <div className="dispatch-controls">
-              <div className="search-section">
-                <div className="search-input-container">
+              <div className="dispatch-search-section">
+                <div className="dispatch-search-input-container">
                   <input
                     type="text"
-                    className="search-input"
+                    className="dispatch-search-input"
                     placeholder="Filter by POS Invoice ID (e.g., ACC-PSINV-2025-00753)"
                     value={searchInvoiceId}
                     onChange={(e) => setSearchInvoiceId(e.target.value)}
                   />
-                  <div className="search-icon">🔍</div>
+                  <div className="dispatch-search-icon">🔍</div>
                 </div>
               </div>
               
-              <div className="bulk-actions">
-                <div className="selected-count">
+              <div className="dispatch-bulk-actions">
+                <div className="dispatch-selected-count">
                   {selectedItems.length} item(s) selected
                 </div>
                 <button
@@ -639,13 +639,13 @@ function Dispatch() {
             </div>
 
             {filteredPreparedOrders.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">📋</div>
+              <div className="dispatch-empty-state">
+                <div className="dispatch-empty-icon">📋</div>
                 <h3>No Prepared Orders</h3>
                 <p>No prepared orders match the entered POS Invoice ID.</p>
               </div>
             ) : (
-              <div className="orders-list">
+              <div className="dispatch-orders-list">
                 {filteredPreparedOrders.map((order) => {
                   const allItemsSelected = order.items?.every((item) =>
                     selectedItems.some(
@@ -655,29 +655,29 @@ function Dispatch() {
                   const isVerified = verifiedStates[order.orderName] || false;
                   
                   return (
-                    <div key={order.orderName} className="order-card">
-                      <div className="order-header">
-                        <div className="order-info">
-                          <h3 className="order-id">Order: {order.orderName}</h3>
-                          <div className="order-details">
-                            <span className="detail-item">
-                              <span className="detail-label">Table:</span> {order.tableNumber || "N/A"}
+                    <div key={order.orderName} className="dispatch-order-card">
+                      <div className="dispatch-order-header">
+                        <div className="dispatch-order-info">
+                          <h3 className="dispatch-order-id">Order: {order.orderName}</h3>
+                          <div className="dispatch-order-details">
+                            <span className="dispatch-detail-item">
+                              <span className="dispatch-detail-label">Table:</span> {order.tableNumber || "N/A"}
                             </span>
-                            <span className="detail-item">
-                              <span className="detail-label">Chairs:</span> {order.chairCount || 0}
+                            <span className="dispatch-detail-item">
+                              <span className="dispatch-detail-label">Chairs:</span> {order.chairCount || 0}
                             </span>
-                            <span className={`delivery-type ${order.deliveryType.toLowerCase()}`}>
+                            <span className={`dispatch-delivery-type ${order.deliveryType.toLowerCase()}`}>
                               {order.deliveryType}
                             </span>
                           </div>
                         </div>
 
                         {order.deliveryType === "DELIVERY" && (
-                          <div className="delivery-section">
-                            <div className="delivery-boy-select">
-                              <label className="form-label">Select Delivery Boy</label>
+                          <div className="dispatch-delivery-section">
+                            <div className="dispatch-delivery-boy-select">
+                              <label className="dispatch-form-label">Select Delivery Boy</label>
                               <select
-                                className="select-input"
+                                className="dispatch-select-input"
                                 value={selectedDeliveryBoys[order.orderName] || ""}
                                 onChange={(e) => handleDeliveryBoyChange(order.orderName, e.target.value)}
                               >
@@ -691,20 +691,20 @@ function Dispatch() {
                             </div>
 
                             {selectedDeliveryBoys[order.orderName] && (
-                              <div className="secret-code-section">
-                                <label className="form-label">Enter Secret Code</label>
-                                <div className="code-input-container">
+                              <div className="dispatch-secret-code-section">
+                                <label className="dispatch-form-label">Enter Secret Code</label>
+                                <div className="dispatch-code-input-container">
                                   <input
                                     type="password"
-                                    className="code-input"
+                                    className="dispatch-code-input"
                                     placeholder="Enter delivery boy secret code"
                                     value={secretCodes[order.orderName] || ""}
                                     onChange={(e) => handleSecretCodeChange(order.orderName, e.target.value)}
                                   />
                                   {isVerified && (
-                                    <div className="verification-indicator">
-                                      <span className="check-icon">✓</span>
-                                      <span className="verified-text">Verified</span>
+                                    <div className="dispatch-verification-indicator">
+                                      <span className="dispatch-check-icon">✓</span>
+                                      <span className="dispatch-verified-text">Verified</span>
                                     </div>
                                   )}
                                 </div>
@@ -714,32 +714,32 @@ function Dispatch() {
                         )}
                       </div>
 
-                      <div className="items-table">
-                        <div className="table-header">
-                          <div className="header-cell checkbox-cell">
+                      <div className="dispatch-items-table">
+                        <div className="dispatch-table-header">
+                          <div className="dispatch-header-cell dispatch-checkbox-cell">
                             <input
                               type="checkbox"
-                              className="checkbox-input"
+                              className="dispatch-checkbox-input"
                               checked={allItemsSelected}
                               onChange={(e) => handleSelectAll(order, e.target.checked)}
                               disabled={!order.items?.length}
                             />
                           </div>
-                          <div className="header-cell item-cell">Item</div>
-                          <div className="header-cell variants-cell">Variants</div>
-                          <div className="header-cell quantity-cell">Qty</div>
-                          <div className="header-cell time-cell">Prepared Time</div>
-                          <div className="header-cell action-cell">Action</div>
+                          <div className="dispatch-header-cell dispatch-item-cell">Item</div>
+                          <div className="dispatch-header-cell dispatch-variants-cell">Variants</div>
+                          <div className="dispatch-header-cell dispatch-quantity-cell">Qty</div>
+                          <div className="dispatch-header-cell dispatch-time-cell">Prepared Time</div>
+                          <div className="dispatch-header-cell dispatch-action-cell">Action</div>
                         </div>
 
-                        <div className="table-body">
+                        <div className="dispatch-table-body">
                           {order.items?.length ? (
                             order.items.map((item) => (
-                              <div key={item.id} className="table-row">
-                                <div className="body-cell checkbox-cell">
+                              <div key={item.id} className="dispatch-table-row">
+                                <div className="dispatch-body-cell dispatch-checkbox-cell">
                                   <input
                                     type="checkbox"
-                                    className="checkbox-input"
+                                    className="dispatch-checkbox-input"
                                     checked={selectedItems.some(
                                       (selected) =>
                                         selected.orderName === order.orderName &&
@@ -748,19 +748,19 @@ function Dispatch() {
                                     onChange={() => handleSelectItem(order.orderName, item.id)}
                                   />
                                 </div>
-                                <div className="body-cell item-cell">
-                                  <span className="item-name">{item.name}</span>
+                                <div className="dispatch-body-cell dispatch-item-cell">
+                                  <span className="dispatch-item-name">{item.name}</span>
                                 </div>
-                                <div className="body-cell variants-cell">
-                                  <span className="variants">{item.custom_variants || "None"}</span>
+                                <div className="dispatch-body-cell dispatch-variants-cell">
+                                  <span className="dispatch-variants">{item.custom_variants || "None"}</span>
                                 </div>
-                                <div className="body-cell quantity-cell">
+                                <div className="dispatch-body-cell dispatch-quantity-cell">
                                   <span className="quantity-badge">{item.quantity}</span>
                                 </div>
-                                <div className="body-cell time-cell">
+                                <div className="dispatch-body-cell dispatch-time-cell">
                                   <span className="time-text">{item.preparedTime}</span>
                                 </div>
-                                <div className="body-cell action-cell">
+                                <div className="dispatch-body-cell dispatch-action-cell">
                                   <button
                                     className={`dispatch-button ${
                                       dispatchingItems[`${order.orderName}-${item.id}`] ? 'dispatching' :
@@ -778,7 +778,7 @@ function Dispatch() {
                                   >
                                     {dispatchingItems[`${order.orderName}-${item.id}`] ? (
                                       <>
-                                        <span className="button-spinner"></span>
+                                        <span className="dispatch-button-spinner"></span>
                                         Dispatching...
                                       </>
                                     ) : (
@@ -789,8 +789,8 @@ function Dispatch() {
                               </div>
                             ))
                           ) : (
-                            <div className="empty-row">
-                              <div className="empty-message">No prepared items available</div>
+                            <div className="dispatch-empty-row">
+                              <div className="dispatch-empty-message">No prepared items available</div>
                             </div>
                           )}
                         </div>

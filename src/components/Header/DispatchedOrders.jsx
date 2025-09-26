@@ -358,14 +358,14 @@ function DispatchedOrders() {
     return (
         <div className="dispatched-orders-container">
             <div className="dispatched-header">
-                <button className="back-button" onClick={handleBack}>
+                <button className="dispatched-back-button" onClick={handleBack}>
                     <ArrowLeft size={20} />
                     Back
                 </button>
-                <h1 className="header-title">Dispatched Orders</h1>
-                <div className="header-actions">
+                <h1 className="dispatched-header-title">Dispatched Orders</h1>
+                <div className="dispatched-header-actions">
                     <button 
-                        className={`refresh-button ${refreshing ? 'refreshing' : ''}`} 
+                        className={`dispatched-refresh-button ${refreshing ? 'refreshing' : ''}`} 
                         onClick={handleRefresh}
                         disabled={refreshing}
                     >
@@ -377,26 +377,26 @@ function DispatchedOrders() {
 
             <div className="dispatched-content">
                 {loading && !refreshing ? (
-                    <div className="loading-state">
-                        <div className="loading-spinner"></div>
-                        <p className="loading-text">Loading dispatched orders...</p>
+                    <div className="dispatched-loading-state">
+                        <div className="dispatched-loading-spinner"></div>
+                        <p className="dispatched-loading-text">Loading dispatched orders...</p>
                     </div>
                 ) : error ? (
-                    <div className="error-state">
-                        <AlertCircle className="error-icon" size={48} />
-                        <p className="error-message">{error}</p>
-                        <button className="retry-button" onClick={() => fetchDispatchedOrders()}>
+                    <div className="dispatched-error-state">
+                        <AlertCircle className="dispatched-error-icon" size={48} />
+                        <p className="dispatched-error-message">{error}</p>
+                        <button className="dispatched-retry-button" onClick={() => fetchDispatchedOrders()}>
                             Try Again
                         </button>
                     </div>
                 ) : (
                     <>
-                        <div className="controls-section">
-                            <div className="search-section">
-                                <div className="search-input-container">
+                        <div className="dispatched-controls-section">
+                            <div className="dispatched-search-section">
+                                <div className="dispatched-search-input-container">
                                     <input
                                         type="text"
-                                        className="search-input"
+                                        className="dispatched-search-input"
                                         placeholder="Search by customer, invoice ID, or table..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -404,9 +404,9 @@ function DispatchedOrders() {
                                 </div>
                             </div>
                             
-                            <div className="filter-section">
+                            <div className="dispatched-filter-section">
                                 <select
-                                    className="filter-select"
+                                    className="dispatched-filter-select"
                                     value={filterType}
                                     onChange={(e) => setFilterType(e.target.value)}
                                 >
@@ -416,56 +416,56 @@ function DispatchedOrders() {
                                 </select>
                             </div>
 
-                            <div className="stats-section">
-                                <div className="stat-item">
-                                    <span className="stat-number">{filteredOrders.length}</span>
-                                    <span className="stat-label">Orders</span>
+                            <div className="dispatched-stats-section">
+                                <div className="dispatched-stat-item">
+                                    <span className="dispatched-stat-number">{filteredOrders.length}</span>
+                                    <span className="dispatched-stat-label">Orders</span>
                                 </div>
-                                <div className="stat-item">
-                                    <span className="stat-number">
+                                <div className="dispatched-stat-item">
+                                    <span className="dispatched-stat-number">
                                         {filteredOrders.reduce((sum, order) => sum + order.dispatchedItems.length, 0)}
                                     </span>
-                                    <span className="stat-label">Items</span>
+                                    <span className="dispatched-stat-label">Items</span>
                                 </div>
                             </div>
                         </div>
 
                         {filteredOrders.length === 0 ? (
-                            <div className="empty-state">
-                                <Package className="empty-icon" size={64} />
+                            <div className="dispatched-empty-state">
+                                <Package className="dispatched-empty-icon" size={64} />
                                 <h3>No Dispatched Orders</h3>
                                 <p>No orders match your current search and filter criteria.</p>
                             </div>
                         ) : (
-                            <div className="orders-grid">
+                            <div className="dispatched-orders-grid">
                                 {filteredOrders.map((order, index) => (
-                                    <div key={order.name} className="order-card">
-                                        <div className="order-card-header">
-                                            <div className="order-info">
-                                                <div className="order-number">#{index + 1}</div>
-                                                <div className="invoice-id">{order.name}</div>
-                                                <div className="delivery-type">
+                                    <div key={order.name} className="dispatched-order-card">
+                                        <div className="dispatched-order-card-header">
+                                            <div className="dispatched-order-info">
+                                                <div className="dispatched-order-number">#{index + 1}</div>
+                                                <div className="dispatched-invoice-id">{order.name}</div>
+                                                <div className="dispatched-delivery-type">
                                                     {getDeliveryIcon(order.custom_delivery_type)}
                                                     <span>{order.custom_delivery_type}</span>
                                                 </div>
                                             </div>
-                                            <div className="order-status">
-                                                <CheckCircle className="status-icon dispatched" size={20} />
+                                            <div className="dispatched-order-status">
+                                                <CheckCircle className="dispatched-status-icon dispatched" size={20} />
                                                 <span>Dispatched</span>
                                             </div>
                                         </div>
 
-                                        <div className="customer-info">
-                                            <div className="info-row">
+                                        <div className="dispatched-customer-info">
+                                            <div className="dispatched-info-row">
                                                 <User size={16} />
                                                 <span>{order.customer}</span>
                                             </div>
                                             {order.custom_table_number && (
-                                                <div className="info-row">
+                                                <div className="dispatched-info-row">
                                                     <MapPin size={16} />
                                                     <span>Table {order.custom_table_number}</span>
                                                     {order.custom_delivery_type === "DINE IN" && order.custom_chair_count > 0 && (
-                                                        <span className="chair-count">
+                                                        <span className="dispatched-chair-count">
                                                             <Users size={14} />
                                                             {order.custom_chair_count} chairs
                                                         </span>
@@ -473,55 +473,55 @@ function DispatchedOrders() {
                                                 </div>
                                             )}
                                             {order.contact_mobile && (
-                                                <div className="info-row">
+                                                <div className="dispatched-info-row">
                                                     <Phone size={16} />
                                                     <span>{order.contact_mobile}</span>
                                                 </div>
                                             )}
                                             {order.contact_email && (
-                                                <div className="info-row">
+                                                <div className="dispatched-info-row">
                                                     <Mail size={16} />
                                                     <span>{order.contact_email}</span>
                                                 </div>
                                             )}
                                             {order.customer_address && (
-                                                <div className="info-row">
+                                                <div className="dispatched-info-row">
                                                     <MapPin size={16} />
                                                     <span>{order.customer_address}</span>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className="items-section">
-                                            <h4 className="items-title">
+                                        <div className="dispatched-items-section">
+                                            <h4 className="dispatched-items-title">
                                                 <Package size={16} />
                                                 Items ({order.dispatchedItems.length})
                                             </h4>
-                                            <div className="items-list">
+                                            <div className="dispatched-items-list">
                                                 {order.dispatchedItems.map((item, i) => (
-                                                    <div key={i} className="item-card">
-                                                        <div className="item-header">
-                                                            <span className="item-name">{item.name}</span>
-                                                            <span className="item-price">
+                                                    <div key={i} className="dispatched-item-card">
+                                                        <div className="dispatched-item-header">
+                                                            <span className="dispatched-item-name">{item.name}</span>
+                                                            <span className="dispatched-item-price">
                                                                 د.إ{(item.basePrice * item.quantity).toFixed(2)}
                                                             </span>
                                                         </div>
-                                                        <div className="item-details">
+                                                        <div className="dispatched-item-details">
                                                             {item.selectedSize && (
-                                                                <span className="item-variant">Size: {item.selectedSize}</span>
+                                                                <span className="dispatched-item-variant">Size: {item.selectedSize}</span>
                                                             )}
                                                             {item.selectedCustomVariant && (
-                                                                <span className="item-variant">Variant: {item.selectedCustomVariant}</span>
+                                                                <span className="dispatched-item-variant">Variant: {item.selectedCustomVariant}</span>
                                                             )}
-                                                            <span className="item-quantity">Qty: {item.quantity}</span>
+                                                            <span className="dispatched-item-quantity">Qty: {item.quantity}</span>
                                                         </div>
                                                         {item.description && (
-                                                            <div className="item-note">
+                                                            <div className="dispatched-item-note">
                                                                 <strong>Note:</strong> {item.description}
                                                             </div>
                                                         )}
                                                         {item.ingredients?.length > 0 && (
-                                                            <div className="item-ingredients">
+                                                            <div className="dispatched-item-ingredients">
                                                                 <strong>Ingredients:</strong>{" "}
                                                                 {item.ingredients
                                                                     .map(ing => `${ing.name} - ${ing.quantity} ${ing.unit}`)
@@ -529,10 +529,10 @@ function DispatchedOrders() {
                                                             </div>
                                                         )}
                                                         {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                            <div className="item-addons">
+                                                            <div className="dispatched-item-addons">
                                                                 {Object.entries(item.addonCounts).map(
                                                                     ([addonName, { price, quantity }]) => (
-                                                                        <div key={addonName} className="addon-item">
+                                                                        <div key={addonName} className="dispatched-addon-item">
                                                                             + {addonName} x{quantity} (د.إ{(price * quantity).toFixed(2)})
                                                                         </div>
                                                                     )
@@ -544,19 +544,19 @@ function DispatchedOrders() {
                                             </div>
                                         </div>
 
-                                        <div className="order-footer">
-                                            <div className="order-meta">
-                                                <div className="timestamp">
+                                        <div className="dispatched-order-footer">
+                                            <div className="dispatched-order-meta">
+                                                <div className="dispatched-timestamp">
                                                     <Clock size={16} />
                                                     <span>{order.posting_date} {order.posting_time}</span>
                                                 </div>
-                                                <div className="total-amount">
+                                                <div className="dispatched-total-amount">
                                                     <strong>Total: د.إ{calculateOrderTotal(order.dispatchedItems).toFixed(2)}</strong>
                                                 </div>
                                             </div>
-                                            <div className="order-actions">
+                                            <div className="dispatched-order-actions">
                                                 <button
-                                                    className="select-button"
+                                                    className="dispatched-select-button"
                                                     onClick={() => handleSelectOrder(order)}
                                                 >
                                                     <CreditCard size={16} />
