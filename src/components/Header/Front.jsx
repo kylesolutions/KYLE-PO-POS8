@@ -267,6 +267,7 @@ function Front() {
                         image: item.image ? `${baseUrl}${item.image}` : 'default-image.jpg',
                         price: parseFloat(item.price_list_rate) || 0,
                         item_code: item.item_code || '',
+                        description: item.description || "",
                         variants: Array.isArray(item.variants) ? item.variants.map((v) => ({
                             type_of_variants: v.type_of_variants || '',
                             item_code: v.item_code || `${item.item_code}-${v.type_of_variants}`,
@@ -1795,7 +1796,7 @@ function Front() {
                                                 onClick={() => setShowDiscountModal(true)}
                                                 style={{
                                                     padding: "10px",
-                                                    backgroundColor: "#795548",
+                                                    backgroundColor: "#656fa8ff",
                                                     color: "white",
                                                     border: "none",
                                                     borderRadius: "5px",
@@ -2087,7 +2088,7 @@ function Front() {
                                                         onClick={cancelCart}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            backgroundColor: "#795548",
+                                                            backgroundColor: "#656fa8ff",
                                                             color: "white",
                                                             border: "none",
                                                             borderRadius: "5px",
@@ -2108,7 +2109,7 @@ function Front() {
                                                             handleCheckoutClick();
                                                             handleShow();
                                                         }}
-                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#795548", color: "white", boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px" }}
+                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#656fa8ff", color: "white", boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px" }}
                                                     >
                                                         Pay
                                                     </button>
