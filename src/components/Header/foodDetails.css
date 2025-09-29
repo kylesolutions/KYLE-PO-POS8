@@ -5,8 +5,70 @@
   margin: 0;
 }
 
+.image-i-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
 .image-i {
-  display: inline-block;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 200px; /* Adjust as needed */
+}
+
+.image-icons {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.image-icons i {
+  color: rgb(0, 0, 0);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.image-icons i:hover {
+  color: #667eea; /* Hover color to match your theme */
+}
+
+.image-i-img {
+  max-width: 150px; /* Maximum width for the image */
+  max-height: 150px; /* Maximum height for the image */
+  width: 100%;
+  height: auto; /* Maintain aspect ratio */
+  object-fit: contain; /* Ensure image fits without stretching */
+  border-radius: 8px; /* Match the 'rounded' class */
+  display: block;
+  margin: 0 auto 1rem; /* Match mx-auto and mb-3 */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .image-i {
+    max-width: 150px;
+  }
+
+  .image-i-img {
+    max-width: 120px;
+    max-height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .image-i-img {
+    max-width: 100px;
+    max-height: 100px;
+  }
 }
 
 .info-icon {

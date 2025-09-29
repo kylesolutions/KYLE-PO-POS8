@@ -527,14 +527,15 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                             onClick={() => setShowDescriptionModal(true)}
                                             style={{ cursor: "pointer" }}
                                         ></i>
-                                        <i className="fa-solid fa-info info-icon" onClick={() => setShowModal(true)}></i>
+                                        <i
+                                            className="fa-solid fa-info info-icon"
+                                            onClick={() => setShowModal(true)}
+                                        ></i>
                                     </div>
                                     <img
                                         src={fetchedItem?.image || "default-image.jpg"}
                                         alt={fetchedItem?.name || "Item"}
-                                        width={150}
-                                        height={150}
-                                        className="mb-3 rounded d-flex mx-auto"
+                                        className="image-i-img mb-3 rounded d-flex mx-auto"
                                     />
                                 </div>
                             </div>
@@ -568,7 +569,7 @@ const FoodDetails = ({ item, onClose, allItems, cartItem, isUpdate, onUpdate }) 
                                             ))}
                                         </div>
                                     </div>
-                                )}  
+                                )}
                                 {fetchedItem?.variants?.length > 0 && (
                                     <div className="mt-3">
                                         <strong>Custom Variants (Optional):</strong>
