@@ -503,7 +503,7 @@ function DispatchedOrders() {
                                                         <div className="dispatched-item-header">
                                                             <span className="dispatched-item-name">{item.name}</span>
                                                             <span className="dispatched-item-price">
-                                                                د.إ{(item.basePrice * item.quantity).toFixed(2)}
+                                                                AED {(item.basePrice * item.quantity).toFixed(2)}
                                                             </span>
                                                         </div>
                                                         <div className="dispatched-item-details">
@@ -533,7 +533,7 @@ function DispatchedOrders() {
                                                                 {Object.entries(item.addonCounts).map(
                                                                     ([addonName, { price, quantity }]) => (
                                                                         <div key={addonName} className="dispatched-addon-item">
-                                                                            + {addonName} x{quantity} (د.إ{(price * quantity).toFixed(2)})
+                                                                            + {addonName} x{quantity} (AED {(price * quantity).toFixed(2)})
                                                                         </div>
                                                                     )
                                                                 )}
@@ -551,7 +551,7 @@ function DispatchedOrders() {
                                                     <span>{order.posting_date} {order.posting_time}</span>
                                                 </div>
                                                 <div className="dispatched-total-amount">
-                                                    <strong>Total: د.إ{calculateOrderTotal(order.dispatchedItems).toFixed(2)}</strong>
+                                                    <strong>Total: AED {calculateOrderTotal(order.dispatchedItems).toFixed(2)}</strong>
                                                 </div>
                                             </div>
                                             <div className="dispatched-order-actions">

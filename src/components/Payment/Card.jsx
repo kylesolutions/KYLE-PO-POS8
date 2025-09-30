@@ -121,7 +121,7 @@ function Card() {
             return;
         }
 
-        alert(`Card Payment Confirmed! Transaction Number: ${transactionNumber} | Amount: د.إ${(parseFloat(billDetails.grand_total) || 0).toFixed(2)}`);
+        alert(`Card Payment Confirmed! Transaction Number: ${transactionNumber} | Amount: AED ${(parseFloat(billDetails.grand_total) || 0).toFixed(2)}`);
         navigate("/frontpage");
     };
 
@@ -176,9 +176,9 @@ function Card() {
                           <strong className="font-dubai-medium">{item.item_name || "Unnamed Item"}</strong>
                           <div className="text-end">
                             <small className="text-muted d-block">
-                              د.إ{(parseFloat(item.rate) || 0).toFixed(2)} x {item.qty || 1}
+                              AED {(parseFloat(item.rate) || 0).toFixed(2)} x {item.qty || 1}
                             </small>
-                            <span className="text-primary">د.إ{(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty)).toFixed(2)}</span>
+                            <span className="text-primary">AED {(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty)).toFixed(2)}</span>
                           </div>
                         </div>
                         {(item.custom_size_variants || item.custom_other_variants) && (
@@ -188,7 +188,7 @@ function Card() {
                           </ul>
                         )}
                         <div className="item-total mt-2 fw-bold text-success text-end">
-                          Total: د.إ{(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty) || 0).toFixed(2)}
+                          Total: AED {(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty) || 0).toFixed(2)}
                         </div>
                       </div>
                     ))
@@ -200,13 +200,13 @@ function Card() {
                 <div className="totals-section p-4 bg-light rounded-lg">
                   <div className="row gy-2">
                     <div className="col-6 text-start fw-semibold">Subtotal:</div>
-                    <div className="col-6 text-end">د.إ{getSubTotal().toFixed(2)}</div>
+                    <div className="col-6 text-end">AED {getSubTotal().toFixed(2)}</div>
                     <div className="col-6 text-start fw-semibold">
                       {taxCategory} ({taxRate !== null ? `${taxRate}%` : "N/A"}):
                     </div>
-                    <div className="col-6 text-end">د.إ{getTaxAmount().toFixed(2)}</div>
+                    <div className="col-6 text-end">AED {getTaxAmount().toFixed(2)}</div>
                     <div className="col-6 text-start fw-bold font-dubai-medium">Grand Total:</div>
-                    <div className="col-6 text-end fw-bold">د.إ{getGrandTotal().toFixed(2)}</div>
+                    <div className="col-6 text-end fw-bold">AED {getGrandTotal().toFixed(2)}</div>
                   </div>
                 </div>
               </div>

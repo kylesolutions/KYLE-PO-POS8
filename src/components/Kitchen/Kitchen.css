@@ -675,6 +675,75 @@
     background: #dc2626;
 }
 
+.kitchen-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.kitchen-tab {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #d1d5db;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kitchen-tab:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.kitchen-tab.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.kitchen-tab.active:hover {
+  background: #2563eb;
+}
+
+/* Adjust controls-section to accommodate tabs */
+.controls-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: white;
+  padding: 20px 24px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Responsive Design for Tabs */
+@media (max-width: 768px) {
+  .kitchen-tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .kitchen-tab {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .kitchen-tab {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .items-grid {

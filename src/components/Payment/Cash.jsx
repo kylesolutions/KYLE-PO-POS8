@@ -180,9 +180,9 @@ function Cash() {
                         <div className="d-flex justify-content-between align-items-center">
                           <strong className="font-dubai-medium">{item.item_name || "Unnamed Item"}</strong>
                           <small className="text-muted">
-                          د.إ{(parseFloat(item.rate) || 0).toFixed(2)} x {item.qty || 1}
+                          AED {(parseFloat(item.rate) || 0).toFixed(2)} x {item.qty || 1}
                         </small>
-                          <span className="text-primary">د.إ{(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty)).toFixed(2)}</span>
+                          <span className="text-primary">AED {(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty)).toFixed(2)}</span>
                         </div>
                         
                         {(item.custom_size_variants || item.custom_other_variants) && (
@@ -192,7 +192,7 @@ function Cash() {
                           </ul>
                         )}
                         <div className="item-total mt-2 fw-bold text-success text-end">
-                          Total: د.إ{(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty) || 0).toFixed(2)}
+                          Total: AED {(parseFloat(item.amount) || (parseFloat(item.rate) * item.qty) || 0).toFixed(2)}
                         </div>
                       </div>
                     ))
@@ -204,13 +204,13 @@ function Cash() {
                 <div className="totals-section mb-4 p-4 bg-light rounded-lg">
                   <div className="row gy-2">
                     <div className="col-6 text-start fw-semibold">Subtotal:</div>
-                    <div className="col-6 text-end">د.إ{getSubTotal().toFixed(2)}</div>
+                    <div className="col-6 text-end">AED {getSubTotal().toFixed(2)}</div>
                     <div className="col-6 text-start fw-semibold">
                       {taxCategory} ({taxRate !== null ? `${taxRate}%` : "N/A"}):
                     </div>
-                    <div className="col-6 text-end">د.إ{getTaxAmount().toFixed(2)}</div>
+                    <div className="col-6 text-end">AED {getTaxAmount().toFixed(2)}</div>
                     <div className="col-6 text-start fw-bold font-dubai-medium">Grand Total:</div>
-                    <div className="col-6 text-end fw-bold">د.إ{getGrandTotal().toFixed(2)}</div>
+                    <div className="col-6 text-end fw-bold">AED {getGrandTotal().toFixed(2)}</div>
                   </div>
                 </div>
 
@@ -220,7 +220,7 @@ function Cash() {
                     <input
                       type="number"
                       className="form-control form-control-lg"
-                      placeholder="Enter amount (د.إ)"
+                      placeholder="Enter amount (AED )"
                       value={cashGiven}
                       onChange={handleCashChange}
                       min="0"
@@ -231,7 +231,7 @@ function Cash() {
                   <div className="mb-4">
                     <label className="form-label fw-bold font-dubai-medium">Return Change:</label>
                     <h5 className={`fw-bold ${change >= 0 ? 'text-success' : 'text-danger'}`}>
-                      د.إ {change.toFixed(2)}
+                      AED  {change.toFixed(2)}
                     </h5>
                   </div>
 

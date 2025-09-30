@@ -1234,7 +1234,7 @@ function Front() {
                 if (!kitchenNoteSuccess) {
                     console.warn("Front.jsx: Kitchen Note creation/update failed for POS Invoice:", posInvoiceId);
                 }
-                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: د.إ${result.message.data.grand_total}`);
+                alert(`POS Invoice ${existingOrder ? "updated" : "saved"} as Draft! Grand Total: AED${result.message.data.grand_total}`);
                 setCartItems([]);
                 if (tableNumber && !existingOrder) {
                     setBookedTables(prev => [...new Set([...prev, tableNumber])]);
@@ -1766,7 +1766,7 @@ function Front() {
                                                                         />
                                                                     )}
                                                                     <span className="item-price">
-                                                                       د.إ{(row.price || 0).toFixed(2)}
+                                                                       AED{(row.price || 0).toFixed(2)}
                                                                     </span>
                                                                     {row.isMain && (
                                                                         <button
@@ -1847,7 +1847,7 @@ function Front() {
                                     </div>
 
                                     <div className="mb-3">
-                                        <label className="form-label">Discount Amount (د.إ)</label>
+                                        <label className="form-label">Discount Amount (AED)</label>
                                         <input
                                             type="number"
                                             className="form-control"
@@ -1862,7 +1862,7 @@ function Front() {
                                             placeholder="Enter amount"
                                         />
                                     </div>
-                                    <p><strong>Discount Applied:</strong> د.إ{getDiscountAmount().toFixed(2)}</p>
+                                    <p><strong>Discount Applied:</strong> AED{getDiscountAmount().toFixed(2)}</p>
                                 </Modal.Body>
                                 <Modal.Footer>
                                     <Button variant="secondary" onClick={() => setShowDiscountModal(false)}>
@@ -1880,33 +1880,33 @@ function Front() {
                                         <div className="col-12 col-lg-12">
                                             <div className="row">
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
-                                                    <div className='grand-tot-div justify-content-end'  style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
+                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
+                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
                                                         <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
-                                                    <div className='grand-tot-div' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <span>د.إ</span><span>{getSubTotal().toFixed(2)}</span>
+                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
+                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
+                                                        <span>AED{getSubTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
-                                                    <div className='grand-tot-div justify-content-end' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <span>د.إ{getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">                                                  
+                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
+                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
+                                                        <span>AED{getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
                                                     </div>
                                                 </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Discount</h5>
-                                                    <div className='grand-tot-div justify-content-end'  style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <span>-د.إ{getDiscountAmount().toFixed(2)}</span>
+                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">                                                   
+                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
+                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Discount</h5>
+                                                        <span>-AED{getDiscountAmount().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="col-md-12 mb-2 col-12 col-lg-12 col-xl-12">
-                                                    <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
-                                                    <div className='grand-tot-div justify-content-end'  style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <span>د.إ{getGrandTotal().toFixed(2)}</span>
+                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
+                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
+                                                        <span>AED{getGrandTotal().toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2014,7 +2014,7 @@ function Front() {
                                                                                             {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
                                                                                                 <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
                                                                                                     {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (د.إ{(parseFloat(price) || 0).toFixed(2)})</li>
+                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (AED{(parseFloat(price) || 0).toFixed(2)})</li>
                                                                                                     ))}
                                                                                                 </ul>
                                                                                             )}
@@ -2026,7 +2026,7 @@ function Front() {
                                                                                                             {(combo.selectedSize || combo.selectedCustomVariant) && (
                                                                                                                 ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
                                                                                                             )}
-                                                                                                            - د.إ{(parseFloat(combo.rate) || 0).toFixed(2)}
+                                                                                                            - AED{(parseFloat(combo.rate) || 0).toFixed(2)}
                                                                                                             {combo.custom_customer_description && (
                                                                                                                 <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
                                                                                                                     <strong>Note:</strong> {combo.custom_customer_description}
@@ -2050,8 +2050,8 @@ function Front() {
                                                                                             )}
                                                                                         </td>
                                                                                         <td>{item.quantity || 1}</td>
-                                                                                        <td className='text-end'>د.إ{(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
-                                                                                        <td className='text-end'>د.إ{getItemTotal(item).toFixed(2)}</td>
+                                                                                        <td className='text-end'>AED{(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
+                                                                                        <td className='text-end'>AED{getItemTotal(item).toFixed(2)}</td>
                                                                                     </tr>
                                                                                 ))}
                                                                             </tbody>
@@ -2060,13 +2060,13 @@ function Front() {
                                                                             <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
                                                                             <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
                                                                             <div className="col-6 text-start"><strong>Subtotal:</strong></div>
-                                                                            <div className="col-6 text-end">د.إ{getSubTotal().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">AED{getSubTotal().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
-                                                                            <div className="col-6 text-end">د.إ{getTaxAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">AED{getTaxAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Discount:</strong></div>
-                                                                            <div className="col-6 text-end">-د.إ{getDiscountAmount().toFixed(2)}</div>
+                                                                            <div className="col-6 text-end">-AED{getDiscountAmount().toFixed(2)}</div>
                                                                             <div className="col-6 text-start"><strong>Grand Total:</strong></div>
-                                                                            <div className="col-6 text-end"><strong>د.إ{getGrandTotal().toFixed(2)}</strong></div>
+                                                                            <div className="col-6 text-end"><strong>AED{getGrandTotal().toFixed(2)}</strong></div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -2171,4 +2171,3 @@ function Front() {
 }
 
 export default Front;
-

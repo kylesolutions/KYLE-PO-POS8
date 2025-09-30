@@ -126,7 +126,7 @@ function SalesInvoice() {
   const formatDiscount = (invoice) => {
     const percentage = parseFloat(invoice.additional_discount_percentage) || 0;
     const amount = parseFloat(invoice.discount_amount) || 0;
-    if (amount > 0) return `د.إ${amount.toFixed(2)}`;
+    if (amount > 0) return `AED ${amount.toFixed(2)}`;
     if (percentage > 0) return `${percentage}%`;
     return "N/A";
   };
@@ -257,8 +257,8 @@ function SalesInvoice() {
                             <td>${item.item_name || "N/A"}</td>
                             <td>${item.description || "N/A"}</td>
                             <td>${item.qty || 0}</td>
-                            <td>د.إ${item.rate || 0}</td>
-                            <td>د.إ${item.amount || 0}</td>
+                            <td>AED ${item.rate || 0}</td>
+                            <td>AED ${item.amount || 0}</td>
                           </tr>
                         `
                         )
@@ -286,13 +286,13 @@ function SalesInvoice() {
             }
             <div class="footer">
               <div class="totals">
-                <p><strong>Total Taxes:</strong> <span class="value">د.إ${invoice.total_taxes_and_charges || 0}</span></p>
+                <p><strong>Total Taxes:</strong> <span class="value">AED ${invoice.total_taxes_and_charges || 0}</span></p>
                 <p><strong>Discount:</strong> <span class="value">${formatDiscount(invoice)} (${
                   invoice.apply_discount_on || "Grand Total"
                 })</span></p>
                 <p><strong>Currency:</strong> <span class="value">${invoice.currency || "INR"}</span></p>
-                <p><strong>Paid Amount:</strong> <span class="value">د.إ${invoice.paid_amount || 0}</span></p>
-                <p><strong>Grand Total:</strong> <span class="value">د.إ${invoice.grand_total || 0}</span></p>
+                <p><strong>Paid Amount:</strong> <span class="value">AED ${invoice.paid_amount || 0}</span></p>
+                <p><strong>Grand Total:</strong> <span class="value">AED ${invoice.grand_total || 0}</span></p>
                 <p><strong>In Words:</strong> <span class="value">${invoice.in_words || "N/A"}</span></p>
               </div>
             </div>
@@ -391,7 +391,7 @@ function SalesInvoice() {
                 <tr key={invoice.name}>
                   <td>{invoice.name}</td>
                   <td>{invoice.customer_details?.customer_name || "N/A"}</td>
-                  <td>د.إ{invoice.grand_total || 0}</td>
+                  <td>AED {invoice.grand_total || 0}</td>
                   <td>
                     <button
                       className="btn btn-sm btn-info"
@@ -474,8 +474,8 @@ function SalesInvoice() {
                           <td>{item.item_name || "N/A"}</td>
                           <td>{item.description || "N/A"}</td>
                           <td className="table-right-align">{item.qty || 0}</td>
-                          <td className="table-right-align">د.إ{item.rate || 0}</td>
-                          <td className="table-right-align">د.إ{item.amount || 0}</td>
+                          <td className="table-right-align">AED {item.rate || 0}</td>
+                          <td className="table-right-align">AED {item.amount || 0}</td>
                           {/* <td className="table-right-align">{item.custom_size_variants}</td> */}
                           {/* <td className="table-right-align">{item.custom_other_variants}</td> */}
                         </tr>
@@ -501,7 +501,7 @@ function SalesInvoice() {
               <div className="mt-3">
                 <p>
                   <strong>Total Taxes:</strong>{" "}
-                  <span className="value">د.إ{selectedInvoice.total_taxes_and_charges || 0}</span>
+                  <span className="value">AED {selectedInvoice.total_taxes_and_charges || 0}</span>
                 </p>
                 <p>
                   <strong>Discount:</strong>{" "}
@@ -515,11 +515,11 @@ function SalesInvoice() {
                 </p>
                 <p>
                   <strong>Paid Amount:</strong>{" "}
-                  <span className="value">د.إ{selectedInvoice.paid_amount || 0}</span>
+                  <span className="value">AED {selectedInvoice.paid_amount || 0}</span>
                 </p>
                 <p>
                   <strong>Grand Total:</strong>{" "}
-                  <span className="value">د.إ{selectedInvoice.grand_total || 0}</span>
+                  <span className="value">AED {selectedInvoice.grand_total || 0}</span>
                 </p>
                 <p>
                   <strong>In Words:</strong>{" "}

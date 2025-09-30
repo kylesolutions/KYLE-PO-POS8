@@ -32,6 +32,17 @@ function HomeDeliveryOrders() {
   const [updatingInvoices, setUpdatingInvoices] = useState({});
   const [cancelingInvoices, setCancelingInvoices] = useState({});
   const [deliveringInvoices, setDeliveringInvoices] = useState({});
+  const [cancelingPosInvoices, setCancelingPosInvoices] = useState({});
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [selectedInvoiceForCancel, setSelectedInvoiceForCancel] = useState(null);
+  const [complaints, setComplaints] = useState([]);
+  const [selectedReason, setSelectedReason] = useState(null);
+
+  // Function to get CSRF token from cookies
+  const getCsrfToken = () => {
+    const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
+    return match ? match[2] : null;
+  };
 
   const fetchHomeDeliveryOrders = useCallback(async () => {
     try {
@@ -44,6 +55,7 @@ function HomeDeliveryOrders() {
           headers: {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
           },
         }
       );
@@ -74,6 +86,7 @@ function HomeDeliveryOrders() {
           headers: {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
           },
         }
       );
@@ -92,6 +105,35 @@ function HomeDeliveryOrders() {
     }
   }, []);
 
+  const fetchComplaints = useCallback(async () => {
+    try {
+      const response = await fetch(
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_complaints",
+        {
+          method: "GET",
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to fetch complaints: ${response.status} - ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log("HomeDeliveryOrders.jsx: Raw response from get_complaints:", JSON.stringify(data, null, 2));
+      if (data.message.status !== "success") {
+        throw new Error(data.message.message || "Invalid response from server");
+      }
+      setComplaints(data.message.data || []);
+    } catch (error) {
+      console.error("HomeDeliveryOrders.jsx: Error fetching complaints:", error.message, error);
+      alert(`Failed to load complaints: ${error.message || "Please try again."}`);
+      setComplaints([]);
+    }
+  }, []);
+
   const verifySecretCode = useCallback(async (employeeName, secretCode, invoiceId) => {
     try {
       const response = await fetch(
@@ -101,6 +143,7 @@ function HomeDeliveryOrders() {
           headers: {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
           },
           body: JSON.stringify({
             employee_name: employeeName,
@@ -158,6 +201,7 @@ function HomeDeliveryOrders() {
           headers: {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
           },
           body: JSON.stringify({
             invoice_id: invoiceId,
@@ -200,6 +244,7 @@ function HomeDeliveryOrders() {
           headers: {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
           },
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
@@ -225,6 +270,57 @@ function HomeDeliveryOrders() {
     }
   }, [fetchHomeDeliveryOrders]);
 
+  const handleOpenComplaintModal = useCallback((invoiceId) => {
+    setSelectedInvoiceForCancel(invoiceId);
+    setShowComplaintModal(true);
+    fetchComplaints();
+  }, [fetchComplaints]);
+
+  const handleCancelPosInvoice = useCallback(async () => {
+    if (!selectedReason) {
+      alert("Please select a reason for cancellation.");
+      return;
+    }
+    const invoiceId = selectedInvoiceForCancel;
+    setCancelingPosInvoices((prev) => ({ ...prev, [invoiceId]: true }));
+    try {
+      const response = await fetch(
+        "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.cancel_pos_invoice",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
+            "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
+            Expect: undefined,
+          },
+          body: JSON.stringify({ invoice_id: invoiceId, reason: selectedReason }),
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      const result = await response.json();
+      console.log("HomeDeliveryOrders.jsx: cancel_pos_invoice Response:", JSON.stringify(result, null, 2));
+      if (result.exception) {
+        throw new Error(result.exception.split('\n')[0] || "Server error occurred");
+      }
+      if (result.message?.status !== "success") {
+        throw new Error(result.message?.message || "Failed to cancel POS Invoice");
+      }
+      await fetchHomeDeliveryOrders();
+      alert(`POS Invoice ${invoiceId} canceled successfully.`);
+      setShowComplaintModal(false);
+      setSelectedReason(null);
+      setSelectedInvoiceForCancel(null);
+    } catch (error) {
+      console.error("HomeDeliveryOrders.jsx: Error canceling POS Invoice:", error.message, error);
+      alert(`Failed to cancel POS Invoice: ${error.message || "Please try again."}`);
+    } finally {
+      setCancelingPosInvoices((prev) => ({ ...prev, [invoiceId]: false }));
+    }
+  }, [selectedInvoiceForCancel, selectedReason, fetchHomeDeliveryOrders]);
+
   const handleSubmitUnpaid = useCallback(async (invoiceId) => {
     if (!window.confirm(`Are you sure you want to submit POS Invoice ${invoiceId} as Unpaid?`)) {
       return;
@@ -238,6 +334,7 @@ function HomeDeliveryOrders() {
           headers: {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
           },
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
@@ -276,6 +373,7 @@ function HomeDeliveryOrders() {
           headers: {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
           },
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
@@ -311,6 +409,7 @@ function HomeDeliveryOrders() {
           headers: {
             Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
             "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": getCsrfToken() || "",
           },
         }
       );
@@ -700,21 +799,31 @@ function HomeDeliveryOrders() {
                       )}
 
                       {order.invoice_status !== "Paid" && order.delivery_status !== "Cancel" && (
-                        <button
-                          onClick={() => handleCancel(order.invoice_id)}
-                          disabled={cancelingInvoices[order.invoice_id]}
-                          className="homedelivery-btn btn-danger"
-                        >
-                          <XCircle className="homedelivery-btn-icon" />
-                          {cancelingInvoices[order.invoice_id] ? (
-                            <>
-                              <div className="homedelivery-btn-spinner"></div>
-                              Canceling...
-                            </>
-                          ) : (
-                            'Cancel Order'
-                          )}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleCancel(order.invoice_id)}
+                            disabled={cancelingInvoices[order.invoice_id]}
+                            className="homedelivery-btn btn-danger"
+                          >
+                            <XCircle className="homedelivery-btn-icon" />
+                            {cancelingInvoices[order.invoice_id] ? (
+                              <>
+                                <div className="homedelivery-btn-spinner"></div>
+                                Canceling...
+                              </>
+                            ) : (
+                              'Cancel Delivery'
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleOpenComplaintModal(order.invoice_id)}
+                            disabled={cancelingPosInvoices[order.invoice_id]}
+                            className="homedelivery-btn btn-danger btn-cancel-pos"
+                          >
+                            <XCircle className="homedelivery-btn-icon" />
+                            Cancel POS Invoice
+                          </button>
+                        </>
                       )}
                     </div>
 
@@ -804,6 +913,46 @@ function HomeDeliveryOrders() {
           )}
         </div>
       </div>
+
+      {/* Complaint Modal */}
+      {showComplaintModal && (
+        <div className="homedelivery-modal-overlay" onClick={() => setShowComplaintModal(false)}>
+          <div className="homedelivery-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="homedelivery-modal-header">
+              <h3>Select Reason for Cancellation</h3>
+              <button className="homedelivery-modal-close" onClick={() => setShowComplaintModal(false)}>
+                <XCircle className="homedelivery-btn-icon" />
+              </button>
+            </div>
+            <div className="homedelivery-modal-body">
+              {complaints.length === 0 ? (
+                <p>Loading complaints...</p>
+              ) : (
+                complaints.map((complaint) => (
+                  <label key={complaint.name} className="homedelivery-complaint-option">
+                    <input
+                      type="radio"
+                      value={complaint.complaints}
+                      checked={selectedReason === complaint.complaints}
+                      onChange={(e) => setSelectedReason(e.target.value)}
+                    />
+                    {complaint.complaints}
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="homedelivery-modal-footer">
+              <button
+                onClick={handleCancelPosInvoice}
+                disabled={!selectedReason || cancelingPosInvoices[selectedInvoiceForCancel]}
+                className="homedelivery-btn btn-danger"
+              >
+                {cancelingPosInvoices[selectedInvoiceForCancel] ? 'Cancelling...' : 'Confirm Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
