@@ -128,6 +128,10 @@ function DispatchedOrders() {
 
                     const posInvoice = posInvoices.find(invoice => invoice.name === kitchenOrder.pos_invoice_id);
 
+                    if (!posInvoice) {
+                        return null; // Skip if no matching Draft POS invoice
+                    }
+
                     const chairNumbers = posInvoice?.custom_chair_numbers
                         ? Array.isArray(posInvoice.custom_chair_numbers)
                             ? posInvoice.custom_chair_numbers.map(num => parseInt(num))
@@ -282,7 +286,6 @@ function DispatchedOrders() {
             ingredients: item.ingredients || [],
             status: "Dispatched"
         }));
-
         console.log("DispatchedOrders.jsx: Formatted cart items for Front:", JSON.stringify(formattedCartItems, null, 2));
 
         navigate('/frontpage', {

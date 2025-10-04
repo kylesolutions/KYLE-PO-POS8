@@ -1,8 +1,7 @@
-/* Home Delivery Orders - Modern CSS Styles */
 
 /* Container and Layout */
 .homedelivery-orders-container {
-  min-height: 100vh;
+  min-height: 80vh;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 2rem 0;
 }
@@ -280,6 +279,9 @@
 .homedelivery-orders-grid {
   display: grid;
   gap: 2rem;
+  max-height: calc(100vh - 400px); /* Adjust based on header and stats height */
+  overflow-y: auto;
+  padding-right: 1rem; /* For scrollbar */
 }
 
 /* Order Card */

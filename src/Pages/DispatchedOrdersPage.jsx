@@ -14,14 +14,10 @@ function DispatchedOrdersPage() {
         <div className="col-lg-11 col-md-9 col-sm-8">
           <Navbar/>
           <DispatchedOrders/>
-        </div>
-        
-      </div>
-    
-    </div>
-    
-    </>
-    
+        </div>      
+      </div> 
+    </div>  
+    </>  
   )
 }
 

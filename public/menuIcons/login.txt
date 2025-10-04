@@ -1,0 +1,69 @@
+import frappe
+from frappe import _
+from frappe.auth import LoginManager
+from frappe.utils import getdate, flt, get_datetime, now
+
+# User Login
+@frappe.whitelist(allow_guest=True)
+def user_login(username, password):
+    user_email = frappe.db.get_value("User", {"email": username}, "email")
+    if not user_email:
+        frappe.throw(_("User does not exist."), frappe.exceptions.DoesNotExistError)
+    try:
+        login_manager = LoginManager()
+        login_manager.authenticate(user=user_email, pwd=password)
+        login_manager.post_login()
+        pos_profile = frappe.db.get_value("POS Profile User", {"user": user_email}, "parent")
+        if not pos_profile:
+            return {
+                "status": "success",
+                "message": _("Login successful, but no POS Profile assigned."),
+                "user": frappe.session.user,
+                "session": frappe.local.session.sid,
+                "pos_profile": None,
+                "company": None,
+                "allowed_item_groups": [],
+                "allowed_customer_groups": [],
+                "filtered_items": [],
+                "filtered_customers": [],
+            }
+        company = frappe.db.get_value("POS Profile", pos_profile, "company")
+        item_groups = frappe.get_all("POS Item Group", filters={"parent": pos_profile}, pluck="item_group")
+        customer_groups = frappe.get_all("POS Customer Group", filters={"parent": pos_profile}, pluck="customer_group")
+        items = frappe.get_all(
+            "Item",
+            filters={"item_group": ["in", item_groups]} if item_groups else {},
+            fields=["item_code", "item_name", "item_group", "stock_uom"]
+        ) if item_groups else []
+
+        customers = frappe.get_all(
+            "Customer",
+            filters={"customer_group": ["in", customer_groups]} if customer_groups else {},
+            fields=["name", "customer_name", "customer_group", "territory"]
+        ) if customer_groups else []
+        return {
+            "status": "success",
+            "message": _("Login successful."),
+            "user": frappe.session.user,
+            "session": frappe.local.session.sid,
+            "pos_profile": pos_profile,
+            "company": company,
+            "allowed_item_groups": item_groups,
+            "allowed_customer_groups": customer_groups,
+            "filtered_items": items,
+            "filtered_customers": customers,
+        }
+    except frappe.exceptions.AuthenticationError:
+        frappe.throw(_("Invalid username or password."))
+
+# User Logout
+@frappe.whitelist()
+def user_logout():
+    try:
+        login_manager = LoginManager()
+        login_manager.logout()
+        frappe.db.commit()
+        return {"status": "success", "message": _("Logout successful.")}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "User Logout Error")
+        return {"status": "error", "message": f"Failed to logout: {str(e)}"}

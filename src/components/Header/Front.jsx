@@ -240,7 +240,6 @@ function Front() {
             setTaxTemplateName("");
         }
     };
-
     fetchCompanyDetails();
 }, [company]);
 
@@ -317,7 +316,6 @@ function Front() {
                 setCategories([]);
             }
         };
-
         fetchItems();
     }, [allowedItemGroups]);
 
@@ -826,13 +824,7 @@ function Front() {
             }
         }
 
-        const dispatchedCartItems = cartItems.filter(item => item.status === "Dispatched"); // Filter only dispatched items
-        if (dispatchedCartItems.length === 0) {
-            alert("No items have been dispatched. Please dispatch items before proceeding to payment.");
-            return;
-        }
-
-        const subTotal = dispatchedCartItems.reduce((sum, item) => sum + getItemTotal(item), 0); // Recalculate subtotal for dispatched items only
+        const subTotal = cartItems.reduce((sum, item) => sum + getItemTotal(item), 0); // Recalculate subtotal for all items
         const taxAmount = subTotal > 0 && taxRate > 0 ? (subTotal * taxRate) / 100 : 0;
         const discount = applyDiscountOn === "Grand Total" ? ((subTotal + taxAmount) * parseFloat(discountPercentage)) / 100 : (subTotal * parseFloat(discountPercentage)) / 100 || parseFloat(discountAmount) || 0;
         const grandTotal = (subTotal + taxAmount) - discount;
@@ -842,7 +834,7 @@ function Front() {
             amount: grandTotal.toFixed(2),
         };
 
-        const allCartItems = dispatchedCartItems.flatMap((item) => {
+        const allCartItems = cartItems.flatMap((item) => {
             const variantPrice = parseFloat(item.customVariantPrice) || 0;
             const ingredientPrice = calculateIngredientPrice(item.ingredients);
             const resolvedItemCode = resolveVariantItemCode(item.item_code, item.selectedSize);
@@ -969,76 +961,14 @@ function Front() {
                 const posInvoiceId = result.message.data.name;
                 let kitchenNoteSuccess = true;
 
-                if (!existingOrder) {
-                    const kitchenNoteExists = await checkKitchenNoteExists(posInvoiceId);
-                    if (!kitchenNoteExists) {
-                        kitchenNoteSuccess = await createKitchenNote(posInvoiceId);
-                        if (!kitchenNoteSuccess) {
-                            console.warn("Front.jsx: Kitchen Note creation failed for POS Invoice:", posInvoiceId);
-                        }
-                    }
+                const kitchenNoteExists = await checkKitchenNoteExists(posInvoiceId);
+                if (kitchenNoteExists) {
+                    kitchenNoteSuccess = await updateKitchenNote(posInvoiceId);
+                } else {
+                    kitchenNoteSuccess = await createKitchenNote(posInvoiceId);
                 }
-
-                if (!existingOrder && result.message.data.status !== "Paid") {
-                    console.log(`Front.jsx: Initial status is ${result.message.data.status}. Attempting to update to Paid for POS Invoice ${posInvoiceId}`);
-                    payload.name = posInvoiceId;
-                    payload.status = "Paid";
-                    const updateResponse = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_pos_invoice', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                            'Expect': '',
-                        },
-                        body: JSON.stringify(payload),
-                    });
-                    const updateResult = await updateResponse.json();
-                    if (updateResponse.ok && updateResult.message?.status === 'success') {
-                        console.log(`Front.jsx: Status updated to Paid for POS Invoice ${posInvoiceId}`);
-                        result.message.data.status = "Paid";
-                    } else {
-                        const errorMsg = updateResult.message?.exception || updateResult.message?.message || "Unknown error";
-                        console.warn(`Front.jsx: Failed to update status to Paid for POS Invoice ${posInvoiceId}: ${errorMsg}`);
-                    }
-                }
-
-                // Delete the kitchen note after the invoice is submitted (status is "Paid")
-                if (result.message.data.status === "Paid") {
-                    try {
-                        const deleteResponse = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.delete_kitchen_note', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                                'Expect': '',
-                            },
-                            body: JSON.stringify({ pos_invoice_id: posInvoiceId }),
-                        });
-                        const deleteResult = await deleteResponse.json();
-                        console.log(`Front.jsx: Response from delete_kitchen_note for POS Invoice ${posInvoiceId}:`, JSON.stringify(deleteResult, null, 2));
-
-                        if (deleteResponse.ok && deleteResult.message?.status === 'success') {
-                            console.log(`Front.jsx: Kitchen Note processed for POS Invoice ${posInvoiceId}: ${deleteResult.message.message}`);
-                            // Show success message to user
-                            alert(`Success: ${deleteResult.message.message}`);
-                        } else {
-                            const errorMessage = deleteResult.message?.message || deleteResult.exception || 'Unknown error';
-                            console.warn(`Front.jsx: Failed to process Kitchen Note for POS Invoice ${posInvoiceId}: ${errorMessage}`);
-                            alert(`Warning: Failed to process non-dispatched items for POS Invoice ${posInvoiceId}: ${errorMessage}`);
-                        }
-                    } catch (error) {
-                        console.warn(`Front.jsx: Error processing Kitchen Note for POS Invoice ${posInvoiceId}:`, error);
-                        alert(`Warning: Error processing non-dispatched items for POS Invoice ${posInvoiceId}: ${error.message || 'Network error'}`);
-                    }
-
-                    // Navigate back to Table.jsx with a signal to clear the table's activeOrders
-                    navigate("/table", {
-                        state: {
-                            clearTable: {
-                                tableNumber: tableNumber,
-                            },
-                        },
-                    });
+                if (!kitchenNoteSuccess) {
+                    console.warn("Front.jsx: Kitchen Note creation/update failed for POS Invoice:", posInvoiceId);
                 }
 
                 if (method === "CASH") {
@@ -1053,6 +983,15 @@ function Front() {
                     setBookedTables(prev => [...new Set([...prev, tableNumber])]);
                 }
                 alert(`Payment completed for Invoice ${posInvoiceId}. Status: ${result.message.data.status}${!kitchenNoteSuccess ? " (Kitchen Note creation failed)" : ""}`);
+
+                // Navigate back to Table.jsx with a signal to clear the table's activeOrders
+                navigate("/table", {
+                    state: {
+                        clearTable: {
+                            tableNumber: tableNumber,
+                        },
+                    },
+                });
             } else {
                 const errorMsg = result.message?.exception || result.message?.message || "Unknown error";
                 alert(`Failed to process payment for POS Invoice: ${errorMsg}`);

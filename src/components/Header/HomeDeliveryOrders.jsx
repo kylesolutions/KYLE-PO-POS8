@@ -821,7 +821,7 @@ function HomeDeliveryOrders() {
                             className="homedelivery-btn btn-danger btn-cancel-pos"
                           >
                             <XCircle className="homedelivery-btn-icon" />
-                            Cancel POS Invoice
+                            Cancel Invoice
                           </button>
                         </>
                       )}
