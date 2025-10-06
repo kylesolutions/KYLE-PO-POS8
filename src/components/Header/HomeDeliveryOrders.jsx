@@ -44,6 +44,13 @@ function HomeDeliveryOrders() {
     return match ? match[2] : null;
   };
 
+  // Standard headers for all API calls
+  const getDefaultHeaders = () => ({
+    Authorization: `token ${import.meta.env.VITE_API_TOKEN || "0bde704e8493354:5709b3ab1a1cb1a"}`,
+    "Content-Type": "application/json",
+    "X-Frappe-CSRF-Token": getCsrfToken() || "",
+  });
+
   const fetchHomeDeliveryOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -52,14 +59,12 @@ function HomeDeliveryOrders() {
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_user_homedelivery_orders",
         {
           method: "POST",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
         }
       );
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
         throw new Error(`Failed to fetch Home Delivery Orders: ${response.status} - ${response.statusText}`);
       }
       const data = await response.json();
@@ -83,14 +88,12 @@ function HomeDeliveryOrders() {
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_available_delivery_boys",
         {
           method: "POST",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
         }
       );
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
         throw new Error(`Failed to fetch delivery boys: ${response.status} - ${response.statusText}`);
       }
       const data = await response.json();
@@ -111,14 +114,12 @@ function HomeDeliveryOrders() {
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_complaints",
         {
           method: "GET",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
         }
       );
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
         throw new Error(`Failed to fetch complaints: ${response.status} - ${response.statusText}`);
       }
       const data = await response.json();
@@ -140,20 +141,20 @@ function HomeDeliveryOrders() {
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.verify_delivery_boy_code",
         {
           method: "POST",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
           body: JSON.stringify({
             employee_name: employeeName,
             secret_code: secretCode
           }),
         }
       );
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
+        throw new Error(`Failed to verify secret code: ${response.status}`);
+      }
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: verify_delivery_boy_code Response:", JSON.stringify(result, null, 2));
-     
       if (result.message.status === "success") {
         setVerifiedStates(prev => ({ ...prev, [invoiceId]: true }));
         alert("Secret code verified successfully");
@@ -161,10 +162,9 @@ function HomeDeliveryOrders() {
         setVerifiedStates(prev => ({ ...prev, [invoiceId]: false }));
         alert(result.message.message || "The secret code is wrong");
       }
-     
       return result.message;
     } catch (error) {
-      console.error("HomeDeliveryOrders.jsx: Error verifying secret code:", error);
+      console.error("HomeDeliveryOrders.jsx: Error verifying secret code:", error.message, error);
       alert(`Failed to verify secret code: ${error.message || "Please try again."}`);
       return { status: "error", message: "Failed to verify code" };
     }
@@ -173,36 +173,27 @@ function HomeDeliveryOrders() {
   const handleUpdateDeliveryBoy = useCallback(async (invoiceId) => {
     const employeeName = selectedDeliveryBoys[invoiceId];
     const secretCode = secretCodes[invoiceId];
-   
     if (!employeeName || !secretCode) {
       alert("Please select a delivery boy and enter a secret code");
       return;
     }
-
     const verifyResult = await verifySecretCode(employeeName, secretCode, invoiceId);
     if (verifyResult.status !== "success") {
       return;
     }
-
     setUpdatingInvoices(prev => ({ ...prev, [invoiceId]: true }));
     try {
       const selectedBoy = deliveryBoys.find(boy => boy.employee_name === employeeName);
       const employeeNumber = selectedBoy?.cell_number || "";
-     
       if (!employeeNumber) {
         console.warn(`HomeDeliveryOrders.jsx: No cell_number found for employee ${employeeName}`);
         alert("Warning: No phone number found for the selected delivery boy. Proceeding with empty employee number.");
       }
-
       const response = await fetch(
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.update_homedelivery_order_delivery_boy",
         {
           method: "POST",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
           body: JSON.stringify({
             invoice_id: invoiceId,
             employee_name: employeeName,
@@ -211,13 +202,16 @@ function HomeDeliveryOrders() {
           }),
         }
       );
-
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
+        throw new Error(`Failed to update delivery boy: ${response.status}`);
+      }
       const result = await response.json();
       console.log("HomeDeliveryOrders.jsx: update_homedelivery_order_delivery_boy Response:", JSON.stringify(result, null, 2));
       if (result.message.status !== "success") {
         throw new Error(result.message.message || "Failed to update delivery boy");
       }
-
       await fetchHomeDeliveryOrders();
       alert(`Delivery boy updated successfully for invoice ${invoiceId}.`);
     } catch (error) {
@@ -241,15 +235,13 @@ function HomeDeliveryOrders() {
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.cancel_homedelivery_order",
         {
           method: "POST",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
       );
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
         throw new Error(`HTTP error: ${response.status}`);
       }
       const result = await response.json();
@@ -288,16 +280,13 @@ function HomeDeliveryOrders() {
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.cancel_pos_invoice",
         {
           method: "POST",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-            Expect: undefined,
-          },
+          headers: getDefaultHeaders(),
           body: JSON.stringify({ invoice_id: invoiceId, reason: selectedReason }),
         }
       );
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
         throw new Error(`HTTP error: ${response.status}`);
       }
       const result = await response.json();
@@ -331,15 +320,13 @@ function HomeDeliveryOrders() {
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.submit_pos_invoice_as_unpaid",
         {
           method: "POST",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
       );
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
         throw new Error(`HTTP error: ${response.status}`);
       }
       const result = await response.json();
@@ -370,15 +357,13 @@ function HomeDeliveryOrders() {
         "/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.mark_homedelivery_order_delivered",
         {
           method: "POST",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
           body: JSON.stringify({ invoice_id: invoiceId }),
         }
       );
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
         throw new Error(`HTTP error: ${response.status}`);
       }
       const result = await response.json();
@@ -406,14 +391,12 @@ function HomeDeliveryOrders() {
         `/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_pos_invoices?doc_name=${invoiceId}`,
         {
           method: "GET",
-          headers: {
-            Authorization: "token 0bde704e8493354:5709b3ab1a1cb1a",
-            "Content-Type": "application/json",
-            "X-Frappe-CSRF-Token": getCsrfToken() || "",
-          },
+          headers: getDefaultHeaders(),
         }
       );
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("HomeDeliveryOrders.jsx: Server response on error:", errorText);
         throw new Error(`Failed to fetch invoice details: ${response.status} - ${response.statusText}`);
       }
       const result = await response.json();
@@ -561,10 +544,8 @@ function HomeDeliveryOrders() {
       'Delivered': { color: 'status-badge status-delivered', icon: CheckCircle },
       'Cancel': { color: 'status-badge status-cancelled', icon: XCircle },
     };
-    
     const config = statusMap[status] || { color: 'status-badge status-unknown', icon: AlertCircle };
     const IconComponent = config.icon;
-    
     return (
       <span className={config.color}>
         <IconComponent className="status-icon" />
@@ -614,7 +595,6 @@ function HomeDeliveryOrders() {
                   <p className="homedelivery-stat-value">{orders.length}</p>
                 </div>
               </div>
-              
               <div className="homedelivery-stat-card homedelivery-stat-amount">
                 <div className="homedelivery-stat-icon">
                   <DollarSign />
@@ -624,7 +604,6 @@ function HomeDeliveryOrders() {
                   <p className="homedelivery-stat-value">${totalAmount.toFixed(2)}</p>
                 </div>
               </div>
-              
               <div className="homedelivery-stat-card homedelivery-stat-pending">
                 <div className="homedelivery-stat-icon">
                   <Clock />
@@ -698,7 +677,6 @@ function HomeDeliveryOrders() {
                           <p className="homedelivery-detail-value">{order.customer_name || 'N/A'}</p>
                         </div>
                       </div>
-                      
                       <div className="homedelivery-detail-item">
                         <MapPin className="homedelivery-detail-icon" />
                         <div className="homedelivery-detail-content">
@@ -708,7 +686,6 @@ function HomeDeliveryOrders() {
                           </p>
                         </div>
                       </div>
-                      
                       <div className="homedelivery-detail-item">
                         <Phone className="homedelivery-detail-icon" />
                         <div className="homedelivery-detail-content">
@@ -716,7 +693,6 @@ function HomeDeliveryOrders() {
                           <p className="homedelivery-detail-value">{order.customer_phone || 'N/A'}</p>
                         </div>
                       </div>
-                      
                       <div className="homedelivery-detail-item">
                         <DollarSign className="homedelivery-detail-icon" />
                         <div className="homedelivery-detail-content">
@@ -763,7 +739,6 @@ function HomeDeliveryOrders() {
                           Already Paid
                         </span>
                       )}
-
                       <button
                         onClick={() => handlePrintInvoice(order.invoice_id)}
                         disabled={printingInvoices[order.invoice_id]}
@@ -779,7 +754,6 @@ function HomeDeliveryOrders() {
                           'Print Invoice'
                         )}
                       </button>
-
                       {order.delivery_status === "Pending" && order.invoice_status !== "Paid" && (
                         <button
                           onClick={() => handleMarkDelivered(order.invoice_id)}
@@ -797,7 +771,6 @@ function HomeDeliveryOrders() {
                           )}
                         </button>
                       )}
-
                       {order.invoice_status !== "Paid" && order.delivery_status !== "Cancel" && (
                         <>
                           <button
@@ -834,7 +807,6 @@ function HomeDeliveryOrders() {
                           <Truck className="homedelivery-assignment-icon" />
                           Update Delivery Person
                         </h4>
-                        
                         <div className="homedelivery-assignment-form">
                           <div className="homedelivery-form-group">
                             <label className="homedelivery-form-label">Select Delivery Person</label>
@@ -852,7 +824,6 @@ function HomeDeliveryOrders() {
                               ))}
                             </select>
                           </div>
-
                           {selectedDeliveryBoys[order.invoice_id] && (
                             <div className="homedelivery-verification-section">
                               <div className="homedelivery-verification-input">
@@ -873,7 +844,6 @@ function HomeDeliveryOrders() {
                                   Verify
                                 </button>
                               </div>
-
                               {verifiedStates[order.invoice_id] && (
                                 <div className="homedelivery-verification-success">
                                   <CheckCircle className="homedelivery-success-icon" />
@@ -882,7 +852,6 @@ function HomeDeliveryOrders() {
                               )}
                             </div>
                           )}
-
                           <button
                             onClick={() => handleUpdateDeliveryBoy(order.invoice_id)}
                             disabled={
