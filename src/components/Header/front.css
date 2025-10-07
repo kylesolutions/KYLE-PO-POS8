@@ -58,8 +58,6 @@
 
 /* Card Styling */
 .card.item-card {
-  border: 1px solid #c20013;
-  border-radius: 12px;
   padding: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   width: 100%;
