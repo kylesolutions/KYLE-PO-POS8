@@ -1,6 +1,6 @@
 /* Navigation Container */
 .nav-icons-container {
-  background: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+  background: linear-gradient(180deg, #fff5ed 0%, #fff5ed 100%);
   height: 100vh;
   width: 100%;
   display: flex;
@@ -32,7 +32,7 @@
 }
 
 .brand-icon {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: #c20013;
   color: white;
   width: 48px;
   height: 48px;
@@ -119,7 +119,7 @@
 
 /* Active State */
 .nav-link.active {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #fef0d2, #fff5ed);
   color: white;
   box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
   transform: translateY(-1px);

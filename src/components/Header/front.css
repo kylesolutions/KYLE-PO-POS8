@@ -2,7 +2,6 @@
 /* Category Sidebar */
 .category-sidebar {
     background: #ffffff; /* White background */
-    /* height: 90vh; */
     padding: 10px 5px;
     box-shadow: 2px 0 8px rgba(0, 123, 255, 0.15); /* Subtle blue shadow */
     border-radius: 5px;
@@ -11,8 +10,8 @@
   
   /* Category Button */
   .category-btn {
-    background:  #ffffff; /* White background */
-    color: rgb(0, 0, 0); /* Primary blue text */
+    background: #ffffff; /* White background */
+    color: #c20013; /* Primary blue text */
     border: 1px solid rgb(206, 206, 206);
     padding: 12px 10px;
     font-size: 16px;
@@ -25,14 +24,14 @@
   }
   
   .category-btn:hover {
-    background:#795548; /* Primary blue on hover */
-    color: #000000; /* White text */
+    background:#c20013; /* Primary blue on hover */
+    color: #ffffff; /* White text */
     border: none;
   }
   
   .category-btn.active {
-    background: #795548; /* Darker blue for active state */
-    color: #000000; /* White text */
+    background:#c20013; /* Darker blue for active state */
+    color: #ffffff; /* White text */
     border-color:#ffffff; /* Match border to background */
     box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1); 
   }
@@ -59,12 +58,12 @@
 
 /* Card Styling */
 .card.item-card {
-  border: 1px solid #e0e0e0;
+  border: 1px solid #c20013;
   border-radius: 12px;
   padding: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   width: 100%;
-  background: #ffffff;
+  background:#fff8ea;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
 }
@@ -80,7 +79,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f8f9fa;
+  background: #ffffff;
   border-radius: 8px;
   overflow: hidden;
 }
