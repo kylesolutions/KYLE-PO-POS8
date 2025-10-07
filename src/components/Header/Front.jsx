@@ -1735,7 +1735,7 @@ function Front() {
                                                 onClick={() => setShowDiscountModal(true)}
                                                 style={{
                                                     padding: "10px",
-                                                    backgroundColor: "#c20013",
+                                                    backgroundColor: "#1e1f1f",
                                                     color: "white",
                                                     border: "none",
                                                     borderRadius: "5px",
@@ -2027,7 +2027,7 @@ function Front() {
                                                         onClick={cancelCart}
                                                         style={{
                                                             padding: "10px 12px",
-                                                            backgroundColor: "#c20013",
+                                                            backgroundColor: "#1e1f1f",
                                                             color: "white",
                                                             border: "none",
                                                             borderRadius: "5px",
@@ -2048,7 +2048,7 @@ function Front() {
                                                             handleCheckoutClick();
                                                             handleShow();
                                                         }}
-                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#c20013", color: "white", boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px" }}
+                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#1e1f1f", color: "white", boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px" }}
                                                     >
                                                         Pay
                                                     </button>

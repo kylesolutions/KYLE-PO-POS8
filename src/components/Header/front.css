@@ -11,7 +11,7 @@
   /* Category Button */
   .category-btn {
     background: #ffffff; /* White background */
-    color: #c20013; /* Primary blue text */
+    color: #1e1f1f; /* Primary blue text */
     border: 1px solid rgb(206, 206, 206);
     padding: 12px 10px;
     font-size: 16px;
@@ -24,13 +24,13 @@
   }
   
   .category-btn:hover {
-    background:#c20013; /* Primary blue on hover */
+    background:#1e1f1f; /* Primary blue on hover */
     color: #ffffff; /* White text */
     border: none;
   }
   
   .category-btn.active {
-    background:#c20013; /* Darker blue for active state */
+    background:#1e1f1f; /* Darker blue for active state */
     color: #ffffff; /* White text */
     border-color:#ffffff; /* Match border to background */
     box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1); 
@@ -61,7 +61,7 @@
   padding: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   width: 100%;
-  background:#fff8ea;
+  background:#eef6ff;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
 }

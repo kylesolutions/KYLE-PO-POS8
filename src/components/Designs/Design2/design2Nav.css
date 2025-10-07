@@ -29,7 +29,7 @@
     justify-content: center;
 }
 
-.nav-link {
+/* .nav-link {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -37,15 +37,10 @@
     transition: background-color 0.3s;
     font-size: 30px;
     color: #afafaf;
-}
+} */
 
-.nav-link:hover {
+/* .nav-link:hover {
     background-color: #ffffff;
     color: #dee2e6;
-}
+}  */
 
-.nav-link.active {
-    background-color: #f7daa5;
-    color: rgb(92, 15, 28) !important;
-    box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
-}

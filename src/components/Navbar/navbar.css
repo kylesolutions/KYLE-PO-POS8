@@ -20,9 +20,9 @@
   fill: black !important; /* Ensure the icon is black */
 }
 
-.nav-link:hover {
+/* .nav-link:hover {
     color: #007bff !important;
-}
+} */
 
 .navbar-brand {
     font-weight: 600;
@@ -46,4 +46,8 @@
 
 .menuicon{
     width: 35px;
+}
+.Logout-nav-link{
+    color: black;
+    text-align: end;
 }

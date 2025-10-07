@@ -1,6 +1,5 @@
 import React from 'react'
 import Navbar from '../components/Navbar/Navbar'
-import HomeDeliveryOrders from '../components/Header/HomeDeliveryOrders'
 import DeliveredOrders from '../components/Header/DeliveredOrders'
 import NavIcons from '../components/Navbar/NavIcons'
 
