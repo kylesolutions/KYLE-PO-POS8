@@ -10,6 +10,7 @@ import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
 import { Carousel } from 'react-responsive-carousel';
 import "react-responsive-carousel/lib/styles/carousel.min.css";
+import { ThemeContext } from '../../Context/ThemeContext';
 
 const useWindowWidth = () => {
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -24,6 +25,7 @@ const useWindowWidth = () => {
 };
 
 function Front() {
+    const { theme } = useContext(ThemeContext);
     const [allItems, setAllItems] = useState([]);
     const [filteredItems, setFilteredItems] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState("null");
@@ -166,82 +168,82 @@ function Front() {
     const [companyCurrency, setCompanyCurrency] = useState("AED");
 
     useEffect(() => {
-    const fetchCompanyDetails = async () => {
-        try {
-            const response = await fetch('/api/method/frappe.client.get_value', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                },
-                body: JSON.stringify({
-                    doctype: "Company",
-                    name: company,
-                    fieldname: ["default_income_account", "custom_tax_type", "default_currency"]
-                }),
-            });
-            const data = await response.json();
-            if (data.message) {
-                setDefaultIncomeAccount(data.message.default_income_account || "Sales - P");
-                setCompanyCurrency(data.message.default_currency || "AED"); // Set company currency
-                const taxTemplate = data.message.custom_tax_type;
-                await fetchTaxRate(taxTemplate); // Fetch tax rate based on custom_tax_type
-            } else {
-                console.warn(`No company details found for ${company}. Using default currency AED and no tax.`);
+        const fetchCompanyDetails = async () => {
+            try {
+                const response = await fetch('/api/method/frappe.client.get_value', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                    },
+                    body: JSON.stringify({
+                        doctype: "Company",
+                        name: company,
+                        fieldname: ["default_income_account", "custom_tax_type", "default_currency"]
+                    }),
+                });
+                const data = await response.json();
+                if (data.message) {
+                    setDefaultIncomeAccount(data.message.default_income_account || "Sales - P");
+                    setCompanyCurrency(data.message.default_currency || "AED"); // Set company currency
+                    const taxTemplate = data.message.custom_tax_type;
+                    await fetchTaxRate(taxTemplate); // Fetch tax rate based on custom_tax_type
+                } else {
+                    console.warn(`No company details found for ${company}. Using default currency AED and no tax.`);
+                    setCompanyCurrency("AED");
+                    setTaxRate(0);
+                    setTaxTemplateName("");
+                }
+            } catch (error) {
+                console.error("Error fetching company details:", error);
                 setCompanyCurrency("AED");
                 setTaxRate(0);
                 setTaxTemplateName("");
             }
-        } catch (error) {
-            console.error("Error fetching company details:", error);
-            setCompanyCurrency("AED");
-            setTaxRate(0);
-            setTaxTemplateName("");
-        }
-    };
+        };
 
-    const fetchTaxRate = async (templateName) => {
-        try {
-            const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
-                },
-            });
-            const data = await response.json();
-            console.log("Front.jsx: Tax templates fetched:", JSON.stringify(data.message, null, 2));
-            if (data.message && Array.isArray(data.message)) {
-                if (templateName) {
-                    const tax = data.message.find(t => t.name === templateName);
-                    if (tax && tax.sales_tax && tax.sales_tax.length > 0) {
-                        const rate = parseFloat(tax.sales_tax[0].rate) || 0;
-                        setTaxRate(rate);
-                        setTaxTemplateName(templateName);
-                        console.log(`Front.jsx: Tax rate set to ${rate}% for template ${templateName} for company ${company}`);
+        const fetchTaxRate = async (templateName) => {
+            try {
+                const response = await fetch('/api/method/kylepos8.kylepos8.kyle_api.Kyle_items.get_sales_taxes_details', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'token 0bde704e8493354:5709b3ab1a1cb1a',
+                    },
+                });
+                const data = await response.json();
+                console.log("Front.jsx: Tax templates fetched:", JSON.stringify(data.message, null, 2));
+                if (data.message && Array.isArray(data.message)) {
+                    if (templateName) {
+                        const tax = data.message.find(t => t.name === templateName);
+                        if (tax && tax.sales_tax && tax.sales_tax.length > 0) {
+                            const rate = parseFloat(tax.sales_tax[0].rate) || 0;
+                            setTaxRate(rate);
+                            setTaxTemplateName(templateName);
+                            console.log(`Front.jsx: Tax rate set to ${rate}% for template ${templateName} for company ${company}`);
+                        } else {
+                            console.warn(`Front.jsx: No valid tax rate found for template ${templateName} in company ${company}. Setting tax rate to 0.`);
+                            setTaxRate(0);
+                            setTaxTemplateName("");
+                        }
                     } else {
-                        console.warn(`Front.jsx: No valid tax rate found for template ${templateName} in company ${company}. Setting tax rate to 0.`);
+                        console.warn(`Front.jsx: No tax template specified for company ${company}. Setting tax rate to 0.`);
                         setTaxRate(0);
                         setTaxTemplateName("");
                     }
                 } else {
-                    console.warn(`Front.jsx: No tax template specified for company ${company}. Setting tax rate to 0.`);
+                    console.warn("Front.jsx: No tax templates available from API. Setting tax rate to 0.");
                     setTaxRate(0);
                     setTaxTemplateName("");
                 }
-            } else {
-                console.warn("Front.jsx: No tax templates available from API. Setting tax rate to 0.");
+            } catch (error) {
+                console.error("Front.jsx: Error fetching tax rate:", error);
                 setTaxRate(0);
                 setTaxTemplateName("");
             }
-        } catch (error) {
-            console.error("Front.jsx: Error fetching tax rate:", error);
-            setTaxRate(0);
-            setTaxTemplateName("");
-        }
-    };
-    fetchCompanyDetails();
-}, [company]);
+        };
+        fetchCompanyDetails();
+    }, [company]);
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -1342,771 +1344,530 @@ function Front() {
 
     return (
         <>
-            <div className="container-fluid">
-                <div className="row px-3">
-                    <div className="col-lg-7 col-xl-8">
-                        <div className="row">
-                            <div className="col-lg-12 col-xl-12 mt-2 category-sidebar">
-                                <div className="p-2">
-                                    <Carousel
-                                        showArrows={true}
-                                        showStatus={false}
-                                        showIndicators={false}
-                                        showThumbs={false}
-                                        infiniteLoop={true}
-                                        centerMode={true}
-                                        centerSlidePercentage={getCenterSlidePercentage()}
-                                        selectedItem={categories.indexOf(selectedCategory)}
-                                        onChange={(index) => handleFilter(categories[index] || 'All')}
-                                        className="category-carousel"
-                                    >
-                                        {categories.map((category, index) => (
-                                            <div key={index} className="category-slide px-1">
-                                                <button
-                                                    className={`category-btn w-100 rounded d-flex align-items-center justify-content-center ${selectedCategory === category ? 'active' : ''}`}
-                                                    onClick={() => handleFilter(category)}
-                                                >
-                                                    <span className="fs-12">{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+            <div className={`front-container ${theme}`}>
+                <div className="front-layout">
+                    {/* Left Section - Menu Items */}
+                    <div className="menu-section">
+                        {/* Category Carousel */}
+                        <div className="category-wrapper">
+                            <Carousel
+                                showArrows={true}
+                                showStatus={false}
+                                showIndicators={false}
+                                showThumbs={false}
+                                infiniteLoop={true}
+                                centerMode={true}
+                                centerSlidePercentage={getCenterSlidePercentage()}
+                                selectedItem={categories.indexOf(selectedCategory)}
+                                onChange={(index) => handleFilter(categories[index] || 'All')}
+                                className="category-carousel"
+                            >
+                                {categories.map((category, index) => (
+                                    <div key={index} className="category-slide">
+                                        <button
+                                            className={`category-button ${selectedCategory === category ? 'active' : ''}`}
+                                            onClick={() => handleFilter(category)}
+                                        >
+                                            <span>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </Carousel>
+                        </div>
+
+                        {/* Menu Items Grid */}
+                        <div className="menu-grid-wrapper">
+                            <div className="menu-grid">
+                                {filteredItems.map((item) => (
+                                    <div className="menu-item-card" key={item.id} onClick={() => handleItemClick(item)}>
+                                        <div className="menu-item-image">
+                                            <img src={item.image} alt={item.name} />
+                                        </div>
+                                        <div className="menu-item-info">
+                                            <h4>{item.name}</h4>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Section - Cart */}
+                    <div className="cart-section">
+                        <div className="cart-content">
+                            {/* Customer Info & Cart Items */}
+                            <div className="cart-scroll-area">
+                                <div className="customer-info-card">
+                                    <div className="customer-inputs">
+                                        {tableNumber ? (
+                                            <>
+                                                <div className="table-info-badge">
+                                                    <span className="table-number">T No: {tableNumber}</span>
+                                                    {deliveryType === "DINE IN" && chairCount > 0 && (
+                                                        <span className="chair-count">Chairs: {chairCount}</span>
+                                                    )}
+                                                </div>
+                                                <div className="input-group-wrapper">
+                                                    <div className="input-field-wrapper">
+                                                        <input
+                                                            type="text"
+                                                            className="customer-input"
+                                                            placeholder="Customer Name"
+                                                            value={customerInput}
+                                                            onChange={handleCustomerInputChange}
+                                                            onKeyPress={handleKeyPress}
+                                                        />
+                                                        {showCustomerSuggestions && filteredCustomers.length > 0 && (
+                                                            <ul className="customer-suggestions">
+                                                                {filteredCustomers.map((customer, index) => (
+                                                                    <li
+                                                                        key={index}
+                                                                        onClick={() => handleCustomerSelect(customer.customer_name)}
+                                                                    >
+                                                                        {customer.customer_name}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                    <div className="input-field-wrapper">
+                                                        <input
+                                                            type="text"
+                                                            className="customer-input"
+                                                            placeholder="Phone Number"
+                                                            value={phoneNumber}
+                                                            onChange={handlePhoneNumberChange}
+                                                        />
+                                                    </div>
+                                                    <button className="submit-btn" onClick={handleCustomerSubmit}>
+                                                        <i className="bi bi-check"></i>
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="input-group-wrapper-full">
+                                                <div className="input-field-wrapper">
+                                                    <input
+                                                        type="text"
+                                                        className="customer-input"
+                                                        placeholder="Customer Name"
+                                                        value={customerInput}
+                                                        onChange={handleCustomerInputChange}
+                                                        onKeyPress={handleKeyPress}
+                                                    />
+                                                    {showCustomerSuggestions && filteredCustomers.length > 0 && (
+                                                        <ul className="customer-suggestions">
+                                                            {filteredCustomers.map((customer, index) => (
+                                                                <li
+                                                                    key={index}
+                                                                    onClick={() => handleCustomerSelect(customer.customer_name)}
+                                                                >
+                                                                    {customer.customer_name}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                                <div className="input-field-wrapper">
+                                                    <input
+                                                        type="text"
+                                                        className="customer-input"
+                                                        placeholder="Phone Number"
+                                                        value={phoneNumber}
+                                                        onChange={handlePhoneNumberChange}
+                                                    />
+                                                </div>
+                                                <button className="submit-btn" onClick={handleCustomerSubmit}>
+                                                    <i className="bi bi-check"></i>
                                                 </button>
                                             </div>
-                                        ))}
-                                    </Carousel>
+                                        )}
+
+                                        {deliveryType && deliveryType !== "DINE IN" && (
+                                            <div className="delivery-inputs">
+                                                <input
+                                                    type="text"
+                                                    className="customer-input full-width"
+                                                    placeholder="Delivery Address"
+                                                    value={addressState}
+                                                    onChange={(e) => setAddress(e.target.value)}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    className="customer-input full-width"
+                                                    placeholder="WhatsApp Number"
+                                                    value={watsappNumberState}
+                                                    onChange={(e) => setWatsappNumber(e.target.value)}
+                                                />
+                                                <input
+                                                    type="email"
+                                                    className="customer-input full-width"
+                                                    placeholder="Email"
+                                                    value={emailState}
+                                                    onChange={(e) => setEmail(e.target.value)}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Cart Items */}
+                                    <div className="cart-items-list">
+                                        {cartItems.length === 0 ? (
+                                            <div className="empty-cart">
+                                                <p>No items in cart.</p>
+                                            </div>
+                                        ) : (
+                                            cartItems.flatMap((item) => {
+                                                const rows = [
+                                                    {
+                                                        type: "main",
+                                                        name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}${item.selectedCustomVariant ? ` (${item.selectedCustomVariant})` : ""}`,
+                                                        quantity: item.quantity || 1,
+                                                        price: (parseFloat(item.basePrice) || 0) + (parseFloat(item.customVariantPrice) || 0),
+                                                        note: item.custom_customer_description,
+                                                        ingredients: item.ingredients || [],
+                                                        isMain: true,
+                                                        cartItem: item,
+                                                    },
+                                                    ...Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
+                                                        type: "addon",
+                                                        name: `+ ${addonName} x${quantity}`,
+                                                        quantity: null,
+                                                        price: parseFloat(price) || 0,
+                                                        note: null,
+                                                        ingredients: [],
+                                                        isMain: false,
+                                                    })),
+                                                    ...(item.selectedCombos || []).map((combo) => ({
+                                                        type: "combo",
+                                                        name: `+ ${combo.name1} x${combo.quantity || 1}${combo.selectedSize || combo.selectedCustomVariant ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ")})` : ""}`,
+                                                        quantity: null,
+                                                        price: parseFloat(combo.rate) || 0,
+                                                        note: combo.custom_customer_description,
+                                                        ingredients: combo.ingredients || [],
+                                                        isMain: false,
+                                                    })),
+                                                ];
+
+                                                return rows.map((row, idx) => (
+                                                    <div
+                                                        key={`${item.cartItemId}-${idx}`}
+                                                        className={`cart-item ${row.isMain ? 'main-item' : 'sub-item'}`}
+                                                    >
+                                                        <div className="cart-item-content">
+                                                            <div className="item-left">
+                                                                {row.isMain && tableNumber && (
+                                                                    <span className="item-table-badge">T {tableNumber}</span>
+                                                                )}
+                                                                <span
+                                                                    className={`item-name ${row.isMain ? 'clickable' : ''}`}
+                                                                    onClick={() => row.isMain && handleItemClick(allItems.find(i => i.item_code === item.item_code), item)}
+                                                                >
+                                                                    {row.name}
+                                                                </span>
+                                                            </div>
+                                                            <div className="item-right">
+                                                                {row.quantity && (
+                                                                    <input
+                                                                        type="number"
+                                                                        className="quantity-input"
+                                                                        value={row.quantity}
+                                                                        onChange={(e) => handleQuantityChange(item, e.target.value)}
+                                                                        min="1"
+                                                                    />
+                                                                )}
+                                                                <span className="item-price">AED{(row.price || 0).toFixed(2)}</span>
+                                                                {row.isMain && (
+                                                                    <button
+                                                                        className="remove-item-btn"
+                                                                        onClick={() => removeFromCart(row.cartItem)}
+                                                                    >
+                                                                        <i className="bi bi-trash"></i>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ));
+                                            })
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="col-lg-12 col-xl-12 row2 items-container">
-                    <div className="row g-3 mt-1">
-                        {filteredItems.map((item, index) => (
-                            <div className="col-xl-3 col-lg-6 col-md-4 col-6 my-2" key={item.id}>
-                                <div className="card item-card" onClick={() => handleItemClick(item)}>
-                                    <div className="image-box">
-                                        <img src={item.image} alt={item.name} className="card-img-top" />
+                            {/* Discount Button */}
+                            <div className="discount-section">
+                                <button className="discount-btn" onClick={() => setShowDiscountModal(true)}>
+                                    Discount
+                                </button>
+                            </div>
+
+                            {/* Totals Section */}
+                            <div className="totals-section">
+                                <div className="totals-grid">
+                                    <div className="total-item">
+                                        <span>Total Quantity</span>
+                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
                                     </div>
-                                    <div className="card-body p-2 mb-0 category-name">
-                                        <h4 className="card-title text-center mb-0">{item.name}</h4>
+                                    <div className="total-item">
+                                        <span>Subtotal</span>
+                                        <span>AED{getSubTotal().toFixed(2)}</span>
+                                    </div>
+                                    <div className="total-item">
+                                        <span>Tax ({getTaxRate()}%)</span>
+                                        <span>AED{getTaxAmount().toFixed(2)}</span>
+                                    </div>
+                                    <div className="total-item">
+                                        <span>Discount</span>
+                                        <span>-AED{getDiscountAmount().toFixed(2)}</span>
+                                    </div>
+                                    <div className="total-item grand-total">
+                                        <span>Grand Total</span>
+                                        <span>AED{getGrandTotal().toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
+
+                            {/* Action Buttons */}
+                            <div className="action-buttons">
+                                <button className="action-btn secondary" onClick={saveOrder}>Save/New</button>
+                                <button className="action-btn secondary" onClick={() => setShowBillModal(true)}>Print</button>
+                                <button className="action-btn danger" onClick={cancelCart}>Cancel</button>
+                                <button className="action-btn primary" onClick={() => { handleCheckoutClick(); handleShow(); }}>Pay</button>
+                            </div>
                         </div>
                     </div>
-                    <div className="col-lg-5 col-xl-4 row1 px-4">
-                        <div className="d-flex flex-column" style={{ height: '90vh' }}>
-                            <div className="row p-2 mt-2 border shadow rounded flex-grow-1" style={{ overflowY: 'auto' }}>
-                                <div className="col-12 p-2 p-md-2 mb-3">
-                                    <div className="text-center row">
-                                        <div className='row d-flex align-items-center'>
-                                            {tableNumber ? (
-                                                <>
-                                                    <div className='col-lg-2 text-start' style={{ position: "relative" }}>
-                                                        <p
-                                                            style={{
-                                                                background: tableNumber ? "rgb(203, 205, 202)" : "transparent",
-                                                                color: tableNumber ? "Black" : "inherit",
-                                                                borderRadius: tableNumber ? "5px" : "0",
-                                                                padding: tableNumber ? "4px 10px" : "0",
-                                                                display: "flex",
-                                                                alignItems: "center",
-                                                                justifyContent: "center",
-                                                                fontSize: "10px",
-                                                                marginBottom: "0"
-                                                            }}
-                                                        >
-                                                            T No: {tableNumber}
-                                                        </p>
-                                                        {deliveryType === "DINE IN" && chairCount > 0 && (
-                                                            <p
-                                                                style={{
-                                                                    fontSize: "12px",
-                                                                    color: "Black",
-                                                                    background: "rgb(203, 205, 202)",
-                                                                    borderRadius: "5px",
-                                                                    padding: "2px 10px",
-                                                                    marginTop: "5px",
-                                                                    textAlign: "center",
-                                                                    justifyContent: "center",
-                                                                    marginBottom: "0"
-                                                                }}
-                                                            >
-                                                                Chairs: {chairCount}
+                </div>
+
+                <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} />
+            </div>
+
+            <FoodDetails
+                item={selectedItem}
+                allItems={allItems}
+                onClose={() => {
+                    setSelectedItem(null);
+                    setCartItemToUpdate(null);
+                }}
+                onUpdate={handleItemUpdate}
+                onAddToCart={handleAddToCart}
+                cartItem={cartItemToUpdate}
+                isUpdate={!!cartItemToUpdate}
+            />
+
+            {/* Discount Modal */}
+            <Modal show={showDiscountModal} onHide={() => setShowDiscountModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Apply Discount</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <div className="mb-3">
+                        <label className="form-label">Apply Discount On</label>
+                        <select
+                            className="form-select"
+                            value={applyDiscountOn}
+                            onChange={(e) => setApplyDiscountOn(e.target.value)}
+                        >
+                            <option value="Grand Total">Grand Total</option>
+                            <option value="Net Total">Net Total</option>
+                        </select>
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Discount Percentage (%)</label>
+                        <input
+                            type="number"
+                            className="form-control"
+                            value={discountPercentage}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setDiscountPercentage(value);
+                                if (value > 0) setDiscountAmount(0);
+                            }}
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            placeholder="Enter percentage"
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Discount Amount (AED)</label>
+                        <input
+                            type="number"
+                            className="form-control"
+                            value={discountAmount}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setDiscountAmount(value);
+                                if (value > 0) setDiscountPercentage(0);
+                            }}
+                            min="0"
+                            step="0.01"
+                            placeholder="Enter amount"
+                        />
+                    </div>
+                    <p><strong>Discount Applied:</strong> AED{getDiscountAmount().toFixed(2)}</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowDiscountModal(false)}>Cancel</Button>
+                    <Button variant="primary" onClick={handleApplyDiscount}>Apply</Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Bill Modal */}
+            {showBillModal && (
+                <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                    <div className="modal-dialog modal-lg">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h4 className="modal-title">Invoice / Bill</h4>
+                                <button className="btn-close" onClick={() => setShowBillModal(false)}></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="bill-section border p-3 shadow rounded">
+                                    <div className="d-flex justify-content-between">
+                                        <p>
+                                            <strong>{tableNumber ? "Table No" : "Delivery Type"}:</strong> {tableNumber || deliveryType}
+                                            {deliveryType === "DINE IN" && chairCount > 0 && (
+                                                <span> (Chairs: {chairCount})</span>
+                                            )}
+                                        </p>
+                                        <p><strong>Customer:</strong> {customerName}</p>
+                                    </div>
+                                    {deliveryType !== "DINE IN" && (
+                                        <div className="mt-2">
+                                            <p><strong>Address:</strong> {address || "N/A"}</p>
+                                            <p><strong>WhatsApp:</strong> {watsappNumber || "N/A"}</p>
+                                            <p><strong>Email:</strong> {email || "N/A"}</p>
+                                        </div>
+                                    )}
+                                    <table className="table border text-start mt-2">
+                                        <thead>
+                                            <tr className='text-center'>
+                                                <th>Item</th>
+                                                <th>Qty</th>
+                                                <th>Rate</th>
+                                                <th>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {cartItems.map((item) => (
+                                                <tr key={`${item.item_code}-${JSON.stringify(item.selectedCombos || [])}`}>
+                                                    <td>
+                                                        {item.name}
+                                                        {item.selectedSize && ` (${item.selectedSize})`}
+                                                        {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
+                                                        {item.custom_customer_description && (
+                                                            <p style={{ fontSize: "12px", color: "#666", marginTop: "5px", marginBottom: "0" }}>
+                                                                <strong>Note:</strong> {item.custom_customer_description}
                                                             </p>
                                                         )}
-                                                    </div>
-                                                    <div className='col-10 col-lg-4 position-relative'>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Enter Customer Name"
-                                                            value={customerInput}
-                                                            onChange={handleCustomerInputChange}
-                                                            onKeyPress={handleKeyPress}
-                                                            style={{
-                                                                width: "100%",
-                                                                padding: "10px",
-                                                                border: "1px solid #ccc",
-                                                                borderRadius: "5px",
-                                                                fontSize: "1rem",
-                                                            }}
-                                                        />
-                                                        {showCustomerSuggestions && filteredCustomers.length > 0 && (
-                                                            <ul
-                                                                className="customer-suggestions"
-                                                                style={{
-                                                                    position: "absolute",
-                                                                    top: "100%",
-                                                                    left: 0,
-                                                                    width: "100%",
-                                                                    maxHeight: "150px",
-                                                                    overflowY: "auto",
-                                                                    backgroundColor: "#fff",
-                                                                    border: "1px solid #ccc",
-                                                                    borderRadius: "5px",
-                                                                    listStyleType: "none",
-                                                                    padding: 0,
-                                                                    margin: 0,
-                                                                    zIndex: 1000,
-                                                                }}
-                                                            >
-                                                                {filteredCustomers.map((customer, index) => (
-                                                                    <li
-                                                                        key={index}
-                                                                        onClick={() => handleCustomerSelect(customer.customer_name)}
-                                                                        style={{
-                                                                            padding: "8px 12px",
-                                                                            cursor: "pointer",
-                                                                            borderBottom: "1px solid #eee",
-                                                                        }}
-                                                                        onMouseEnter={(e) => (e.target.style.backgroundColor = "#f0f0f0")}
-                                                                        onMouseLeave={(e) => (e.target.style.backgroundColor = "#fff")}
-                                                                    >
-                                                                        {customer.customer_name}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        )}
-                                                    </div>
-                                                    <div className='col-10 col-lg-4'>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Enter phone number"
-                                                            value={phoneNumber}
-                                                            onChange={handlePhoneNumberChange}
-                                                            style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
-                                                        />
-                                                    </div>
-                                                    <div className='col-2 col-lg-2' style={{ background: "rgb(203, 205, 202)", color: "Black", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                        <span
-                                                            onClick={handleCustomerSubmit}
-                                                            style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
-                                                        >
-                                                            <i className="bi bi-check"></i>
-                                                        </span>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className='col-10 col-lg-5 mb-2 position-relative'>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Enter Customer Name"
-                                                            value={customerInput}
-                                                            onChange={handleCustomerInputChange}
-                                                            onKeyPress={handleKeyPress}
-                                                            style={{
-                                                                width: "100%",
-                                                                padding: "10px",
-                                                                border: "1px solid #ccc",
-                                                                borderRadius: "5px",
-                                                                fontSize: "1rem",
-                                                            }}
-                                                        />
-                                                        {showCustomerSuggestions && filteredCustomers.length > 0 && (
-                                                            <ul
-                                                                className="customer-suggestions"
-                                                                style={{
-                                                                    position: "absolute",
-                                                                    top: "100%",
-                                                                    left: 0,
-                                                                    width: "100%",
-                                                                    maxHeight: "150px",
-                                                                    overflowY: "auto",
-                                                                    backgroundColor: "#fff",
-                                                                    border: "1px solid #ccc",
-                                                                    borderRadius: "5px",
-                                                                    listStyleType: "none",
-                                                                    padding: 0,
-                                                                    margin: 0,
-                                                                    zIndex: 1000,
-                                                                }}
-                                                            >
-                                                                {filteredCustomers.map((customer, index) => (
-                                                                    <li
-                                                                        key={index}
-                                                                        onClick={() => handleCustomerSelect(customer.customer_name)}
-                                                                        style={{
-                                                                            padding: "8px 12px",
-                                                                            cursor: "pointer",
-                                                                            borderBottom: "1px solid #eee",
-                                                                        }}
-                                                                        onMouseEnter={(e) => (e.target.style.backgroundColor = "#f0f0f0")}
-                                                                        onMouseLeave={(e) => (e.target.style.backgroundColor = "#fff")}
-                                                                    >
-                                                                        {customer.customer_name}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        )}
-                                                    </div>
-                                                    <div className='col-10 col-lg-5 mb-2'>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Enter phone number"
-                                                            value={phoneNumber}
-                                                            onChange={handlePhoneNumberChange}
-                                                            style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
-                                                        />
-                                                    </div>
-                                                    <div className='col-2 col-lg-2 mb-2' style={{ background: "rgb(203, 205, 202)", color: "Black", borderRadius: "5px", padding: "5px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                        <span
-                                                            onClick={handleCustomerSubmit}
-                                                            style={{ fontSize: "1.5rem", fontWeight: "bold", cursor: "pointer" }}
-                                                        >
-                                                            <i className="bi bi-check"></i>
-                                                        </span>
-                                                    </div>
-                                                </>
-                                            )}
-
-                                            {deliveryType && deliveryType !== "DINE IN" && (
-                                                <>
-                                                    <div className='col-12 mb-2'>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Enter delivery address"
-                                                            value={addressState}
-                                                            onChange={(e) => setAddress(e.target.value)}
-                                                            style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
-                                                        />
-                                                    </div>
-                                                    <div className='col-12 mb-2'>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Enter WhatsApp number"
-                                                            value={watsappNumberState}
-                                                            onChange={(e) => setWatsappNumber(e.target.value)}
-                                                            style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
-                                                        />
-                                                    </div>
-                                                    <div className='col-12 mb-2'>
-                                                        <input
-                                                            type="email"
-                                                            className="form-control"
-                                                            placeholder="Enter email"
-                                                            value={emailState}
-                                                            onChange={(e) => setEmail(e.target.value)}
-                                                            style={{ fontSize: "1rem", padding: "10px", width: "100%" }}
-                                                        />
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        <div className="cart-items-container mt-3">
-                                            {cartItems.length === 0 ? (
-                                                <div className="empty-cart-message text-center p-3">
-                                                    <p className="text-muted mb-0">No items in cart.</p>
-                                                </div>
-                                            ) : (
-                                                cartItems.flatMap((item) => {
-                                                    const rows = [
-                                                        {
-                                                            type: "main",
-                                                            name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}${item.selectedCustomVariant ? ` (${item.selectedCustomVariant})` : ""}`,
-                                                            quantity: item.quantity || 1,
-                                                            price: (parseFloat(item.basePrice) || 0) + (parseFloat(item.customVariantPrice) || 0),
-                                                            note: item.custom_customer_description,
-                                                            ingredients: item.ingredients || [],
-                                                            isMain: true,
-                                                            cartItem: item,
-                                                        },
-                                                        ...Object.entries(item.addonCounts || {}).map(([addonName, { price, quantity }]) => ({
-                                                            type: "addon",
-                                                            name: `+ ${addonName} x${quantity}`,
-                                                            quantity: null,
-                                                            price: parseFloat(price) || 0,
-                                                            note: null,
-                                                            ingredients: [],
-                                                            isMain: false,
-                                                        })),
-                                                        ...(item.selectedCombos || []).map((combo, idx) => ({
-                                                            type: "combo",
-                                                            name: `+ ${combo.name1} x${combo.quantity || 1}${combo.selectedSize || combo.selectedCustomVariant ? ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(" - ")})` : ""}`,
-                                                            quantity: null,
-                                                            price: parseFloat(combo.rate) || 0,
-                                                            note: combo.custom_customer_description,
-                                                            ingredients: combo.ingredients || [],
-                                                            isMain: false,
-                                                        })),
-                                                    ];
-
-                                                    return rows.map((row, idx) => (
-                                                        <div
-                                                            key={`${item.cartItemId}-${idx}`}
-                                                            className={`cart-item-card ${row.isMain ? 'main-item' : 'sub-item'} p-3 mb-2 rounded-lg shadow-sm`}
-                                                        >
-                                                            <div className="d-flex justify-content-between align-items-start">
-                                                                <div className="item-details">
-                                                                    <div className="d-flex align-items-center">
-                                                                        {row.isMain && tableNumber && (
-                                                                            <span className="table-number-badge me-2">
-                                                                                T No: {tableNumber}
-                                                                            </span>
-                                                                        )}
-                                                                        <span
-                                                                            className={`item-name ${row.isMain ? 'clickable' : ''}`}
-                                                                            onClick={() => row.isMain && handleItemClick(allItems.find(i => i.item_code === item.item_code), item)}
-                                                                        >
-                                                                            {row.name}
-                                                                        </span>
-                                                                    </div>
-                                                                    {/* {row.note && (
-                                                                        <p className="item-note mt-1 mb-0">
-                                                                            <strong>Note:</strong> {row.note}
-                                                                        </p>
-                                                                    )}
-                                                                    {row.ingredients && row.ingredients.length > 0 && (
-                                                                        <div className="ingredients-list mt-1">
-                                                                            <strong>Ingredients:</strong>
-                                                                            <ul className="mb-0">
-                                                                                {row.ingredients.map((ing, i) => (
-                                                                                    <li key={i}>
-                                                                                        {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
-                                                                                    </li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        </div>
-                                                                    )} */}
-                                                                </div>
-                                                                <div className="item-actions d-flex align-items-center">
-                                                                    {row.quantity && (
-                                                                        <input
-                                                                            type="number"
-                                                                            className="form-control form-control-sm quantity-input me-2"
-                                                                            value={row.quantity}
-                                                                            onChange={(e) => handleQuantityChange(item, e.target.value)}
-                                                                            min="1"
-                                                                        />
-                                                                    )}
-                                                                    <span className="item-price">
-                                                                       AED{(row.price || 0).toFixed(2)}
-                                                                    </span>
-                                                                    {row.isMain && (
-                                                                        <button
-                                                                            className="btn btn-sm remove-btn ms-2"
-                                                                            onClick={() => removeFromCart(row.cartItem)}
-                                                                        >
-                                                                            <i className="bi bi-trash"></i>
-                                                                        </button>
-                                                                    )}
-                                                                </div>
+                                                        {item.ingredients && item.ingredients.length > 0 && (
+                                                            <div style={{ fontSize: "12px", color: "#555", marginTop: "5px" }}>
+                                                                <strong>Ingredients:</strong>
+                                                                <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                                                                    {item.ingredients.map((ing, i) => (
+                                                                        <li key={i}>
+                                                                            {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
                                                             </div>
-                                                        </div>
-                                                    ));
-                                                })
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="row p-2 mt-2 border shadow rounded" style={{ flexShrink: 0 }}>
-                                <div className='col-12'>
-                                    <div className='row'>
-                                        <div className='col-12'>
-                                            <button
-                                                className='btn w-100'
-                                                onClick={() => setShowDiscountModal(true)}
-                                                style={{
-                                                    padding: "10px",
-                                                    backgroundColor: "#1e1f1f",
-                                                    color: "white",
-                                                    border: "none",
-                                                    borderRadius: "5px",
-                                                    fontWeight: "bold",
-                                                    cursor: "pointer",
-                                                    boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"
-                                                }}
-                                            >
-                                                Discount
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <Modal show={showDiscountModal} onHide={() => setShowDiscountModal(false)} centered>
-                                <Modal.Header closeButton>
-                                    <Modal.Title>Apply Discount</Modal.Title>
-                                </Modal.Header>
-                                <Modal.Body>
-                                    <div className="mb-3">
-                                        <label className="form-label">Apply Discount On</label>
-                                        <select
-                                            className="form-select"
-                                            value={applyDiscountOn}
-                                            onChange={(e) => setApplyDiscountOn(e.target.value)}
-                                        >
-                                            <option value="Grand Total">Grand Total</option>
-                                            <option value="Net Total">Net Total</option>
-                                        </select>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label">Discount Percentage (%)</label>
-                                        <input
-                                            type="number"
-                                            className="form-control"
-                                            value={discountPercentage}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                setDiscountPercentage(value);
-                                                if (value > 0) setDiscountAmount(0);
-                                            }}
-                                            min="0"
-                                            max="100"
-                                            step="0.01"
-                                            placeholder="Enter percentage"
-                                        />
-                                    </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">Discount Amount (AED)</label>
-                                        <input
-                                            type="number"
-                                            className="form-control"
-                                            value={discountAmount}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                setDiscountAmount(value);
-                                                if (value > 0) setDiscountPercentage(0);
-                                            }}
-                                            min="0"
-                                            step="0.01"
-                                            placeholder="Enter amount"
-                                        />
-                                    </div>
-                                    <p><strong>Discount Applied:</strong> AED{getDiscountAmount().toFixed(2)}</p>
-                                </Modal.Body>
-                                <Modal.Footer>
-                                    <Button variant="secondary" onClick={() => setShowDiscountModal(false)}>
-                                        Cancel
-                                    </Button>
-                                    <Button variant="primary" onClick={handleApplyDiscount}>
-                                        Apply
-                                    </Button>
-                                </Modal.Footer>
-                            </Modal>
-
-                            <div className="row p-2 mt-2 border shadow rounded" style={{ flexShrink: 0 }}>
-                                <div className="col-12">
-                                    <div className="row">
-                                        <div className="col-12 col-lg-12">
-                                            <div className="row">
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Total Quantity</h5>
-                                                        <span>{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Subtotal</h5>
-                                                        <span>AED{getSubTotal().toFixed(2)}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">                                                  
-                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Tax</h5>
-                                                        <span>AED{getTaxAmount().toFixed(2)} ({getTaxRate()}%)</span>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">                                                   
-                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Discount</h5>
-                                                        <span>-AED{getDiscountAmount().toFixed(2)}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-12 mb-2 col-12 col-lg-12 col-xl-12">
-                                                    <div className='grand-tot-div justify-content-between' style={{boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"}}>
-                                                        <h5 className="mb-0" style={{ "fontSize": "11px" }}>Grand Total</h5>
-                                                        <span>AED{getGrandTotal().toFixed(2)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="col-12 col-lg-12">
-                                            <div className="row mt-3">
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <button
-                                                        type="button"
-                                                        className="btn w-100"
-                                                        onClick={saveOrder}
-                                                        style={{
-                                                            padding: "10px 12px",
-                                                            backgroundColor: "#white",
-                                                            color: "black",
-                                                            borderRadius: "5px",
-                                                            fontWeight: "bold",
-                                                            cursor: "pointer",
-                                                            fontSize: "10px",
-                                                            boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"
-                                                        }}
-                                                    >
-                                                        Save/New
-                                                    </button>
-                                                </div>
-                                                <div className="col-md-6 mb-2 col-6 col-lg-12 col-xl-6">
-                                                    <button
-                                                        type="button"
-                                                        className="btn w-100"
-                                                        onClick={() => setShowBillModal(true)}
-                                                        style={{
-                                                            padding: "10px 12px",
-                                                            background: "white",
-                                                            color: "black",
-                                                            borderRadius: "5px",
-                                                            fontWeight: "bold",
-                                                            cursor: "pointer",
-                                                            fontSize: "10px",
-                                                            boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"
-                                                        }}
-                                                    >
-                                                        Print
-                                                    </button>
-                                                </div>
-
-                                                {showBillModal && (
-                                                    <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-                                                        <div className="modal-dialog modal-lg">
-                                                            <div className="modal-content">
-                                                                <div className="modal-header">
-                                                                    <h4 className="modal-title">Invoice / Bill</h4>
-                                                                    <button className="btn-close" onClick={() => setShowBillModal(false)}></button>
-                                                                </div>
-                                                                <div className="modal-body">
-                                                                    <div className="bill-section border p-3 shadow rounded">
-                                                                        <div className="d-flex justify-content-between">
-                                                                            <p>
-                                                                                <strong>{tableNumber ? "Table No" : "Delivery Type"}:</strong> {tableNumber || deliveryType}
-                                                                                {deliveryType === "DINE IN" && chairCount > 0 && (
-                                                                                    <span> (Chairs: {chairCount})</span>
-                                                                                )}
+                                                        )}
+                                                        {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
+                                                            <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
+                                                                {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
+                                                                    <li key={addonName}>+ {addonName} x{quantity} (AED{(parseFloat(price) || 0).toFixed(2)})</li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                        {item.selectedCombos && item.selectedCombos.length > 0 && (
+                                                            <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
+                                                                {item.selectedCombos.map((combo, idx) => (
+                                                                    <li key={idx}>
+                                                                        + {combo.name1} x{combo.quantity || 1}
+                                                                        {(combo.selectedSize || combo.selectedCustomVariant) && (
+                                                                            ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
+                                                                        )}
+                                                                        - AED{(parseFloat(combo.rate) || 0).toFixed(2)}
+                                                                        {combo.custom_customer_description && (
+                                                                            <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
+                                                                                <strong>Note:</strong> {combo.custom_customer_description}
                                                                             </p>
-                                                                            <p><strong>Customer:</strong> {customerName}</p>
-                                                                        </div>
-                                                                        {deliveryType !== "DINE IN" && (
-                                                                            <div className="mt-2">
-                                                                                <p><strong>Address:</strong> {address || "N/A"}</p>
-                                                                                <p><strong>WhatsApp:</strong> {watsappNumber || "N/A"}</p>
-                                                                                <p><strong>Email:</strong> {email || "N/A"}</p>
+                                                                        )}
+                                                                        {combo.ingredients && combo.ingredients.length > 0 && (
+                                                                            <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>
+                                                                                <strong>Ingredients:</strong>
+                                                                                <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                                                                                    {combo.ingredients.map((ing, i) => (
+                                                                                        <li key={i}>
+                                                                                            {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
+                                                                                        </li>
+                                                                                    ))}
+                                                                                </ul>
                                                                             </div>
                                                                         )}
-                                                                        <table className="table border text-start mt-2">
-                                                                            <thead>
-                                                                                <tr className='text-center'>
-                                                                                    <th>Item</th>
-                                                                                    <th>Qty</th>
-                                                                                    <th>Rate</th>
-                                                                                    <th>Total</th>
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody>
-                                                                                {cartItems.map((item) => (
-                                                                                    <tr key={`${item.item_code}-${JSON.stringify(item.selectedCombos || [])}`}>
-                                                                                        <td>
-                                                                                            {item.name}
-                                                                                            {item.selectedSize && ` (${item.selectedSize})`}
-                                                                                            {item.selectedCustomVariant && ` (${item.selectedCustomVariant})`}
-                                                                                            {item.custom_customer_description && (
-                                                                                                <p style={{ fontSize: "12px", color: "#666", marginTop: "5px", marginBottom: "0" }}>
-                                                                                                    <strong>Note:</strong> {item.custom_customer_description}
-                                                                                                </p>
-                                                                                            )}
-                                                                                            {item.ingredients && item.ingredients.length > 0 && (
-                                                                                                <div style={{ fontSize: "12px", color: "#555", marginTop: "5px" }}>
-                                                                                                    <strong>Ingredients:</strong>
-                                                                                                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
-                                                                                                        {item.ingredients.map((ing, i) => (
-                                                                                                            <li key={i}>
-                                                                                                                {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
-                                                                                                            </li>
-                                                                                                        ))}
-                                                                                                    </ul>
-                                                                                                </div>
-                                                                                            )}
-                                                                                            {item.addonCounts && Object.keys(item.addonCounts).length > 0 && (
-                                                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#888" }}>
-                                                                                                    {Object.entries(item.addonCounts).map(([addonName, { price, quantity }]) => (
-                                                                                                        <li key={addonName}>+ {addonName} x{quantity} (AED{(parseFloat(price) || 0).toFixed(2)})</li>
-                                                                                                    ))}
-                                                                                                </ul>
-                                                                                            )}
-                                                                                            {item.selectedCombos && item.selectedCombos.length > 0 && (
-                                                                                                <ul style={{ listStyleType: "none", padding: 0, marginTop: "5px", fontSize: "12px", color: "#555" }}>
-                                                                                                    {item.selectedCombos.map((combo, idx) => (
-                                                                                                        <li key={idx}>
-                                                                                                            + {combo.name1} x{combo.quantity || 1}
-                                                                                                            {(combo.selectedSize || combo.selectedCustomVariant) && (
-                                                                                                                ` (${[combo.selectedSize, combo.selectedCustomVariant].filter(Boolean).join(' - ')})`
-                                                                                                            )}
-                                                                                                            - AED{(parseFloat(combo.rate) || 0).toFixed(2)}
-                                                                                                            {combo.custom_customer_description && (
-                                                                                                                <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0 0" }}>
-                                                                                                                    <strong>Note:</strong> {combo.custom_customer_description}
-                                                                                                                </p>
-                                                                                                            )}
-                                                                                                            {combo.ingredients && combo.ingredients.length > 0 && (
-                                                                                                                <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>
-                                                                                                                    <strong>Ingredients:</strong>
-                                                                                                                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
-                                                                                                                        {combo.ingredients.map((ing, i) => (
-                                                                                                                            <li key={i}>
-                                                                                                                                {ing.name || "Unknown"} ({ing.quantity || 100}{ing.unit || "g"})
-                                                                                                                            </li>
-                                                                                                                        ))}
-                                                                                                                    </ul>
-                                                                                                                </div>
-                                                                                                            )}
-                                                                                                        </li>
-                                                                                                    ))}
-                                                                                                </ul>
-                                                                                            )}
-                                                                                        </td>
-                                                                                        <td>{item.quantity || 1}</td>
-                                                                                        <td className='text-end'>AED{(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
-                                                                                        <td className='text-end'>AED{getItemTotal(item).toFixed(2)}</td>
-                                                                                    </tr>
-                                                                                ))}
-                                                                            </tbody>
-                                                                        </table>
-                                                                        <div className="row mt-3">
-                                                                            <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
-                                                                            <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
-                                                                            <div className="col-6 text-start"><strong>Subtotal:</strong></div>
-                                                                            <div className="col-6 text-end">AED{getSubTotal().toFixed(2)}</div>
-                                                                            <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
-                                                                            <div className="col-6 text-end">AED{getTaxAmount().toFixed(2)}</div>
-                                                                            <div className="col-6 text-start"><strong>Discount:</strong></div>
-                                                                            <div className="col-6 text-end">-AED{getDiscountAmount().toFixed(2)}</div>
-                                                                            <div className="col-6 text-start"><strong>Grand Total:</strong></div>
-                                                                            <div className="col-6 text-end"><strong>AED{getGrandTotal().toFixed(2)}</strong></div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="modal-footer">
-                                                                    <button className="btn btn-secondary" onClick={() => setShowBillModal(false)}>Close</button>
-                                                                    <button className="btn btn-dark" onClick={() => window.print()}>
-                                                                        <i className="bi bi-printer"></i> Print Bill
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                <div className="col-md-6 mb-2 col-6 mt-1 col-lg-12 col-xl-6">
-                                                    <button
-                                                        type="button"
-                                                        className="btn w-100"
-                                                        onClick={cancelCart}
-                                                        style={{
-                                                            padding: "10px 12px",
-                                                            backgroundColor: "#1e1f1f",
-                                                            color: "white",
-                                                            border: "none",
-                                                            borderRadius: "5px",
-                                                            fontWeight: "bold",
-                                                            cursor: "pointer",
-                                                            fontSize: "10px",
-                                                            boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px"
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </div>
-                                                <div className="col-md-6 mb-2 col-6 mt-1 col-lg-12 col-xl-6">
-                                                    <button
-                                                        type="button"
-                                                        className="btn w-100"
-                                                        onClick={() => {
-                                                            handleCheckoutClick();
-                                                            handleShow();
-                                                        }}
-                                                        style={{ padding: "10px 12px", fontSize: "10px", fontWeight: "bold", background: "#1e1f1f", color: "white", boxShadow:"rgba(0, 0, 0, 0.24) 0px 3px 8px" }}
-                                                    >
-                                                        Pay
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <Modal show={showPaymentModal} onHide={handleClose} centered>
-                                                <Modal.Header closeButton>
-                                                    <Modal.Title>Select Payment Method</Modal.Title>
-                                                </Modal.Header>
-                                                <Modal.Body>
-                                                    <div className="row">
-                                                        <div className="col-4">
-                                                            <Button variant="primary" className="w-100" onClick={() => handlePayment("CASH")}>
-                                                                CASH
-                                                            </Button>
-                                                        </div>
-                                                        <div className="col-4">
-                                                            <Button variant="secondary" className="w-100" onClick={() => handlePayment("CREDIT CARD")}>
-                                                                CARD
-                                                            </Button>
-                                                        </div>
-                                                        <div className="col-4">
-                                                            <Button variant="warning" className="w-100" onClick={() => handlePayment("UPI")}>
-                                                                UPI
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </Modal.Body>
-                                                <Modal.Footer>
-                                                    <Button variant="danger" onClick={handleClose}>
-                                                        Cancel
-                                                    </Button>
-                                                </Modal.Footer>
-                                            </Modal>
-                                        </div>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </td>
+                                                    <td>{item.quantity || 1}</td>
+                                                    <td className='text-end'>AED{(parseFloat(item.basePrice) || 0).toFixed(2)}</td>
+                                                    <td className='text-end'>AED{getItemTotal(item).toFixed(2)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <div className="row mt-3">
+                                        <div className="col-6 text-start"><strong>Total Quantity:</strong></div>
+                                        <div className="col-6 text-end">{cartItems.reduce((total, item) => total + (item.quantity || 1), 0)}</div>
+                                        <div className="col-6 text-start"><strong>Subtotal:</strong></div>
+                                        <div className="col-6 text-end">AED{getSubTotal().toFixed(2)}</div>
+                                        <div className="col-6 text-start"><strong>VAT ({getTaxRate()}%):</strong></div>
+                                        <div className="col-6 text-end">AED{getTaxAmount().toFixed(2)}</div>
+                                        <div className="col-6 text-start"><strong>Discount:</strong></div>
+                                        <div className="col-6 text-end">-AED{getDiscountAmount().toFixed(2)}</div>
+                                        <div className="col-6 text-start"><strong>Grand Total:</strong></div>
+                                        <div className="col-6 text-end"><strong>AED{getGrandTotal().toFixed(2)}</strong></div>
                                     </div>
                                 </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setShowBillModal(false)}>Close</button>
+                                <button className="btn btn-dark" onClick={() => window.print()}>
+                                    <i className="bi bi-printer"></i> Print Bill
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <SavedOrder orders={savedOrders} setSavedOrders={setSavedOrders} menuItems={allItems} />
                 </div>
-                <FoodDetails
-                    item={selectedItem}
-                    allItems={allItems}
-                    onClose={() => {
-                        setSelectedItem(null);
-                        setCartItemToUpdate(null);
-                    }}
-                    onUpdate={handleItemUpdate}
-                    onAddToCart={handleAddToCart}
-                    cartItem={cartItemToUpdate}
-                    isUpdate={!!cartItemToUpdate}
-                />
-            </div>
+            )}
+
+            {/* Payment Modal */}
+            <Modal show={showPaymentModal} onHide={handleClose} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Select Payment Method</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <div className="row">
+                        <div className="col-4">
+                            <Button variant="primary" className="w-100" onClick={() => handlePayment("CASH")}>CASH</Button>
+                        </div>
+                        <div className="col-4">
+                            <Button variant="secondary" className="w-100" onClick={() => handlePayment("CREDIT CARD")}>CARD</Button>
+                        </div>
+                        <div className="col-4">
+                            <Button variant="warning" className="w-100" onClick={() => handlePayment("UPI")}>UPI</Button>
+                        </div>
+                    </div>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="danger" onClick={handleClose}>Cancel</Button>
+                </Modal.Footer>
+            </Modal>
         </>
     );
 }
 
 export default Front;
+

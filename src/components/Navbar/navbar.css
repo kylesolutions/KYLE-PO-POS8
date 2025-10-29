@@ -1,53 +1,304 @@
-/* navbar.css */
-.navbar {
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    padding: 10px 0;
-    background-color: #ECF0F1;
+/* Modern Navbar */
+.modern-navbar {
+    background: linear-gradient(135deg, #eef6ff 0%, #ffffff 100%);
+    box-shadow: 0 4px 12px rgba(38, 171, 255, 0.15);
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 2px solid #26abff;
 }
 
-.navbar-nav {
+.navbar-container {
     display: flex;
-    justify-content: center; /* Center the navigation items */
+    justify-content: space-between;
     align-items: center;
-    gap: 20px; /* Space between icons */
+    padding: 16px 32px;
+    max-width: 100%;
+    margin: 0 auto;
+    font-family: Carla Sans;
 }
 
-.nav-link {
-    padding: 0.5rem 1rem;
-    transition: color 0.3s ease;
-}
-.bi-power {
-  fill: black !important; /* Ensure the icon is black */
-}
-
-/* .nav-link:hover {
-    color: #007bff !important;
-} */
-
+/* Brand Section */
 .navbar-brand {
-    font-weight: 600;
-    font-size: 1.2rem;
+    flex: 1;
 }
 
-.user-info {
+.brand-title {
+    color: #26abff;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.5px;
+    text-shadow: 2px 2px 4px rgba(38, 171, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.brand-title:hover {
+    color: #1e90ff;
+    transform: scale(1.02);
+}
+
+/* User Section */
+.navbar-user-section {
+    display: flex;
+    align-items: center;
+}
+
+.user-info-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #ffffff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(38, 171, 255, 0.1);
+    border: 2px solid #eef6ff;
+    transition: all 0.3s ease;
+}
+
+.user-info-card:hover {
+    box-shadow: 0 4px 12px rgba(38, 171, 255, 0.2);
+    border-color: #26abff;
+}
+
+.user-details {
     display: flex;
     flex-direction: column;
-    align-items: flex-end; /* Right-align the user info */
+    gap: 6px;
 }
 
-.text-muted {
-    font-size: 0.85rem; /* Smaller text for date and time */
-    line-height: 1.2; /* Adjust line spacing */
+.user-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.cursor-pointer {
+.user-icon {
+    font-size: 20px;
+    color: #26abff;
+}
+
+.user-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e1f1f;
+    letter-spacing: 0.3px;
+}
+
+.datetime-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.date-text,
+.time-text {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+}
+
+.time-text {
+    color: #26abff;
+    font-weight: 600;
+}
+
+/* Logout Button */
+.logout-btn {
+    background: #26abff;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 20px;
+    box-shadow: 0 2px 6px rgba(38, 171, 255, 0.3);
 }
 
-.menuicon{
-    width: 35px;
+.logout-btn:hover {
+    background: #1e1f1f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 31, 31, 0.3);
 }
-.Logout-nav-link{
-    color: black;
-    text-align: end;
+
+.logout-btn:active {
+    transform: translateY(0);
+}
+
+.logout-btn i {
+    transition: transform 0.3s ease;
+}
+
+.logout-btn:hover i {
+    transform: rotate(90deg);
+}
+
+/* Dark Theme Support */
+.dark .modern-navbar {
+    background: linear-gradient(135deg, #1e1f1f 0%, #2a2a2a 100%);
+    border-bottom-color: #26abff;
+}
+
+.dark .brand-title {
+    color: #26abff;
+}
+
+.dark .user-info-card {
+    background: #2a2a2a;
+    border-color: #3a3a3a;
+}
+
+.dark .user-info-card:hover {
+    border-color: #26abff;
+}
+
+.dark .user-name {
+    color: #ffffff;
+}
+
+.dark .date-text {
+    color: #cccccc;
+}
+
+.dark .time-text {
+    color: #26abff;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .navbar-container {
+        padding: 14px 24px;
+    }
+
+    .brand-title {
+        font-size: 1.75rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .navbar-container {
+        padding: 12px 20px;
+    }
+
+    .brand-title {
+        font-size: 1.5rem;
+    }
+
+    .user-info-card {
+        padding: 10px 16px;
+    }
+
+    .user-name {
+        font-size: 14px;
+    }
+
+    .date-text,
+    .time-text {
+        font-size: 11px;
+    }
+
+    .logout-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar-container {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .navbar-brand {
+        flex: 0 0 100%;
+        text-align: center;
+    }
+
+    .brand-title {
+        font-size: 1.5rem;
+    }
+
+    .navbar-user-section {
+        flex: 1;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .user-info-card {
+        width: 100%;
+        max-width: 400px;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 576px) {
+    .navbar-container {
+        padding: 10px 12px;
+    }
+
+    .brand-title {
+        font-size: 1.25rem;
+    }
+
+    .user-info-card {
+        padding: 8px 12px;
+        gap: 12px;
+    }
+
+    .user-icon {
+        font-size: 18px;
+    }
+
+    .user-name {
+        font-size: 13px;
+    }
+
+    .date-text,
+    .time-text {
+        font-size: 10px;
+    }
+
+    .logout-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 400px) {
+    .brand-title {
+        font-size: 1.1rem;
+    }
+
+    .datetime-wrapper {
+        display: none;
+    }
+
+    .user-info-card {
+        gap: 8px;
+    }
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modern-navbar {
+    animation: fadeIn 0.5s ease-in-out;
 }

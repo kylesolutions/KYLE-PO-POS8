@@ -32,4 +32,37 @@ body{
   src: local('Dubai Bold'), url('dubai-cufonfonts-webfont/Dubai-Bold.woff') format('woff');
   }
 
+  body.light {
+  background-color: #f9fafb;
+  color: #1e1f1f;
+}
+
+/* Dark Theme */
+body.dark {
+  background-color: #1e1f1f;
+  color: #e9ecef;
+}
+
+/* Bootstrap Overrides for Modals */
+.light .modal-content {
+  background-color: #ffffff;
+  color: #1e1f1f;
+}
+
+.dark .modal-content {
+  background-color: #2d2d2d;
+  color: #e9ecef;
+}
+
+.light .form-control {
+  background-color: #ffffff;
+  color: #1e1f1f;
+  border: 1px solid #e5e7eb;
+}
+
+.dark .form-control {
+  background-color: #333333;
+  color: #e9ecef;
+  border: 1px solid #444444;
+}
   

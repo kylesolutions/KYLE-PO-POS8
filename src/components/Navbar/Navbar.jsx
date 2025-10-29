@@ -47,39 +47,31 @@ function Navbar() {
   };
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-light bg-white">
-        <div className="container-fluid">
-          <h1
-      style={{
-        color: '#26abff',
-        textShadow: '2px 2px 4px #c0c0c0ff', // Proper text-shadow with offset-x, offset-y, blur-radius
-        fontSize: '2.5rem', // ~40px, adjustable
-        fontWeight: '700', // Bold for emphasis
-        textAlign: 'center', // Centered for prominence
-        margin: '20px 0', // Spacing
-        letterSpacing: '1px', // Slight spacing for readability
-        animation: 'fadeIn 1s ease-in-out', // Subtle fade-in animation
-      }}
-    >
-      Restaurant POS
-    </h1>
-          <div className="user-info ms-auto pe-3">
-            <div className="d-flex align-items-center">
-              <i 
-                className="bi bi-power Logout-nav-link cursor-pointer power"
-                style={{ width: "50px", fill: "black" }}
-                onClick={handleLogout} 
-              >
-              </i>
-              <span className="ms-2 text-black mb-0">{user || "Guest"}</span>
+    <nav className="modern-navbar">
+      <div className="navbar-container">
+        <div className="navbar-brand">
+          <h1 className="brand-title">Restaurant POS</h1>
+        </div>
+
+        <div className="navbar-user-section">
+          <div className="user-info-card">
+            <div className="user-details">
+              <div className="user-name-wrapper">
+                <i className="bi bi-person-circle user-icon"></i>
+                <span className="user-name">{user || "Guest"}</span>
+              </div>
+              <div className="datetime-wrapper">
+                <span className="date-text">{formattedDate}</span>
+                <span className="time-text">{formattedTime}</span>
+              </div>
             </div>
-            <small className="d-block text-muted text-end mt-1">{formattedDate}</small>
-            <small className="d-block text-muted text-end">{formattedTime}</small>
+            <button className="logout-btn" onClick={handleLogout} title="Logout">
+              <i className="bi bi-power"></i>
+            </button>
           </div>
         </div>
-      </nav>
-    </div>
+      </div>
+    </nav>
   );
 }
 
